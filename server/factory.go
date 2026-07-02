@@ -10,9 +10,9 @@ import (
 
 func New() http.Handler {
 	metricRepository := internal.NewInMemoryMetricRepository()
-	metricService := app.NewMetricService(metricRepository)
 
-	updateMetricHandler := metricHttp.NewUpdateMetricHandler(metricService)
+	updateMetricUseCase := app.NewUpdateMetricUseCase(metricRepository)
+	updateMetricHandler := metricHttp.NewUpdateMetricHandler(updateMetricUseCase)
 
 	mux := http.NewServeMux()
 	mux.Handle(

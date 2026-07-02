@@ -7,7 +7,7 @@ import (
 )
 
 type UpdateMetricHandler struct {
-	metricService *app.MetricService
+	useCase *app.UpdateMetricUseCase
 }
 
 // ServeHTTP implements [http.Handler].
@@ -31,13 +31,11 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.metricService.Update(metric); err != nil {
+	if err := h.useCase.Execute(metric); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func NewUpdateMetricHandler(metricService *app.MetricService) http.Handler {
-	return &UpdateMetricHandler{
-		metricService: metricService,
-	}
+func NewUpdateMetricHandler(useCase *app.UpdateMetricUseCase) http.Handler {
+	return &UpdateMetricHandler{useCase: useCase}
 }
