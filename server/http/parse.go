@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/nikimonax/go-metrics/pkg"
-	"github.com/nikimonax/go-metrics/server/app"
 )
 
 func parseMetricType(r *http.Request, mt *pkg.MetricType) error {
@@ -77,28 +76,36 @@ func parseGaugeMetricValue(r *http.Request, mv *float64) error {
 	return nil
 }
 
-func parseUpdateMetricDTO(r *http.Request, dto *app.UpdateMetricDTO) error {
-	var err error
+func parseMetricFromRequest(r *http.Request) (metric pkg.Metric, err error) {
+	var metricType pkg.MetricType
 
-	err = parseMetricType(r, &dto.MetricType)
-
-	if err != nil {
-		return err
+	if err = parseMetricType(r, &metricType); err != nil {
+		return
 	}
 
-	err = parseMetricName(r, &dto.MetricName)
+	var metricName pkg.MetricName
 
-	if err != nil {
-		return err
+	if err = parseMetricName(r, &metricName); err != nil {
+		return
 	}
 
-	switch dto.MetricType {
+	switch metricType {
 	case pkg.Counter:
-		return parseCounterMetricValue(r, &dto.ValueAdd)
+		var metricValue int64
+		if err = parseCounterMetricValue(r, &metricValue); err != nil {
+			return
+		}
+		metric = pkg.NewCounterMetric(metricName, metricValue)
 	case pkg.Gauge:
-		return parseGaugeMetricValue(r, &dto.ValueSet)
+		var metricValue float64
+		if err = parseGaugeMetricValue(r, &metricValue); err != nil {
+			return
+		}
+		metric = pkg.NewGaugeMetric(metricName, metricValue)
 	default:
 		message := newErrMsgParamNotValid("metricType")
-		return errors.New(message)
+		err = errors.New(message)
 	}
+
+	return
 }

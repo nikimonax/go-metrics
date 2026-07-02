@@ -24,14 +24,14 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var dto app.UpdateMetricDTO
+	metric, err := parseMetricFromRequest(r)
 
-	if err := parseUpdateMetricDTO(r, &dto); err != nil {
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := h.metricService.Update(dto); err != nil {
+	if err := h.metricService.Update(metric); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
