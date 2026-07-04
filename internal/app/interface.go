@@ -13,3 +13,8 @@ type MetricRepository interface {
 type MetricCollector interface {
 	Collect() ([]domain.Metric, error)
 }
+
+type MetricGateway interface {
+	Send(domain.Metric) error
+	SendBatch([]domain.Metric) error
+}
