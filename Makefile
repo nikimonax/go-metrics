@@ -1,5 +1,8 @@
 BIN_DIR := ./bin
-INC := 1
+
+ITER ?= $(shell \
+	git branch --show-current | \
+	sed -n 's/^iter\([0-9]\+\)$$/\1/p')
 
 
 all: build
@@ -23,12 +26,18 @@ lint:
 
 .PHONY: autotest
 autotest: $(BIN_DIR)/metricstest $(BIN_DIR)/server $(BIN_DIR)/agent
-	@for i in $$(seq 1 $(INC)); do \
+	@if [ -z "$(ITER)" ]; then \
+		echo "\nTest iteration could not be determined."; \
+		echo "Please provide 'ITER' variable.\n"; \
+		exit 1; \
+	fi; \
+	for i in $$(seq 1 $(ITER)); do \
 		echo -n "Iteration $$i: "; \
 		./$< \
 			-test.run=^TestIteration$$i[AB]*$$ \
 			-binary-path=$(BIN_DIR)/server \
-			-agent-binary-path=$(BIN_DIR)/agent; \
+			-agent-binary-path=$(BIN_DIR)/agent \
+			-source-path=.; \
 	done
 
 .PHONY: clean
