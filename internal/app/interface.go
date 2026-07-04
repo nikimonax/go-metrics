@@ -9,3 +9,7 @@ type MetricRepository interface {
 	UpdateBatch([]domain.Metric) error
 	GetAll() ([]domain.Metric, error)
 }
+
+type MetricCollector interface {
+	Collect() ([]domain.Metric, error)
+}
