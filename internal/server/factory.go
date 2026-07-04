@@ -19,5 +19,5 @@ func New() http.Handler {
 		updateMetricHandler,
 	)
 
-	return mux
+	return LoggingMiddleware(mux)
 }
