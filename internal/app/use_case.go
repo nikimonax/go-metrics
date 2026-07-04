@@ -61,6 +61,12 @@ func (useCase *SendMetricsUseCase) Execute() error {
 		return err
 	}
 
+	err = useCase.repository.Clear()
+
+	if err != nil {
+		return err
+	}
+
 	return useCase.gateway.SendBatch(metrics)
 }
 

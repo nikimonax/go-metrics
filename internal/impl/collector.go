@@ -81,18 +81,8 @@ func CollectRandomValue() ([]domain.Metric, error) {
 	}, nil
 }
 
-type PollCountCollector struct {
-	pollCount int64
-}
-
-func (c *PollCountCollector) Collect() ([]domain.Metric, error) {
-	c.pollCount += 1
-
+func CollectIncrOne() ([]domain.Metric, error) {
 	return []domain.Metric{
-		domain.NewCounterMetric("PollCount", c.pollCount),
+		domain.NewCounterMetric("PollCount", 1),
 	}, nil
-}
-
-func NewPollCountCollector() app.MetricCollector {
-	return &PollCountCollector{pollCount: 0}
 }

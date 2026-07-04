@@ -32,7 +32,7 @@ func New(config AgentConfig) *Agent {
 	metricCollector := impl.NewCollectorsGroup(
 		impl.CollectorFunc(impl.CollectMemStats),
 		impl.CollectorFunc(impl.CollectRandomValue),
-		impl.NewPollCountCollector(),
+		impl.CollectorFunc(impl.CollectIncrOne),
 	)
 
 	metricGateway := impl.NewHttpMetricGateway(
