@@ -46,6 +46,13 @@ func (index MetricIndex) Len() int {
 	return totalLen
 }
 
+func (index MetricIndex) Clear() error {
+	for _, sub := range index {
+		clear(sub)
+	}
+	return nil
+}
+
 // Update implements [app.MetricRepository].
 func (repo *InMemoryMetricRepository) Update(other domain.Metric) error {
 	if metric, ok := repo.index.Find(other.Type(), other.Name()); ok {
@@ -74,6 +81,10 @@ func (repo *InMemoryMetricRepository) GetAll() ([]domain.Metric, error) {
 	}
 
 	return metrics, nil
+}
+
+func (repo *InMemoryMetricRepository) Clear() error {
+	return repo.index.Clear()
 }
 
 func NewInMemoryMetricRepository() app.MetricRepository {
