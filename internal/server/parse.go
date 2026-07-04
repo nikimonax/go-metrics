@@ -1,14 +1,14 @@
-package http
+package server
 
 import (
 	"errors"
 	"net/http"
 	"strconv"
 
-	"github.com/nikimonax/go-metrics/pkg"
+	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
-func parseMetricType(r *http.Request, mt *pkg.MetricType) error {
+func parseMetricType(r *http.Request, mt *domain.MetricType) error {
 	metricTypeRaw := r.PathValue("metricType")
 
 	if metricTypeRaw == "" {
@@ -16,7 +16,7 @@ func parseMetricType(r *http.Request, mt *pkg.MetricType) error {
 		return errors.New(message)
 	}
 
-	metricType := pkg.MetricType(metricTypeRaw)
+	metricType := domain.MetricType(metricTypeRaw)
 
 	if !metricType.IsValid() {
 		message := newErrMsgParamNotValid("metricType")
@@ -27,7 +27,7 @@ func parseMetricType(r *http.Request, mt *pkg.MetricType) error {
 	return nil
 }
 
-func parseMetricName(r *http.Request, mn *pkg.MetricName) error {
+func parseMetricName(r *http.Request, mn *domain.MetricName) error {
 	metricNameRaw := r.PathValue("metricName")
 
 	if metricNameRaw == "" {
@@ -36,7 +36,7 @@ func parseMetricName(r *http.Request, mn *pkg.MetricName) error {
 	}
 
 	// TODO: ограничения на имя метрики?
-	*mn = pkg.MetricName(metricNameRaw)
+	*mn = domain.MetricName(metricNameRaw)
 	return nil
 }
 
@@ -76,32 +76,32 @@ func parseGaugeMetricValue(r *http.Request, mv *float64) error {
 	return nil
 }
 
-func parseMetricFromRequest(r *http.Request) (metric pkg.Metric, err error) {
-	var metricType pkg.MetricType
+func parseMetricFromRequest(r *http.Request) (metric domain.Metric, err error) {
+	var metricType domain.MetricType
 
 	if err = parseMetricType(r, &metricType); err != nil {
 		return
 	}
 
-	var metricName pkg.MetricName
+	var metricName domain.MetricName
 
 	if err = parseMetricName(r, &metricName); err != nil {
 		return
 	}
 
 	switch metricType {
-	case pkg.Counter:
+	case domain.Counter:
 		var metricValue int64
 		if err = parseCounterMetricValue(r, &metricValue); err != nil {
 			return
 		}
-		metric = pkg.NewCounterMetric(metricName, metricValue)
-	case pkg.Gauge:
+		metric = domain.NewCounterMetric(metricName, metricValue)
+	case domain.Gauge:
 		var metricValue float64
 		if err = parseGaugeMetricValue(r, &metricValue); err != nil {
 			return
 		}
-		metric = pkg.NewGaugeMetric(metricName, metricValue)
+		metric = domain.NewGaugeMetric(metricName, metricValue)
 	default:
 		message := newErrMsgParamNotValid("metricType")
 		err = errors.New(message)

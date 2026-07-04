@@ -1,31 +1,31 @@
-package internal
+package impl
 
 import (
-	"github.com/nikimonax/go-metrics/pkg"
-	"github.com/nikimonax/go-metrics/server/app"
+	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
-type MetricIndex map[pkg.MetricType]map[pkg.MetricName]pkg.Metric
+type MetricIndex map[domain.MetricType]map[domain.MetricName]domain.Metric
 
 type InMemoryMetricRepository struct {
 	index MetricIndex
 }
 
 func (index MetricIndex) Find(
-	metricType pkg.MetricType,
-	metricName pkg.MetricName,
-) (metric pkg.Metric, ok bool) {
+	metricType domain.MetricType,
+	metricName domain.MetricName,
+) (metric domain.Metric, ok bool) {
 	metric, ok = index[metricType][metricName]
 	return
 }
 
-func (index MetricIndex) Add(metric pkg.Metric) error {
+func (index MetricIndex) Add(metric domain.Metric) error {
 	metricType := metric.Type()
 
 	sub, ok := index[metricType]
 
 	if !ok {
-		sub = make(map[pkg.MetricName]pkg.Metric)
+		sub = make(map[domain.MetricName]domain.Metric)
 		index[metricType] = sub
 	}
 
@@ -34,7 +34,7 @@ func (index MetricIndex) Add(metric pkg.Metric) error {
 }
 
 // Update implements [app.MetricRepository].
-func (repo *InMemoryMetricRepository) Update(other pkg.Metric) error {
+func (repo *InMemoryMetricRepository) Update(other domain.Metric) error {
 	if metric, ok := repo.index.Find(other.Type(), other.Name()); ok {
 		return metric.Accept(other)
 	} else {

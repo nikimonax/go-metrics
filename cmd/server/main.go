@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/nikimonax/go-metrics/server"
+	"github.com/nikimonax/go-metrics/internal/server"
 )
 
 func main() {

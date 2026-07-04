@@ -1,9 +1,9 @@
-package http
+package server
 
 import (
 	"net/http"
 
-	"github.com/nikimonax/go-metrics/server/app"
+	"github.com/nikimonax/go-metrics/internal/app"
 )
 
 type UpdateMetricHandler struct {
