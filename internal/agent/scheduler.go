@@ -12,8 +12,12 @@ type Task struct {
 	Callback func() error
 }
 
-func runScheduler(tasks []Task) {
-	now := time.Now()
+type Scheduler struct {
+	Timer func() time.Time
+}
+
+func (s *Scheduler) Run(tasks []Task) {
+	now := s.Timer()
 
 	scheduled := make([]time.Time, 0, len(tasks))
 	for _, task := range tasks {
@@ -22,7 +26,7 @@ func runScheduler(tasks []Task) {
 
 	for {
 		for i, task := range tasks {
-			now := time.Now()
+			now := s.Timer()
 
 			if scheduled[i].After(now) {
 				continue
@@ -48,8 +52,12 @@ func runScheduler(tasks []Task) {
 			},
 		)
 
-		if now := time.Now(); nextTaskTime.After(now) {
+		if now := s.Timer(); nextTaskTime.After(now) {
 			time.Sleep(nextTaskTime.Sub(now))
 		}
 	}
+}
+
+func NewScheduler(timer func() time.Time) *Scheduler {
+	return &Scheduler{Timer: timer}
 }

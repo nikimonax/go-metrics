@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"time"
+
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
 )
@@ -25,7 +27,7 @@ func (a *Agent) Run() {
 		},
 	}
 
-	runScheduler(tasks)
+	NewScheduler(time.Now).Run(tasks)
 }
 
 func New(config AgentConfig) *Agent {
