@@ -1,6 +1,10 @@
 package domain
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"strconv"
+)
 
 type MetricType string
 type MetricName string
@@ -19,6 +23,10 @@ func (m MetricType) IsValid() bool {
 	}
 }
 
+type MetricValue interface {
+	fmt.Stringer
+}
+
 type MetricUpdater interface {
 	UpdateCounter(m *CounterMetric) error
 	UpdateGauge(m *GaugeMetric) error
@@ -28,19 +36,27 @@ type Metric interface {
 	MetricUpdater
 	Type() MetricType
 	Name() MetricName
+	Value() MetricValue
 	Accept(MetricUpdater) error
 }
 
 // Counter
 
+type CounterMetricValue int64
+
+// String implements [fmt.Stringer].
+func (v CounterMetricValue) String() string {
+	return strconv.FormatInt(int64(v), 10)
+}
+
 type CounterMetric struct {
-	Value int64
 	name  MetricName
+	value CounterMetricValue
 }
 
 // UpdateCounter implements [MetricUpdater].
 func (m *CounterMetric) UpdateCounter(applyTo *CounterMetric) error {
-	applyTo.Value += m.Value
+	applyTo.value += m.value
 	return nil
 }
 
@@ -59,6 +75,11 @@ func (m *CounterMetric) Name() MetricName {
 	return m.name
 }
 
+// Value implements [Metric].
+func (m *CounterMetric) Value() MetricValue {
+	return m.value
+}
+
 // Accept implements [Metric].
 func (m *CounterMetric) Accept(u MetricUpdater) error {
 	return u.UpdateCounter(m)
@@ -67,15 +88,22 @@ func (m *CounterMetric) Accept(u MetricUpdater) error {
 func NewCounterMetric(name MetricName, value int64) Metric {
 	return &CounterMetric{
 		name:  name,
-		Value: value,
+		value: CounterMetricValue(value),
 	}
 }
 
 // Gauge
 
+type GaugeMetricValue float64
+
+// String implements [fmt.Stringer].
+func (v GaugeMetricValue) String() string {
+	return strconv.FormatFloat(float64(v), 'f', 6, 64)
+}
+
 type GaugeMetric struct {
-	Value float64
 	name  MetricName
+	value GaugeMetricValue
 }
 
 // UpdateCounter implements [MetricUpdater].
@@ -85,7 +113,7 @@ func (*GaugeMetric) UpdateCounter(m *CounterMetric) error {
 
 // UpdateGauge implements [MetricUpdater].
 func (m *GaugeMetric) UpdateGauge(applyTo *GaugeMetric) error {
-	applyTo.Value = m.Value
+	applyTo.value = m.value
 	return nil
 }
 
@@ -99,6 +127,11 @@ func (m *GaugeMetric) Name() MetricName {
 	return m.name
 }
 
+// Value implements [Metric].
+func (m *GaugeMetric) Value() MetricValue {
+	return m.value
+}
+
 // Accept implements [Metric].
 func (m *GaugeMetric) Accept(u MetricUpdater) error {
 	return u.UpdateGauge(m)
@@ -107,6 +140,6 @@ func (m *GaugeMetric) Accept(u MetricUpdater) error {
 func NewGaugeMetric(name MetricName, value float64) Metric {
 	return &GaugeMetric{
 		name:  name,
-		Value: value,
+		value: GaugeMetricValue(value),
 	}
 }
