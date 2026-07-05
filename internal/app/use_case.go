@@ -34,6 +34,10 @@ func (useCase *CollectMetricsUseCase) Execute() error {
 		return err
 	}
 
+	if len(metrics) == 0 {
+		return nil
+	}
+
 	return useCase.repository.UpdateBatch(metrics)
 }
 
@@ -55,10 +59,15 @@ type SendMetricsUseCase struct {
 }
 
 func (useCase *SendMetricsUseCase) Execute() error {
+	// TODO: заменить на атомарный GetAllAndClear
 	metrics, err := useCase.repository.GetAll()
 
 	if err != nil {
 		return err
+	}
+
+	if len(metrics) == 0 {
+		return nil
 	}
 
 	err = useCase.repository.Clear()
