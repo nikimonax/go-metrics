@@ -1,5 +1,7 @@
 BIN_DIR := ./bin
 
+COV_FILE := coverage.out
+
 ITER ?= $(shell \
 	git branch --show-current | \
 	sed -n 's/^iter\([0-9]\+\)$$/\1/p')
@@ -24,6 +26,16 @@ build: $(BIN_DIR)/server $(BIN_DIR)/agent
 lint:
 	golangci-lint run
 
+.PHONY: test
+test:
+	go test $(COVER_ARGS) $$(go list ./... | grep -v internal/mock)
+
+.PHONY: cover
+cover: test
+cover: COVER_ARGS := -coverprofile=$(COV_FILE)
+cover:
+	go tool cover -func=$(COV_FILE)
+
 .PHONY: autotest
 autotest: $(BIN_DIR)/metricstest $(BIN_DIR)/server $(BIN_DIR)/agent
 	@if [ -z "$(ITER)" ]; then \
@@ -43,6 +55,7 @@ autotest: $(BIN_DIR)/metricstest $(BIN_DIR)/server $(BIN_DIR)/agent
 .PHONY: clean
 clean:
 	rm -rf $(BIN_DIR)
+	go clean -testcache
 
 
 $(BIN_DIR)/metricstest: .FORCE
