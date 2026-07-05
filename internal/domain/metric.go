@@ -14,6 +14,8 @@ const (
 	Gauge   MetricType = "gauge"
 )
 
+var ErrUpdate = errors.New("failed update metric")
+
 func (m MetricType) IsValid() bool {
 	switch m {
 	case Counter, Gauge:
@@ -62,7 +64,10 @@ func (m *CounterMetric) UpdateCounter(applyTo *CounterMetric) error {
 
 // UpdateGauge implements [MetricUpdater].
 func (m *CounterMetric) UpdateGauge(applyTo *GaugeMetric) error {
-	return errors.New("can't apply counter updater to the gauge metric")
+	return fmt.Errorf(
+		"%w: can't apply counter updater to the gauge metric",
+		ErrUpdate,
+	)
 }
 
 // Type implements [Metric].
@@ -108,7 +113,10 @@ type GaugeMetric struct {
 
 // UpdateCounter implements [MetricUpdater].
 func (*GaugeMetric) UpdateCounter(m *CounterMetric) error {
-	return errors.New("can't apply gauge updater to the counter metric")
+	return fmt.Errorf(
+		"%w: can't apply gauge updater to the counter metric",
+		ErrUpdate,
+	)
 }
 
 // UpdateGauge implements [MetricUpdater].
