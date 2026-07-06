@@ -1,6 +1,9 @@
 BIN_DIR := ./bin
 
 COV_FILE := coverage.out
+COV_FILE_HTML := coverage.html
+
+TEST_ARGS += $(ARGS)
 
 ITER ?= $(shell \
 	git branch --show-current | \
@@ -28,13 +31,15 @@ lint:
 
 .PHONY: test
 test:
-	go test $(COVER_ARGS) $$(go list ./... | grep -v internal/mock)
+	go test $(TEST_ARGS) $$(go list ./... | grep -v internal/mock)
 
 .PHONY: cover
-cover: test
-cover: COVER_ARGS := -coverprofile=$(COV_FILE)
-cover:
+cover: $(COV_FILE)
 	go tool cover -func=$(COV_FILE)
+
+.PHONY: cover-html
+cover-html: $(COV_FILE)
+	go tool cover -html=$(COV_FILE) -o $(COV_FILE_HTML)
 
 .PHONY: autotest
 autotest: $(BIN_DIR)/metricstest $(BIN_DIR)/server $(BIN_DIR)/agent
@@ -57,6 +62,8 @@ clean:
 	rm -rf $(BIN_DIR)
 	go clean -testcache
 
+$(COV_FILE): TEST_ARGS += -coverprofile=$(COV_FILE)
+$(COV_FILE): test
 
 $(BIN_DIR)/metricstest: .FORCE
 	cd tools/go-autotests && go test -c -o ../../$@ ./cmd/$(@F)
