@@ -1,12 +1,14 @@
 package server_test
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/mock"
@@ -72,16 +74,6 @@ func TestUpdateMetricHandler(t *testing.T) {
 				useCase.On("Execute", wantMetricValue).Return(useCaseErr).Once()
 			},
 			wantStatus:      http.StatusInternalServerError,
-			wantContentType: httpextra.MIMEText,
-		},
-		{
-			name:            "invalid method",
-			method:          http.MethodGet,
-			metricType:      "counter",
-			metricName:      testMetricName,
-			metricValue:     "42",
-			contentType:     httpextra.MIMEText,
-			wantStatus:      http.StatusMethodNotAllowed,
 			wantContentType: httpextra.MIMEText,
 		},
 		{
@@ -177,15 +169,19 @@ func TestUpdateMetricHandler(t *testing.T) {
 			handler := server.NewUpdateMetricHandler(useCase)
 
 			req := httptest.NewRequest(tc.method, "/update", nil) // nolint:noctx
-			req.SetPathValue("metricType", string(tc.metricType))
-			req.SetPathValue("metricName", string(tc.metricName))
-			req.SetPathValue("metricValue", tc.metricValue)
+			rr := httptest.NewRecorder()
+
+			chiCtx := chi.NewRouteContext()
+			chiCtx.URLParams.Add("metricType", string(tc.metricType))
+			chiCtx.URLParams.Add("metricName", string(tc.metricName))
+			chiCtx.URLParams.Add("metricValue", tc.metricValue)
+
+			ctx := context.WithValue(req.Context(), chi.RouteCtxKey, chiCtx)
+			req = req.WithContext(ctx)
 
 			if tc.contentType != "" {
 				req.Header.Add(httpextra.HDRContentType, tc.contentType)
 			}
-
-			rr := httptest.NewRecorder()
 
 			handler.ServeHTTP(rr, req)
 
