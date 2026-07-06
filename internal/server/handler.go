@@ -3,11 +3,14 @@ package server
 import (
 	"net/http"
 
-	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/domain"
 )
+type UpdateMetricUseCase interface {
+	Execute(domain.Metric) error
+}
 
 type UpdateMetricHandler struct {
-	useCase *app.UpdateMetricUseCase
+	useCase UpdateMetricUseCase
 }
 
 // ServeHTTP implements [http.Handler].
@@ -36,6 +39,6 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func NewUpdateMetricHandler(useCase *app.UpdateMetricUseCase) http.Handler {
+func NewUpdateMetricHandler(useCase UpdateMetricUseCase) http.Handler {
 	return &UpdateMetricHandler{useCase: useCase}
 }
