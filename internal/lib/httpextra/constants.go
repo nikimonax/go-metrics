@@ -1,7 +1,7 @@
 package httpextra
 
 const (
-	MIMEText = "text/plain; charset=utf-8"
+	MIMEText = "text/plain"
 	MIMEJSON = "application/json"
 )
 

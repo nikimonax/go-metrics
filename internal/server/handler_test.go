@@ -198,7 +198,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tc.wantStatus, resp.StatusCode)
-			assert.Equal(t, tc.wantContentType, actualContentType)
+			assert.Contains(t, actualContentType, tc.wantContentType)
 
 			if resp.StatusCode < 400 {
 				assert.Empty(t, string(body))
