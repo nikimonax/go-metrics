@@ -17,12 +17,6 @@ type UpdateMetricHandler struct {
 
 // ServeHTTP implements [http.Handler].
 func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		message := newErrMsgInvalidMethod(r.Method, http.MethodPost)
-		http.Error(w, message, http.StatusMethodNotAllowed)
-		return
-	}
-
 	contentType := r.Header.Get(httpextra.HDRContentType)
 
 	if contentType != httpextra.MIMEText {

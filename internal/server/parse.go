@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
 func parseMetricType(r *http.Request, mt *domain.MetricType) error {
-	metricTypeRaw := r.PathValue("metricType")
+	metricTypeRaw := chi.URLParam(r, "metricType")
 
 	if metricTypeRaw == "" {
 		message := newErrMsgParamNotProvided("Path", "metricType")
@@ -28,7 +29,7 @@ func parseMetricType(r *http.Request, mt *domain.MetricType) error {
 }
 
 func parseMetricName(r *http.Request, mn *domain.MetricName) error {
-	metricNameRaw := r.PathValue("metricName")
+	metricNameRaw := chi.URLParam(r, "metricName")
 
 	if metricNameRaw == "" {
 		message := newErrMsgParamNotProvided("Path", "metricName")
@@ -41,7 +42,7 @@ func parseMetricName(r *http.Request, mn *domain.MetricName) error {
 }
 
 func parseCounterMetricValue(r *http.Request, mv *int64) error {
-	metricValueRaw := r.PathValue("metricValue")
+	metricValueRaw := chi.URLParam(r, "metricValue")
 
 	if metricValueRaw == "" {
 		message := newErrMsgParamNotProvided("Path", "metricValue")
@@ -59,7 +60,7 @@ func parseCounterMetricValue(r *http.Request, mv *int64) error {
 }
 
 func parseGaugeMetricValue(r *http.Request, mv *float64) error {
-	metricValueRaw := r.PathValue("metricValue")
+	metricValueRaw := chi.URLParam(r, "metricValue")
 
 	if metricValueRaw == "" {
 		message := newErrMsgParamNotProvided("Path", "metricValue")
