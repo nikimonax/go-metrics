@@ -4,7 +4,9 @@ import (
 	"net/http"
 
 	"github.com/nikimonax/go-metrics/internal/domain"
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 )
+
 type UpdateMetricUseCase interface {
 	Execute(domain.Metric) error
 }
@@ -21,8 +23,10 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if contentType := r.Header.Get("Content-Type"); contentType != "text/plain" {
-		message := newErrMsgInvalidContentType(contentType, "text/plain")
+	contentType := r.Header.Get(httpextra.HDRContentType)
+
+	if contentType != httpextra.MIMEText {
+		message := newErrMsgInvalidContentType(contentType, httpextra.MIMEText)
 		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
@@ -34,9 +38,15 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := h.useCase.Execute(metric); err != nil {
+	err = h.useCase.Execute(metric)
+
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
+	w.Header().Set(httpextra.HDRContentType, httpextra.MIMEText)
+	w.WriteHeader(http.StatusOK)
 }
 
 func NewUpdateMetricHandler(useCase UpdateMetricUseCase) http.Handler {

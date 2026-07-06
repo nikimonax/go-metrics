@@ -8,6 +8,7 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 )
 
 type HttpMetricGateway struct {
@@ -25,7 +26,7 @@ func (gateway *HttpMetricGateway) Send(metric domain.Metric) (err error) {
 		metric.Value().String(),
 	)
 
-	resp, err := gateway.client.Post(url, "text/plain", nil) //nolint:noctx
+	resp, err := gateway.client.Post(url, httpextra.MIMEText, nil) // nolint:noctx
 
 	if err != nil {
 		return fmt.Errorf("failed send metric: %w", err)
@@ -44,7 +45,7 @@ func (gateway *HttpMetricGateway) Send(metric domain.Metric) (err error) {
 	if resp.StatusCode >= 400 {
 		reason := "unknown"
 
-		if resp.Header.Get("Content-Type") == "text/plain" {
+		if resp.Header.Get(httpextra.HDRContentType) == httpextra.MIMEText {
 			if body, err := io.ReadAll(resp.Body); err == nil {
 				reason = string(body)
 			}
