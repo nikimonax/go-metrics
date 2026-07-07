@@ -39,6 +39,22 @@ func NewGetMetricUseCase(metricRepository MetricRepository) *GetMetricUseCase {
 	}
 }
 
+// get all metrics
+
+type GetAllMetricsUseCase struct {
+	metricRepository MetricRepository
+}
+
+func (useCase *GetAllMetricsUseCase) Execute() ([]domain.Metric, error) {
+	return useCase.metricRepository.GetAll()
+}
+
+func NewGetAllMetricsUseCase(metricRepository MetricRepository) *GetAllMetricsUseCase {
+	return &GetAllMetricsUseCase{
+		metricRepository: metricRepository,
+	}
+}
+
 // collect metrics
 
 type CollectMetricsUseCase struct {
