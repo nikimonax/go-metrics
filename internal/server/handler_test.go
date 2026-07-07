@@ -77,16 +77,6 @@ func TestUpdateMetricHandler(t *testing.T) {
 			wantContentType: httpextra.MIMEText,
 		},
 		{
-			name:            "invalid content type",
-			method:          http.MethodPost,
-			metricType:      "counter",
-			metricName:      testMetricName,
-			metricValue:     "42",
-			contentType:     httpextra.MIMEJSON,
-			wantStatus:      http.StatusBadRequest,
-			wantContentType: httpextra.MIMEText,
-		},
-		{
 			name:            "invalid counter metric value",
 			method:          http.MethodPost,
 			metricType:      "counter",

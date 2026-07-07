@@ -1,11 +1,16 @@
 package server
 
 import (
+	"errors"
+	"log"
 	"net/http"
 
 	"github.com/nikimonax/go-metrics/internal/domain"
+	"github.com/nikimonax/go-metrics/internal/impl"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 )
+
+// update metric
 
 type UpdateMetricUseCase interface {
 	Execute(domain.Metric) error
@@ -17,14 +22,6 @@ type UpdateMetricHandler struct {
 
 // ServeHTTP implements [http.Handler].
 func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	contentType := r.Header.Get(httpextra.HDRContentType)
-
-	if contentType != httpextra.MIMEText {
-		message := newErrMsgInvalidContentType(contentType, httpextra.MIMEText)
-		http.Error(w, message, http.StatusBadRequest)
-		return
-	}
-
 	metric, err := parseMetricFromRequest(r)
 
 	if err != nil {
