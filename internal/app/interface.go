@@ -7,6 +7,7 @@ import (
 type MetricRepository interface {
 	Update(domain.Metric) error
 	UpdateBatch([]domain.Metric) error
+	Get(domain.MetricType, domain.MetricName) (domain.Metric, error)
 	GetAll() ([]domain.Metric, error)
 	Clear() error
 }

@@ -15,12 +15,19 @@ func New() http.Handler {
 	updateMetricUseCase := app.NewUpdateMetricUseCase(metricRepository)
 	updateMetricHandler := NewUpdateMetricHandler(updateMetricUseCase)
 
+	getMetricUseCase := app.NewGetMetricUseCase(metricRepository)
+	getMetricHandler := NewGetMetricHandler(getMetricUseCase)
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
 	r.Post(
 		"/update/{metricType}/{metricName}/{metricValue}",
 		updateMetricHandler.ServeHTTP,
+	)
+	r.Get(
+		"/value/{metricType}/{metricName}",
+		getMetricHandler.ServeHTTP,
 	)
 
 	return r

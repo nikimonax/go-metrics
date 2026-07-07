@@ -1,12 +1,16 @@
 package impl
 
 import (
+	"errors"
+	"fmt"
 	"maps"
 	"slices"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
+
+var ErrMetricNotFound = errors.New("metric not found")
 
 type MetricIndex map[domain.MetricType]map[domain.MetricName]domain.Metric
 
@@ -70,6 +74,20 @@ func (repo *InMemoryMetricRepository) UpdateBatch(metrics []domain.Metric) error
 		}
 	}
 	return nil
+}
+
+// Get implements [app.MetricRepository].
+func (repo *InMemoryMetricRepository) Get(
+	metricType domain.MetricType,
+	metricName domain.MetricName,
+) (domain.Metric, error) {
+	metric, ok := repo.index.Find(metricType, metricName)
+
+	if !ok {
+		return nil, fmt.Errorf("%w: (%s, %s)", ErrMetricNotFound, metricType, metricName)
+	}
+
+	return metric, nil
 }
 
 // GetAll implements [app.MetricRepository].

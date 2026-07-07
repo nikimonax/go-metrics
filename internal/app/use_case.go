@@ -4,7 +4,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
-// update metrics
+// update metric
 
 type UpdateMetricUseCase struct {
 	metricRepository MetricRepository
@@ -16,6 +16,25 @@ func (useCase *UpdateMetricUseCase) Execute(metric domain.Metric) error {
 
 func NewUpdateMetricUseCase(metricRepository MetricRepository) *UpdateMetricUseCase {
 	return &UpdateMetricUseCase{
+		metricRepository: metricRepository,
+	}
+}
+
+// get metric
+
+type GetMetricUseCase struct {
+	metricRepository MetricRepository
+}
+
+func (useCase *GetMetricUseCase) Execute(
+	metricType domain.MetricType,
+	metricName domain.MetricName,
+) (domain.Metric, error) {
+	return useCase.metricRepository.Get(metricType, metricName)
+}
+
+func NewGetMetricUseCase(metricRepository MetricRepository) *GetMetricUseCase {
+	return &GetMetricUseCase{
 		metricRepository: metricRepository,
 	}
 }

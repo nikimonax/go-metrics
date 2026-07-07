@@ -20,6 +20,15 @@ func (repo *MetricRepository) UpdateBatch(metrics []domain.Metric) error {
 	return repo.Called(metrics).Error(0)
 }
 
+// Get implements [MetricRepository].
+func (repo *MetricRepository) Get(
+	metricType domain.MetricType,
+	metricName domain.MetricName,
+) (domain.Metric, error) {
+	args := repo.Called(metricType, metricName)
+	return args.Get(0).(domain.Metric), args.Error(1)
+}
+
 // GetAll implements [MetricRepository].
 func (repo *MetricRepository) GetAll() ([]domain.Metric, error) {
 	args := repo.Called()
