@@ -103,7 +103,7 @@ type GaugeMetricValue float64
 
 // String implements [fmt.Stringer].
 func (v GaugeMetricValue) String() string {
-	return strconv.FormatFloat(float64(v), 'f', 6, 64)
+	return strconv.FormatFloat(float64(v), 'f', 3, 64)
 }
 
 type GaugeMetric struct {

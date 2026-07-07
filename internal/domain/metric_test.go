@@ -59,7 +59,7 @@ func TestMetricValue(t *testing.T) {
 		{
 			name:  "gauge",
 			value: domain.GaugeMetricValue(3.14),
-			want:  "3.140000",
+			want:  "3.140",
 		},
 	}
 
