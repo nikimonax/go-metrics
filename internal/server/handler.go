@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/nikimonax/go-metrics/internal/domain"
@@ -17,7 +16,8 @@ type UpdateMetricUseCase interface {
 }
 
 type UpdateMetricHandler struct {
-	useCase UpdateMetricUseCase
+	useCase        UpdateMetricUseCase
+	errorPresenter ErrorPresenter
 }
 
 // ServeHTTP implements [http.Handler].
@@ -25,14 +25,14 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	metric, err := parseMetricFromRequest(r)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		h.errorPresenter.Render(w, err, http.StatusBadRequest)
 		return
 	}
 
 	err = h.useCase.Execute(metric)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.errorPresenter.Render(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -40,8 +40,14 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
-func NewUpdateMetricHandler(useCase UpdateMetricUseCase) http.Handler {
-	return &UpdateMetricHandler{useCase: useCase}
+func NewUpdateMetricHandler(
+	useCase UpdateMetricUseCase,
+	errorPresenter ErrorPresenter,
+) http.Handler {
+	return &UpdateMetricHandler{
+		useCase:        useCase,
+		errorPresenter: errorPresenter,
+	}
 }
 
 // get metric
@@ -54,7 +60,9 @@ type GetMetricUseCase interface {
 }
 
 type GetMetricHandler struct {
-	useCase GetMetricUseCase
+	useCase         GetMetricUseCase
+	errorPresenter  ErrorPresenter
+	metricPresenter MetricPresenter
 }
 
 func (h *GetMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -64,12 +72,12 @@ func (h *GetMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err := parseMetricType(r, &metricType); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		h.errorPresenter.Render(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if err := parseMetricName(r, &metricName); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		h.errorPresenter.Render(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -82,19 +90,58 @@ func (h *GetMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			status = http.StatusNotFound
 		}
 
-		http.Error(w, err.Error(), status)
+		h.errorPresenter.Render(w, err, status)
 		return
 
 	}
 
-	w.Header().Set(httpextra.HDRContentType, httpextra.MIMEText)
-	w.WriteHeader(http.StatusOK)
+	h.metricPresenter.Render(w, metric, http.StatusOK)
+}
 
-	if _, err := w.Write([]byte(metric.Value().String())); err != nil {
-		log.Printf("Failed to write HTTP response: %v", err)
+func NewGetMetricHandler(
+	useCase GetMetricUseCase,
+	errorPresenter ErrorPresenter,
+	metricPresenter MetricPresenter,
+) http.Handler {
+	return &GetMetricHandler{
+		useCase:         useCase,
+		errorPresenter:  errorPresenter,
+		metricPresenter: metricPresenter,
 	}
 }
 
-func NewGetMetricHandler(useCase GetMetricUseCase) http.Handler {
-	return &GetMetricHandler{useCase: useCase}
+// preview metrics
+
+type GetAllMetricsUseCase interface {
+	Execute() ([]domain.Metric, error)
+}
+
+type PreviewMetricsHandler struct {
+	useCase          GetAllMetricsUseCase
+	errorPresenter   ErrorPresenter
+	metricsPresenter MetricsPresenter
+}
+
+func (h *PreviewMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	metrics, err := h.useCase.Execute()
+
+	if err != nil {
+		h.errorPresenter.Render(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	h.metricsPresenter.Render(w, metrics, http.StatusOK)
+
+}
+
+func NewPreviewMetricsHandler(
+	useCase GetAllMetricsUseCase,
+	errorPresenter ErrorPresenter,
+	metricsPresenter MetricsPresenter,
+) http.Handler {
+	return &PreviewMetricsHandler{
+		useCase:          useCase,
+		errorPresenter:   errorPresenter,
+		metricsPresenter: metricsPresenter,
+	}
 }

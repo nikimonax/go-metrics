@@ -13,14 +13,32 @@ func New() http.Handler {
 	metricRepository := impl.NewInMemoryMetricRepository()
 
 	updateMetricUseCase := app.NewUpdateMetricUseCase(metricRepository)
-	updateMetricHandler := NewUpdateMetricHandler(updateMetricUseCase)
-
 	getMetricUseCase := app.NewGetMetricUseCase(metricRepository)
-	getMetricHandler := NewGetMetricHandler(getMetricUseCase)
+	// getAllMetricsUseCase := app.NewGetAllMetricsUseCase(metricRepository)
+
+	plainTextErrorPresenter := NewPlainTextErrorPresenter()
+	plainTextMetricPresenter := NewPlainTextMetricPresenter()
+	// htmlTableMetricsPresenter := NewHtmlTableMetricsPresenter()
+
+	updateMetricHandler := NewUpdateMetricHandler(
+		updateMetricUseCase,
+		plainTextErrorPresenter,
+	)
+	getMetricHandler := NewGetMetricHandler(
+		getMetricUseCase,
+		plainTextErrorPresenter,
+		plainTextMetricPresenter,
+	)
+	// PreviewMetricsHandler := NewPreviewMetricsHandler(
+	// 	getAllMetricsUseCase,
+	// 	plainTextErrorPresenter,
+	// 	htmlTableMetricsPresenter,
+	// )
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
+	// r.Get("/", PreviewMetricsHandler.ServeHTTP)
 	r.Post(
 		"/update/{metricType}/{metricName}/{metricValue}",
 		updateMetricHandler.ServeHTTP,
