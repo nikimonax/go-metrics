@@ -26,7 +26,15 @@ func (repo *MetricRepository) Get(
 	metricName domain.MetricName,
 ) (domain.Metric, error) {
 	args := repo.Called(metricType, metricName)
-	return args.Get(0).(domain.Metric), args.Error(1)
+	err := args.Error(1)
+
+	var metric domain.Metric
+
+	if raw := args.Get(0); raw != nil {
+		metric = raw.(domain.Metric)
+	}
+
+	return metric, err
 }
 
 // GetAll implements [MetricRepository].
