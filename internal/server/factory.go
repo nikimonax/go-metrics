@@ -16,6 +16,8 @@ type Server struct {
 }
 
 func (s *Server) Run() {
+	log.Printf("Starting server on %s\n", s.config.BaseURL)
+
 	err := http.ListenAndServe(s.config.BaseURL, s.router)
 
 	if err != nil {
