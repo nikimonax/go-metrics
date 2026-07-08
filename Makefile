@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 BIN_DIR := ./bin
 
 COV_FILE := coverage.out
@@ -48,12 +50,15 @@ autotest: $(BIN_DIR)/metricstest $(BIN_DIR)/server $(BIN_DIR)/agent
 		echo "Please provide 'ITER' variable.\n"; \
 		exit 1; \
 	fi; \
+	export SERVER_PORT="$$(( 8000 + RANDOM % 1000 ))"; \
+	export ADDRESS="localhost:$$SERVER_PORT"; \
 	for i in $$(seq 1 $(ITER)); do \
 		echo -n "Iteration $$i: "; \
 		./$< \
 			-test.run=^TestIteration$$i[AB]*$$ \
 			-binary-path=$(BIN_DIR)/server \
 			-agent-binary-path=$(BIN_DIR)/agent \
+			-server-port=$$SERVER_PORT \
 			-source-path=.; \
 	done
 
