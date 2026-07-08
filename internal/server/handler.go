@@ -84,7 +84,7 @@ func (h *GetMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	metric, err := h.useCase.Execute(metricType, metricName)
 
 	if err != nil {
-		status := http.StatusServiceUnavailable
+		status := http.StatusInternalServerError
 
 		if errors.Is(err, impl.ErrMetricNotFound) {
 			status = http.StatusNotFound
