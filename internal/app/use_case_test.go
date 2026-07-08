@@ -60,6 +60,101 @@ func TestUpdateMetricUseCase(t *testing.T) {
 	}
 }
 
+func TestGetMetricUseCase(t *testing.T) {
+	type TestCase struct {
+		name    string
+		metric  domain.Metric
+		setup   func(*TestCase, *mock.MetricRepository)
+		wantErr bool
+	}
+
+	tests := []TestCase{
+		{
+			name:   "success",
+			metric: domain.NewCounterMetric("TestMetric", 42),
+			setup: func(tc *TestCase, repo *mock.MetricRepository) {
+				repo.On("Get", tc.metric.Type(), tc.metric.Name()).Return(tc.metric, nil).Once()
+			},
+			wantErr: false,
+		},
+		{
+			name:   "error",
+			metric: domain.NewCounterMetric("TestMetric", 42),
+			setup: func(tc *TestCase, repo *mock.MetricRepository) {
+				err := errors.New("test error")
+				repo.On("Get", tc.metric.Type(), tc.metric.Name()).Return(nil, err).Once()
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repository := new(mock.MetricRepository)
+			tc.setup(&tc, repository)
+
+			useCase := app.NewGetMetricUseCase(repository)
+			metric, err := useCase.Execute(tc.metric.Type(), tc.metric.Name())
+
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Same(t, tc.metric, metric)
+			}
+		})
+	}
+}
+
+func TestGetAllMetricsUseCase(t *testing.T) {
+	type TestCase struct {
+		name    string
+		metrics []domain.Metric
+		setup   func(*TestCase, *mock.MetricRepository)
+		wantErr bool
+	}
+
+	tests := []TestCase{
+		{
+			name: "success",
+			metrics: []domain.Metric{
+				domain.NewCounterMetric("CounterMetric", 67),
+				domain.NewGaugeMetric("GaugeMetric", 3.14),
+			},
+			setup: func(tc *TestCase, repo *mock.MetricRepository) {
+				repo.On("GetAll").Return(tc.metrics, nil).Once()
+			},
+			wantErr: false,
+		},
+		{
+			name:    "error",
+			metrics: nil,
+			setup: func(tc *TestCase, repo *mock.MetricRepository) {
+				err := errors.New("test error")
+				repo.On("GetAll").Return(tc.metrics, err).Once()
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repository := new(mock.MetricRepository)
+			tc.setup(&tc, repository)
+
+			useCase := app.NewGetAllMetricsUseCase(repository)
+			metrics, err := useCase.Execute()
+
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.ElementsMatch(t, tc.metrics, metrics)
+			}
+		})
+	}
+}
+
 func TestCollectMetricsUseCase(t *testing.T) {
 	type TestCase struct {
 		name  string
