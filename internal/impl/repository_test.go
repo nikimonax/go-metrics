@@ -29,10 +29,18 @@ func TestInMemoryMetricRepository(t *testing.T) {
 	require.NoError(t, err)
 	require.ElementsMatch(t, metrics, metricsAB)
 
+	_, err = repo.Get(domain.Counter, "C")
+
+	require.ErrorIs(t, err, impl.ErrMetricNotFound)
+
 	err = repo.Update(domain.NewCounterMetric("A", 1))
 
 	require.NoError(t, err)
-	require.Equal(t, "43", metricA.Value().String())
+
+	metric, err := repo.Get(metricA.Type(), metricA.Name())
+
+	require.NoError(t, err)
+	require.Equal(t, "43", metric.Value().String())
 
 	err = repo.Clear()
 
