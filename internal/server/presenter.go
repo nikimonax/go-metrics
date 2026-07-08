@@ -13,8 +13,6 @@ import (
 //go:embed templates/*.html
 var templateFolder embed.FS
 
-// plain text error
-
 type ErrorPresenter interface {
 	Render(w http.ResponseWriter, err error, code int)
 }
@@ -27,7 +25,7 @@ type MetricsPresenter interface {
 	Render(w http.ResponseWriter, metrics []domain.Metric, code int)
 }
 
-// plain text metric
+// plain text error
 
 type PlainTextErrorPresenter struct{}
 
@@ -41,6 +39,8 @@ func (p *PlainTextErrorPresenter) Render(
 func NewPlainTextErrorPresenter() ErrorPresenter {
 	return new(PlainTextErrorPresenter)
 }
+
+// plain text metric
 
 type PlainTextMetricPresenter struct{}
 
