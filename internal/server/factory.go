@@ -1,6 +1,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -9,7 +10,20 @@ import (
 	"github.com/nikimonax/go-metrics/internal/impl"
 )
 
-func New() http.Handler {
+type Server struct {
+	config ServerConfig
+	router chi.Router
+}
+
+func (s *Server) Run() {
+	err := http.ListenAndServe(s.config.BaseURL, s.router)
+
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func New(config ServerConfig) *Server {
 	metricRepository := impl.NewInMemoryMetricRepository()
 
 	updateMetricUseCase := app.NewUpdateMetricUseCase(metricRepository)
@@ -35,18 +49,21 @@ func New() http.Handler {
 		htmlTableMetricsPresenter,
 	)
 
-	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	router := chi.NewRouter()
+	router.Use(middleware.Logger)
 
-	r.Get("/", PreviewMetricsHandler.ServeHTTP)
-	r.Post(
+	router.Get("/", PreviewMetricsHandler.ServeHTTP)
+	router.Post(
 		"/update/{metricType}/{metricName}/{metricValue}",
 		updateMetricHandler.ServeHTTP,
 	)
-	r.Get(
+	router.Get(
 		"/value/{metricType}/{metricName}",
 		getMetricHandler.ServeHTTP,
 	)
 
-	return r
+	return &Server{
+		config: config,
+		router: router,
+	}
 }

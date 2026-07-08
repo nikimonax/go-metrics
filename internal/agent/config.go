@@ -3,7 +3,7 @@ package agent
 import "time"
 
 type AgentConfig struct {
-	BaseUrl        string
+	BaseURL        string
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 }

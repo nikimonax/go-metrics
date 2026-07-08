@@ -8,7 +8,7 @@ import (
 
 func main() {
 	config := agent.AgentConfig{
-		BaseUrl:        "http://localhost:8080",
+		BaseURL:        "http://localhost:8080",
 		PollInterval:   2 * time.Second,
 		ReportInterval: 10 * time.Second,
 	}

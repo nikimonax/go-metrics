@@ -38,7 +38,7 @@ func New(config AgentConfig) *Agent {
 	)
 
 	metricGateway := impl.NewHttpMetricGateway(
-		config.BaseUrl,
+		config.BaseURL,
 	)
 
 	metricRepository := impl.NewInMemoryMetricRepository()
