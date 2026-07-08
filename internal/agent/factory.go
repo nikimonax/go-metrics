@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/nikimonax/go-metrics/internal/app"
@@ -14,15 +15,25 @@ type Agent struct {
 }
 
 func (a *Agent) Run() {
+	fmt.Printf(
+		"Starting agent\n"+
+			"  server: %s\n"+
+			"  poll interval: %d secs\n"+
+			"  send interval: %d secs\n",
+		a.config.BaseURL,
+		a.config.PollIntervalSecs,
+		a.config.ReportIntervalSecs,
+	)
+
 	tasks := []Task{
 		{
 			Name:     "collect metrics",
-			Interval: a.config.PollInterval,
+			Interval: time.Duration(a.config.PollIntervalSecs) * time.Second,
 			Callback: a.collectMetricsUseCase.Execute,
 		},
 		{
 			Name:     "send metrics",
-			Interval: a.config.ReportInterval,
+			Interval: time.Duration(a.config.ReportIntervalSecs) * time.Second,
 			Callback: a.sendMetricsUseCase.Execute,
 		},
 	}
