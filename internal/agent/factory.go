@@ -9,7 +9,7 @@ import (
 )
 
 type Agent struct {
-	config                AgentConfig
+	config                *AgentConfig
 	collectMetricsUseCase *app.CollectMetricsUseCase
 	sendMetricsUseCase    *app.SendMetricsUseCase
 }
@@ -21,19 +21,19 @@ func (a *Agent) Run() {
 			"  poll interval: %d secs\n"+
 			"  send interval: %d secs\n",
 		a.config.BaseURL,
-		a.config.PollIntervalSecs,
-		a.config.ReportIntervalSecs,
+		a.config.PollInterval/time.Second,
+		a.config.ReportInterval/time.Second,
 	)
 
 	tasks := []Task{
 		{
 			Name:     "collect metrics",
-			Interval: time.Duration(a.config.PollIntervalSecs) * time.Second,
+			Interval: a.config.PollInterval,
 			Callback: a.collectMetricsUseCase.Execute,
 		},
 		{
 			Name:     "send metrics",
-			Interval: time.Duration(a.config.ReportIntervalSecs) * time.Second,
+			Interval: a.config.ReportInterval,
 			Callback: a.sendMetricsUseCase.Execute,
 		},
 	}
@@ -41,7 +41,7 @@ func (a *Agent) Run() {
 	NewScheduler(time.Now).Run(tasks)
 }
 
-func New(config AgentConfig) *Agent {
+func New(config *AgentConfig) *Agent {
 	metricCollector := impl.NewCollectorsGroup(
 		impl.CollectorFunc(impl.CollectMemStats),
 		impl.CollectorFunc(impl.CollectRandomValue),

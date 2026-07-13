@@ -1,7 +1,11 @@
 package agent
 
+import (
+	"time"
+)
+
 type AgentConfig struct {
-	BaseURL            string
-	PollIntervalSecs   int64
-	ReportIntervalSecs int64
+	BaseURL        string
+	PollInterval   time.Duration
+	ReportInterval time.Duration
 }
