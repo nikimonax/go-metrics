@@ -11,7 +11,7 @@ import (
 )
 
 type Server struct {
-	config ServerConfig
+	config *ServerConfig
 	router chi.Router
 }
 
@@ -25,7 +25,7 @@ func (s *Server) Run() {
 	}
 }
 
-func New(config ServerConfig) *Server {
+func New(config *ServerConfig) *Server {
 	metricRepository := impl.NewInMemoryMetricRepository()
 
 	updateMetricUseCase := app.NewUpdateMetricUseCase(metricRepository)
