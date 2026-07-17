@@ -1,15 +1,9 @@
-SHELL := /bin/bash
-
 BIN_DIR := ./bin
 
 COV_FILE := coverage.out
 COV_FILE_HTML := coverage.html
 
 TEST_ARGS += $(ARGS)
-
-ITER ?= $(shell \
-	git branch --show-current | \
-	sed -n 's/^iter\([0-9]\+\)$$/\1/p')
 
 
 all: build
@@ -45,22 +39,7 @@ cover-html: $(COV_FILE)
 
 .PHONY: autotest
 autotest: $(BIN_DIR)/metricstest $(BIN_DIR)/server $(BIN_DIR)/agent
-	@if [ -z "$(ITER)" ]; then \
-		echo "\nTest iteration could not be determined."; \
-		echo "Please provide 'ITER' variable.\n"; \
-		exit 1; \
-	fi; \
-	export SERVER_PORT="$$(( 8000 + RANDOM % 1000 ))"; \
-	export ADDRESS="localhost:$$SERVER_PORT"; \
-	for i in $$(seq 1 $(ITER)); do \
-		echo -n "Iteration $$i: "; \
-		./$< \
-			-test.run=^TestIteration$$i[AB]*$$ \
-			-binary-path=$(BIN_DIR)/server \
-			-agent-binary-path=$(BIN_DIR)/agent \
-			-server-port=$$SERVER_PORT \
-			-source-path=.; \
-	done
+	./tools/autotest.sh
 
 .PHONY: clean
 clean:
