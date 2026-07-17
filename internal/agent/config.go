@@ -1,11 +1,12 @@
 package agent
 
 import (
+	"net/url"
 	"time"
 )
 
 type AgentConfig struct {
-	BaseURL        string
+	BaseURL        *url.URL
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 }

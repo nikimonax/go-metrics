@@ -82,7 +82,7 @@ func NewHtmlTableMetricsPresenter() MetricsPresenter {
 	tmpl, err := template.ParseFS(templateFolder, "templates/metrics_table.html")
 
 	if err != nil {
-		log.Fatalf("Error parsing embedded template: %v", err)
+		log.Fatalf("failed parse embedded template: %v", err)
 	}
 
 	return &HtmlTableMetricsPresenter{pageTemplate: tmpl}

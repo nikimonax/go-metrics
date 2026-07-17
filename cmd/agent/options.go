@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net/url"
 	"strings"
 	"time"
 
@@ -23,14 +24,20 @@ type Options struct {
 }
 
 func (opts *Options) ToAgentConfig() *agent.AgentConfig {
-	baseUrl := opts.BaseURL
+	rawUrl := opts.BaseURL
 
 	hasScheme := false
-	hasScheme = hasScheme || strings.HasPrefix(baseUrl, "http://")
-	hasScheme = hasScheme || strings.HasPrefix(baseUrl, "https://")
+	hasScheme = hasScheme || strings.HasPrefix(rawUrl, "http://")
+	hasScheme = hasScheme || strings.HasPrefix(rawUrl, "https://")
 
 	if !hasScheme {
-		baseUrl = "http://" + baseUrl
+		rawUrl = "http://" + rawUrl
+	}
+
+	baseUrl, err := url.Parse(rawUrl)
+
+	if err != nil {
+		log.Fatalf("failed parse url '%s': %s", rawUrl, err)
 	}
 
 	return &agent.AgentConfig{
