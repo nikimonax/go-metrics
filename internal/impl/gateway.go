@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
@@ -12,19 +13,18 @@ import (
 )
 
 type HttpMetricGateway struct {
-	baseUrl string
+	baseUrl *url.URL
 	client  *http.Client
 }
 
 // Send implements [app.MetricGateway].
 func (gateway *HttpMetricGateway) Send(metric domain.Metric) (err error) {
-	url := fmt.Sprintf(
-		"%s/update/%s/%s/%s",
-		gateway.baseUrl,
-		metric.Type(),
-		metric.Name(),
+	url := gateway.baseUrl.JoinPath(
+		"update",
+		string(metric.Type()),
+		string(metric.Name()),
 		metric.Value().String(),
-	)
+	).String()
 
 	resp, err := gateway.client.Post(url, httpextra.MIMEText, nil) // nolint:noctx
 
@@ -71,7 +71,7 @@ func (gateway *HttpMetricGateway) SendBatch(metrics []domain.Metric) error {
 	return nil
 }
 
-func NewHttpMetricGateway(baseUrl string) app.MetricGateway {
+func NewHttpMetricGateway(baseUrl *url.URL) app.MetricGateway {
 	return &HttpMetricGateway{
 		baseUrl: baseUrl,
 		client:  &http.Client{},
