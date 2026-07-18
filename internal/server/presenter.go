@@ -8,6 +8,8 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
+
+	"go.uber.org/zap"
 )
 
 //go:embed templates/*.html
@@ -30,7 +32,7 @@ type MetricsPresenter interface {
 type PlainTextErrorPresenter struct{}
 
 // RenderError implements [ErrorPresenter].
-func (p *PlainTextErrorPresenter) Render(
+func (presenter *PlainTextErrorPresenter) Render(
 	w http.ResponseWriter, err error, code int,
 ) {
 	http.Error(w, err.Error(), code)
@@ -42,48 +44,84 @@ func NewPlainTextErrorPresenter() ErrorPresenter {
 
 // plain text metric
 
-type PlainTextMetricPresenter struct{}
+type PlainTextMetricPresenter struct {
+	sugar *zap.SugaredLogger
+}
 
 // RenderMetric implements [MetricPresenter].
-func (p *PlainTextMetricPresenter) Render(
+func (presenter *PlainTextMetricPresenter) Render(
 	w http.ResponseWriter, metric domain.Metric, code int,
 ) {
 	w.Header().Set(httpextra.HDRContentType, httpextra.MIMEText)
 	w.WriteHeader(code)
 
-	if _, err := w.Write([]byte(metric.Value().String())); err != nil {
-		log.Printf("Failed to write HTTP response: %v", err)
+	_, err := w.Write([]byte(metric.Value().String()))
+
+	if err == nil {
+		return
+	}
+
+	if presenter.sugar != nil {
+		presenter.sugar.Errorw(
+			"failed to write http response",
+			"err", err,
+		)
 	}
 }
 
-func NewPlainTextMetricPresenter() MetricPresenter {
-	return new(PlainTextMetricPresenter)
+func NewPlainTextMetricPresenter(logger *zap.Logger) MetricPresenter {
+	var sugar *zap.SugaredLogger
+
+	if logger != nil {
+		sugar = logger.Sugar()
+	}
+
+	return &PlainTextMetricPresenter{sugar: sugar}
 }
 
 // html metrics table
 
 type HtmlTableMetricsPresenter struct {
 	pageTemplate *template.Template
+	sugar        *zap.SugaredLogger
 }
 
 // RenderMetrics implements [MetricsPresenter].
-func (h *HtmlTableMetricsPresenter) Render(
+func (presenter *HtmlTableMetricsPresenter) Render(
 	w http.ResponseWriter, metrics []domain.Metric, code int,
 ) {
 	w.Header().Set(httpextra.HDRContentType, httpextra.MIMEHTML)
 	w.WriteHeader(http.StatusOK)
 
-	if err := h.pageTemplate.Execute(w, metrics); err != nil {
-		log.Printf("Failed to write HTTP response: %v", err)
+	err := presenter.pageTemplate.Execute(w, metrics)
+
+	if err == nil {
+		return
+	}
+
+	if presenter.sugar != nil {
+		presenter.sugar.Errorw(
+			"failed to write http response",
+			"err", err,
+		)
 	}
 }
 
-func NewHtmlTableMetricsPresenter() MetricsPresenter {
+func NewHtmlTableMetricsPresenter(logger *zap.Logger) MetricsPresenter {
 	tmpl, err := template.ParseFS(templateFolder, "templates/metrics_table.html")
 
 	if err != nil {
 		log.Fatalf("failed parse embedded template: %v", err)
 	}
 
-	return &HtmlTableMetricsPresenter{pageTemplate: tmpl}
+	var sugar *zap.SugaredLogger
+
+	if logger != nil {
+		sugar = logger.Sugar()
+	}
+
+	return &HtmlTableMetricsPresenter{
+		pageTemplate: tmpl,
+		sugar:        sugar,
+	}
 }
