@@ -1,28 +1,28 @@
 package agent
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+
+	"go.uber.org/zap"
 )
 
 type Agent struct {
 	config                *AgentConfig
+	logger                *zap.Logger
 	collectMetricsUseCase *app.CollectMetricsUseCase
 	sendMetricsUseCase    *app.SendMetricsUseCase
 }
 
 func (a *Agent) Run() {
-	fmt.Printf(
-		"Starting agent\n"+
-			"  server: %s\n"+
-			"  poll interval: %d secs\n"+
-			"  send interval: %d secs\n",
-		a.config.BaseURL,
-		a.config.PollInterval/time.Second,
-		a.config.ReportInterval/time.Second,
+	a.logger.Sugar().Infow(
+		"starting agent",
+		"server", a.config.BaseURL,
+		"poll interval", a.config.PollInterval,
+		"send interval", a.config.ReportInterval,
 	)
 
 	tasks := []Task{
@@ -38,10 +38,12 @@ func (a *Agent) Run() {
 		},
 	}
 
-	NewScheduler(time.Now).Run(tasks)
+	NewScheduler(time.Now, a.logger).Run(tasks)
 }
 
 func New(config *AgentConfig) *Agent {
+	logger := zapextra.NewZapLogger(zapextra.EnvDev)
+
 	metricCollector := impl.NewCollectorsGroup(
 		impl.CollectorFunc(impl.CollectMemStats),
 		impl.CollectorFunc(impl.CollectRandomValue),
@@ -66,6 +68,7 @@ func New(config *AgentConfig) *Agent {
 
 	return &Agent{
 		config:                config,
+		logger:                logger,
 		collectMetricsUseCase: collectMetricsUseCase,
 		sendMetricsUseCase:    sendMetricsUseCase,
 	}
