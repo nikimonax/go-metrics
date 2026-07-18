@@ -1,31 +1,40 @@
 package server
 
 import (
-	"log"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+
+	"go.uber.org/zap"
 )
 
 type Server struct {
 	config *ServerConfig
+	logger *zap.Logger
 	router chi.Router
 }
 
 func (s *Server) Run() {
-	log.Printf("Starting server on %s\n", s.config.BaseURL)
+	sugar := s.logger.Sugar()
+	sugar.Infow(
+		"starting server",
+		"listen", s.config.BaseURL,
+	)
 
 	err := http.ListenAndServe(s.config.BaseURL, s.router)
 
-	if err != nil {
-		log.Println(err)
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		sugar.Errorf("failed start server: %s", err)
 	}
 }
 
 func New(config *ServerConfig) *Server {
+	logger := zapextra.NewZapLogger(zapextra.EnvDev)
+
 	metricRepository := impl.NewInMemoryMetricRepository()
 
 	updateMetricUseCase := app.NewUpdateMetricUseCase(metricRepository)
@@ -52,9 +61,12 @@ func New(config *ServerConfig) *Server {
 	)
 
 	router := chi.NewRouter()
-	router.Use(middleware.Logger)
+	router.Use(zapextra.NewZapSugarLoggingMiddleware(logger))
 
-	router.Get("/", PreviewMetricsHandler.ServeHTTP)
+	router.Get(
+		"/",
+		PreviewMetricsHandler.ServeHTTP,
+	)
 	router.Post(
 		"/update/{metricType}/{metricName}/{metricValue}",
 		updateMetricHandler.ServeHTTP,
@@ -66,6 +78,7 @@ func New(config *ServerConfig) *Server {
 
 	return &Server{
 		config: config,
+		logger: logger,
 		router: router,
 	}
 }
