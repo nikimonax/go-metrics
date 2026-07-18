@@ -42,8 +42,8 @@ func New(config *ServerConfig) *Server {
 	getAllMetricsUseCase := app.NewGetAllMetricsUseCase(metricRepository)
 
 	plainTextErrorPresenter := NewPlainTextErrorPresenter()
-	plainTextMetricPresenter := NewPlainTextMetricPresenter()
-	htmlTableMetricsPresenter := NewHtmlTableMetricsPresenter()
+	plainTextMetricPresenter := NewPlainTextMetricPresenter(logger)
+	htmlTableMetricsPresenter := NewHtmlTableMetricsPresenter(logger)
 
 	updateMetricHandler := NewUpdateMetricHandler(
 		updateMetricUseCase,

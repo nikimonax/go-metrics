@@ -43,7 +43,7 @@ func TestPlainTextMetricPresenter(t *testing.T) {
 	status := http.StatusOK
 	rr := httptest.NewRecorder()
 
-	presenter := server.NewPlainTextMetricPresenter()
+	presenter := server.NewPlainTextMetricPresenter(nil)
 	presenter.Render(rr, metric, status)
 
 	resp := rr.Result()
@@ -67,7 +67,7 @@ func TestHtmlTableMetricsPresenter(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	presenter := server.NewHtmlTableMetricsPresenter()
+	presenter := server.NewHtmlTableMetricsPresenter(nil)
 	presenter.Render(rr, metrics, status)
 
 	resp := rr.Result()
