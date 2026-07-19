@@ -2,7 +2,7 @@ package mock
 
 import (
 	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/nikimonax/go-metrics/internal/server"
+	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -17,7 +17,7 @@ func (useCase *UpdateMetricUseCase) Execute(metric domain.Metric) error {
 	return useCase.Called(metric).Error(0)
 }
 
-var _ server.UpdateMetricUseCase = (*UpdateMetricUseCase)(nil)
+var _ handler.UpdateMetricUseCase = (*UpdateMetricUseCase)(nil)
 
 // get metric
 
@@ -40,7 +40,7 @@ func (useCase *GetMetricUseCase) Execute(
 	return metric, args.Error(1)
 }
 
-var _ server.GetMetricUseCase = (*GetMetricUseCase)(nil)
+var _ handler.GetMetricUseCase = (*GetMetricUseCase)(nil)
 
 // get all metrics
 
@@ -61,4 +61,4 @@ func (useCase *GetAllMetricsUseCase) Execute() ([]domain.Metric, error) {
 	return metrics, args.Error(1)
 }
 
-var _ server.GetAllMetricsUseCase = (*GetAllMetricsUseCase)(nil)
+var _ handler.GetAllMetricsUseCase = (*GetAllMetricsUseCase)(nil)

@@ -8,6 +8,8 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/server/handler"
+	"github.com/nikimonax/go-metrics/internal/server/presenter"
 
 	"go.uber.org/zap"
 )
@@ -41,20 +43,20 @@ func New(config *ServerConfig) *Server {
 	getMetricUseCase := app.NewGetMetricUseCase(metricRepository)
 	getAllMetricsUseCase := app.NewGetAllMetricsUseCase(metricRepository)
 
-	plainTextErrorPresenter := NewPlainTextErrorPresenter()
-	plainTextMetricPresenter := NewPlainTextMetricPresenter(logger)
-	htmlTableMetricsPresenter := NewHtmlTableMetricsPresenter(logger)
+	plainTextErrorPresenter := presenter.NewPlainTextErrorPresenter()
+	plainTextMetricPresenter := presenter.NewPlainTextMetricPresenter(logger)
+	htmlTableMetricsPresenter := presenter.NewHtmlTableMetricsPresenter(logger)
 
-	updateMetricHandler := NewUpdateMetricHandler(
+	updateMetricHandler := handler.NewUpdateMetricHandler(
 		updateMetricUseCase,
 		plainTextErrorPresenter,
 	)
-	getMetricHandler := NewGetMetricHandler(
+	getMetricHandler := handler.NewGetMetricHandler(
 		getMetricUseCase,
 		plainTextErrorPresenter,
 		plainTextMetricPresenter,
 	)
-	PreviewMetricsHandler := NewPreviewMetricsHandler(
+	PreviewMetricsHandler := handler.NewPreviewMetricsHandler(
 		getAllMetricsUseCase,
 		plainTextErrorPresenter,
 		htmlTableMetricsPresenter,

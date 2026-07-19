@@ -1,4 +1,4 @@
-package server_test
+package handler_test
 
 import (
 	"context"
@@ -13,7 +13,8 @@ import (
 	"github.com/nikimonax/go-metrics/internal/impl"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/mock"
-	"github.com/nikimonax/go-metrics/internal/server"
+	"github.com/nikimonax/go-metrics/internal/server/handler"
+	"github.com/nikimonax/go-metrics/internal/server/presenter"
 	"github.com/stretchr/testify/assert"
 	m "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -142,13 +143,13 @@ func TestUpdateMetricHandler(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			useCase := new(mock.UpdateMetricUseCase)
-			errorPresenter := server.NewPlainTextErrorPresenter()
+			errorPresenter := presenter.NewPlainTextErrorPresenter()
 
 			if tc.setup != nil {
 				tc.setup(&tc, useCase)
 			}
 
-			handler := server.NewUpdateMetricHandler(useCase, errorPresenter)
+			handler := handler.NewUpdateMetricHandler(useCase, errorPresenter)
 
 			req := httptest.NewRequest(tc.method, "/update", nil) // nolint:noctx
 			rr := httptest.NewRecorder()
@@ -351,7 +352,7 @@ func TestGetMetricHandler(t *testing.T) {
 				tc.setup(&tc, useCase, errorPresenter, metricPresenter)
 			}
 
-			handler := server.NewGetMetricHandler(
+			handler := handler.NewGetMetricHandler(
 				useCase,
 				errorPresenter,
 				metricPresenter,
@@ -450,7 +451,7 @@ func TestPreviewMetricsHandler(t *testing.T) {
 				tc.setup(&tc, useCase, errorPresenter, metricsPresenter)
 			}
 
-			handler := server.NewPreviewMetricsHandler(
+			handler := handler.NewPreviewMetricsHandler(
 				useCase,
 				errorPresenter,
 				metricsPresenter,
