@@ -1,4 +1,4 @@
-package server_test
+package presenter_test
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
-	"github.com/nikimonax/go-metrics/internal/server"
+	"github.com/nikimonax/go-metrics/internal/server/presenter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +21,7 @@ func TestPlainTextErrorPresenter(t *testing.T) {
 	err := errors.New(message)
 	rr := httptest.NewRecorder()
 
-	presenter := server.NewPlainTextErrorPresenter()
+	presenter := presenter.NewPlainTextErrorPresenter()
 	presenter.Render(rr, err, status)
 
 	resp := rr.Result()
@@ -43,7 +43,7 @@ func TestPlainTextMetricPresenter(t *testing.T) {
 	status := http.StatusOK
 	rr := httptest.NewRecorder()
 
-	presenter := server.NewPlainTextMetricPresenter(nil)
+	presenter := presenter.NewPlainTextMetricPresenter(nil)
 	presenter.Render(rr, metric, status)
 
 	resp := rr.Result()
@@ -67,7 +67,7 @@ func TestHtmlTableMetricsPresenter(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	presenter := server.NewHtmlTableMetricsPresenter(nil)
+	presenter := presenter.NewHtmlTableMetricsPresenter(nil)
 	presenter.Render(rr, metrics, status)
 
 	resp := rr.Result()

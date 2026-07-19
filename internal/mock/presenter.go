@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/nikimonax/go-metrics/internal/server"
+	"github.com/nikimonax/go-metrics/internal/server/presenter"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -19,7 +19,7 @@ func (presenter *ErrorPresenter) Render(w http.ResponseWriter, err error, code i
 	presenter.Called(w, err, code)
 }
 
-var _ server.ErrorPresenter = (*ErrorPresenter)(nil)
+var _ presenter.ErrorPresenter = (*ErrorPresenter)(nil)
 
 // metric presenter
 
@@ -32,7 +32,7 @@ func (presenter *MetricPresenter) Render(w http.ResponseWriter, metric domain.Me
 	presenter.Called(w, metric, code)
 }
 
-var _ server.MetricPresenter = (*MetricPresenter)(nil)
+var _ presenter.MetricPresenter = (*MetricPresenter)(nil)
 
 // metrics presenter
 
@@ -45,4 +45,4 @@ func (presenter *MetricsPresenter) Render(w http.ResponseWriter, metrics []domai
 	presenter.Called(w, metrics, code)
 }
 
-var _ server.MetricsPresenter = (*MetricsPresenter)(nil)
+var _ presenter.MetricsPresenter = (*MetricsPresenter)(nil)
