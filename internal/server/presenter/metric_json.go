@@ -18,7 +18,7 @@ type JsonMetricPresenter struct {
 func (presenter *JsonMetricPresenter) Render(
 	w http.ResponseWriter, metric domain.Metric, code int,
 ) {
-	w.Header().Set(httpextra.HDRContentType, httpextra.MIMEText)
+	w.Header().Set(httpextra.HDRContentType, httpextra.MIMEJSON)
 	w.WriteHeader(code)
 
 	payload := model.NewMetricFromDomain(metric)
