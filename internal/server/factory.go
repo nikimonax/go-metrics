@@ -97,13 +97,13 @@ func New(config *ServerConfig) *Server {
 	router.With(
 		middleware.AllowContentType(httpextra.MIMEJSON),
 	).Post(
-		"/update",
+		"/update/",
 		updateMetricHandlerV2.ServeHTTP,
 	)
 	router.With(
 		middleware.AllowContentType(httpextra.MIMEJSON),
 	).Post(
-		"/value",
+		"/value/",
 		getMetricHandlerV2.ServeHTTP,
 	)
 
