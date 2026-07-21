@@ -13,12 +13,14 @@ import (
 
 const (
 	defaultBaseURL            = "http://localhost:8080"
+	defaultApiVersion         = 1
 	defaultPollIntervalSecs   = 2
 	defaultReportIntervalSecs = 10
 )
 
 type Options struct {
 	BaseURL            string `env:"ADDRESS"`
+	ApiVersion         uint   `env:"API"`
 	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"`
 	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL"`
 }
@@ -42,6 +44,7 @@ func (opts *Options) ToAgentConfig() *agent.AgentConfig {
 
 	return &agent.AgentConfig{
 		BaseURL:        baseUrl,
+		ApiVersion:     opts.ApiVersion,
 		PollInterval:   time.Duration(opts.PollIntervalSecs) * time.Second,
 		ReportInterval: time.Duration(opts.ReportIntervalSecs) * time.Second,
 	}
@@ -50,6 +53,10 @@ func (opts *Options) ToAgentConfig() *agent.AgentConfig {
 func (opts *Options) Merge(other Options) {
 	if other.BaseURL != "" {
 		opts.BaseURL = other.BaseURL
+	}
+
+	if other.ApiVersion > 0 {
+		opts.ApiVersion = other.ApiVersion
 	}
 
 	if other.PollIntervalSecs > 0 {
@@ -73,6 +80,12 @@ func ReadOptions() *Options {
 		"a",
 		defaultBaseURL,
 		"metrics server base url",
+	)
+	flag.UintVar(
+		&optionsFromCli.ApiVersion,
+		"v",
+		defaultApiVersion,
+		"metrics server api version",
 	)
 	flag.Uint64Var(
 		&optionsFromCli.PollIntervalSecs,

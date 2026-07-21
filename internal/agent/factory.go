@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"log"
 	"time"
 
 	"github.com/nikimonax/go-metrics/internal/app"
@@ -50,9 +51,16 @@ func New(config *AgentConfig) *Agent {
 		impl.CollectorFunc(impl.CollectIncrOne),
 	)
 
-	metricGateway := impl.NewHttpMetricGateway(
-		config.BaseURL,
-	)
+	var metricGateway app.MetricGateway
+
+	switch config.ApiVersion {
+	case 1:
+		metricGateway = impl.NewHttpMetricGateway(config.BaseURL)
+	case 2:
+		metricGateway = impl.NewHttpMetricV2Gateway(config.BaseURL)
+	default:
+		log.Fatalf("unknown metrics server api version: %d", config.ApiVersion)
+	}
 
 	metricRepository := impl.NewInMemoryMetricRepository()
 
