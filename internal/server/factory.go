@@ -46,6 +46,7 @@ func New(config *ServerConfig) *Server {
 	getAllMetricsUseCase := app.NewGetAllMetricsUseCase(metricRepository)
 
 	plainTextErrorPresenter := presenter.NewPlainTextErrorPresenter()
+	jsonErrorPresenter := presenter.NewJsonErrorPresenter(logger)
 	plainTextMetricPresenter := presenter.NewPlainTextMetricPresenter(logger)
 	htmlTableMetricsPresenter := presenter.NewHtmlTableMetricsPresenter(logger)
 
@@ -55,7 +56,7 @@ func New(config *ServerConfig) *Server {
 	)
 	updateMetricHandlerV2 := handler.NewUpdateMetricV2Handler(
 		updateMetricUseCase,
-		plainTextErrorPresenter,
+		jsonErrorPresenter,
 	)
 	getMetricHandler := handler.NewGetMetricHandler(
 		getMetricUseCase,
