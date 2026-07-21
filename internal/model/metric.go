@@ -20,14 +20,34 @@ type Metric struct {
 	Value *float64 `json:"value,omitempty" validate:"required_if=Type gauge,excluded_if=Type counter,omitnil,gte=0"`
 }
 
-func (m *Metric) ToDomain() domain.Metric {
-	switch m.Type {
-	case "counter":
-		return domain.NewCounterMetric(m.Name, *m.Delta)
-	case "gauge":
-		return domain.NewGaugeMetric(m.Name, *m.Value)
+func (payload *Metric) ToDomain() domain.Metric {
+	switch payload.Type {
+	case domain.Counter:
+		return domain.NewCounterMetric(payload.Name, *payload.Delta)
+	case domain.Gauge:
+		return domain.NewGaugeMetric(payload.Name, *payload.Value)
 	default:
 		// unreachable
 		return nil
 	}
+}
+
+func NewMetricFromDomain(metric domain.Metric) *Metric {
+	payload := &Metric{
+		MetricInfo: MetricInfo{
+			Name: metric.Name(),
+			Type: metric.Type(),
+		},
+	}
+
+	switch m := metric.(type) {
+	case *domain.CounterMetric:
+		delta := m.InternalValue()
+		payload.Delta = &delta
+	case *domain.GaugeMetric:
+		value := m.InternalValue()
+		payload.Value = &value
+	}
+
+	return payload
 }

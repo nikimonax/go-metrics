@@ -48,6 +48,7 @@ func New(config *ServerConfig) *Server {
 	plainTextErrorPresenter := presenter.NewPlainTextErrorPresenter()
 	jsonErrorPresenter := presenter.NewJsonErrorPresenter(logger)
 	plainTextMetricPresenter := presenter.NewPlainTextMetricPresenter(logger)
+	jsonMetricPresenter := presenter.NewJsonMetricPresenter(logger)
 	htmlTableMetricsPresenter := presenter.NewHtmlTableMetricsPresenter(logger)
 
 	updateMetricHandler := handler.NewUpdateMetricHandler(
@@ -65,8 +66,8 @@ func New(config *ServerConfig) *Server {
 	)
 	getMetricHandlerV2 := handler.NewGetMetricV2Handler(
 		getMetricUseCase,
-		plainTextErrorPresenter,
-		plainTextMetricPresenter,
+		jsonErrorPresenter,
+		jsonMetricPresenter,
 	)
 	PreviewMetricsHandler := handler.NewPreviewMetricsHandler(
 		getAllMetricsUseCase,
