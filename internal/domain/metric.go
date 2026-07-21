@@ -85,6 +85,10 @@ func (m *CounterMetric) Value() MetricValue {
 	return m.value
 }
 
+func (m *CounterMetric) InternalValue() int64 {
+	return int64(m.value)
+}
+
 // Accept implements [Metric].
 func (m *CounterMetric) Accept(u MetricUpdater) error {
 	return u.UpdateCounter(m)
@@ -138,6 +142,10 @@ func (m *GaugeMetric) Name() MetricName {
 // Value implements [Metric].
 func (m *GaugeMetric) Value() MetricValue {
 	return m.value
+}
+
+func (m *GaugeMetric) InternalValue() float64 {
+	return float64(m.value)
 }
 
 // Accept implements [Metric].
