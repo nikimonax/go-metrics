@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
@@ -51,6 +53,10 @@ func New(config *ServerConfig) *Server {
 		updateMetricUseCase,
 		plainTextErrorPresenter,
 	)
+	updateMetricHandlerV2 := handler.NewUpdateMetricV2Handler(
+		updateMetricUseCase,
+		plainTextErrorPresenter,
+	)
 	getMetricHandler := handler.NewGetMetricHandler(
 		getMetricUseCase,
 		plainTextErrorPresenter,
@@ -69,6 +75,8 @@ func New(config *ServerConfig) *Server {
 		"/",
 		PreviewMetricsHandler.ServeHTTP,
 	)
+
+	// api v1 (спринт 1 - path params)
 	router.Post(
 		"/update/{metricType}/{metricName}/{metricValue}",
 		updateMetricHandler.ServeHTTP,
@@ -76,6 +84,14 @@ func New(config *ServerConfig) *Server {
 	router.Get(
 		"/value/{metricType}/{metricName}",
 		getMetricHandler.ServeHTTP,
+	)
+
+	// api v2 (спринт 2 - json payload)
+	router.With(
+		middleware.AllowContentType(httpextra.MIMEJSON),
+	).Post(
+		"/update",
+		updateMetricHandlerV2.ServeHTTP,
 	)
 
 	return &Server{
