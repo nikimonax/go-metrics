@@ -20,7 +20,7 @@ type UpdateMetricV2Handler struct {
 
 // ServeHTTP implements [http.Handler].
 func (h *UpdateMetricV2Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var payload model.UpdateMetric
+	var payload model.Metric
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
