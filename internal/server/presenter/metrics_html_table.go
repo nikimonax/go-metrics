@@ -32,12 +32,14 @@ func (presenter *HtmlTableMetricsPresenter) Render(
 		return
 	}
 
-	if presenter.sugar != nil {
-		presenter.sugar.Errorw(
-			"failed to write http response",
-			"err", err,
-		)
+	if presenter.sugar == nil {
+		return
 	}
+
+	presenter.sugar.Errorw(
+		"failed to write http response",
+		"err", err,
+	)
 }
 
 func NewHtmlTableMetricsPresenter(logger *zap.Logger) MetricsPresenter {
