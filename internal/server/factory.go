@@ -63,6 +63,11 @@ func New(config *ServerConfig) *Server {
 		plainTextErrorPresenter,
 		plainTextMetricPresenter,
 	)
+	getMetricHandlerV2 := handler.NewGetMetricV2Handler(
+		getMetricUseCase,
+		plainTextErrorPresenter,
+		plainTextMetricPresenter,
+	)
 	PreviewMetricsHandler := handler.NewPreviewMetricsHandler(
 		getAllMetricsUseCase,
 		plainTextErrorPresenter,
@@ -93,6 +98,12 @@ func New(config *ServerConfig) *Server {
 	).Post(
 		"/update",
 		updateMetricHandlerV2.ServeHTTP,
+	)
+	router.With(
+		middleware.AllowContentType(httpextra.MIMEJSON),
+	).Post(
+		"/value",
+		getMetricHandlerV2.ServeHTTP,
 	)
 
 	return &Server{
