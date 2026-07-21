@@ -18,6 +18,14 @@ fi
 
 for ((i=1; i<=ITER; i++)); do
     echo -n "Iteration $i: "
+
+    # начиная с 7 инкремента используем api с json
+    if (( ITER < 7 )); then
+        export API=1
+    else
+        export API=2
+    fi
+
     "$BIN_DIR/metricstest" \
         -test.run="^TestIteration$i[AB]*$" \
         -binary-path="$BIN_DIR/server" \
