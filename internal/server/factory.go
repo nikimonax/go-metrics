@@ -75,41 +75,49 @@ func New(config *ServerConfig) *Server {
 		htmlTableMetricsPresenter,
 	)
 
-	router := chi.NewRouter()
-	router.Use(zapextra.NewZapSugarLoggingMiddleware(logger))
+	middlewareLogger := zapextra.NewZapSugarLoggingMiddleware(logger)
 
-	router.Get(
+	baseRouter := chi.NewRouter()
+	baseRouter.Use(middleware.CleanPath)
+
+	// api v1 (спринт 1 - path params)
+	routerV1 := baseRouter.With(
+		middlewareLogger,
+	)
+
+	routerV1.Get(
 		"/",
 		PreviewMetricsHandler.ServeHTTP,
 	)
 
-	// api v1 (спринт 1 - path params)
-	router.Post(
+	routerV1.Post(
 		"/update/{metricType}/{metricName}/{metricValue}",
 		updateMetricHandler.ServeHTTP,
 	)
-	router.Get(
+	routerV1.Get(
 		"/value/{metricType}/{metricName}",
 		getMetricHandler.ServeHTTP,
 	)
 
 	// api v2 (спринт 2 - json payload)
-	router.With(
+	routerV2 := baseRouter.With(
 		middleware.AllowContentType(httpextra.MIMEJSON),
-	).Post(
-		"/update/",
+		middleware.Compress(5),
+		middlewareLogger,
+	)
+
+	routerV2.Post(
+		"/update",
 		updateMetricHandlerV2.ServeHTTP,
 	)
-	router.With(
-		middleware.AllowContentType(httpextra.MIMEJSON),
-	).Post(
-		"/value/",
+	routerV2.Post(
+		"/value",
 		getMetricHandlerV2.ServeHTTP,
 	)
 
 	return &Server{
 		config: config,
 		logger: logger,
-		router: router,
+		router: baseRouter,
 	}
 }

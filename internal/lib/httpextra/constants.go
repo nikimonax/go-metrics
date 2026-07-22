@@ -7,5 +7,9 @@ const (
 )
 
 const (
+	ENCGzip = "gzip"
+)
+
+const (
 	HDRContentType = "Content-Type"
 )
