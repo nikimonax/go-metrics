@@ -4,15 +4,16 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
+	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 )
 
@@ -102,7 +103,9 @@ func New(config *ServerConfig) *Server {
 	// api v2 (спринт 2 - json payload)
 	routerV2 := baseRouter.With(
 		middleware.AllowContentType(httpextra.MIMEJSON),
+		middleware.AllowContentEncoding(httpextra.ENCGzip),
 		middleware.Compress(5),
+		mymiddleware.Decompress(),
 		middlewareLogger,
 	)
 

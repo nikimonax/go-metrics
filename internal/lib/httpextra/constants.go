@@ -11,5 +11,7 @@ const (
 )
 
 const (
-	HDRContentType = "Content-Type"
+	HDRContentType     = "Content-Type"
+	HDRContentEncoding = "Content-Encoding"
+	HDRContentLength   = "Content-Length"
 )
