@@ -82,6 +82,10 @@ func (gateway *HttpMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
 func NewHttpMetricV2Gateway(baseUrl *url.URL) app.MetricGateway {
 	return &HttpMetricV2Gateway{
 		endpoint: baseUrl.JoinPath("update").String() + "/",
-		client:   &http.Client{},
+		client: &http.Client{
+			Transport: httpextra.NewCompressRoundTripper(
+				http.DefaultTransport, "gzip",
+			),
+		},
 	}
 }
