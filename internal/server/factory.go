@@ -77,12 +77,14 @@ func New(config *ServerConfig) *Server {
 	)
 
 	middlewareLogger := zapextra.NewZapSugarLoggingMiddleware(logger)
+	middlewareCompress := middleware.Compress(5)
 
 	baseRouter := chi.NewRouter()
 	baseRouter.Use(middleware.CleanPath)
 
 	// api v1 (спринт 1 - path params)
 	routerV1 := baseRouter.With(
+		middlewareCompress,
 		middlewareLogger,
 	)
 
@@ -104,8 +106,8 @@ func New(config *ServerConfig) *Server {
 	routerV2 := baseRouter.With(
 		middleware.AllowContentType(httpextra.MIMEJSON),
 		middleware.AllowContentEncoding(httpextra.ENCGzip),
-		middleware.Compress(5),
 		mymiddleware.Decompress(),
+		middlewareCompress,
 		middlewareLogger,
 	)
 
