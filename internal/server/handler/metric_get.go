@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/nikimonax/go-metrics/internal/impl"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 )
 
@@ -36,7 +36,7 @@ func (h *GetMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status := http.StatusInternalServerError
 
-		if errors.Is(err, impl.ErrMetricNotFound) {
+		if errors.Is(err, app.ErrMetricNotFound) {
 			status = http.StatusNotFound
 		}
 

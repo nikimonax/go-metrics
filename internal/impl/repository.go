@@ -1,8 +1,6 @@
 package impl
 
 import (
-	"errors"
-	"fmt"
 	"maps"
 	"slices"
 
@@ -10,9 +8,9 @@ import (
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
-var ErrMetricNotFound = errors.New("metric not found")
-
 type MetricIndex map[domain.MetricType]map[domain.MetricName]domain.Metric
+
+// inmemory
 
 type InMemoryMetricRepository struct {
 	index MetricIndex
@@ -84,7 +82,7 @@ func (repo *InMemoryMetricRepository) Get(
 	metric, ok := repo.index.Find(metricType, metricName)
 
 	if !ok {
-		return nil, fmt.Errorf("%w: (%s, %s)", ErrMetricNotFound, metricType, metricName)
+		return nil, app.NewErrMetricNotFound(metricType, metricName)
 	}
 
 	return metric, nil

@@ -3,6 +3,7 @@ package impl_test
 import (
 	"testing"
 
+	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/impl"
 	"github.com/stretchr/testify/require"
@@ -31,7 +32,7 @@ func TestInMemoryMetricRepository(t *testing.T) {
 
 	_, err = repo.Get(domain.Counter, "C")
 
-	require.ErrorIs(t, err, impl.ErrMetricNotFound)
+	require.ErrorIs(t, err, app.ErrMetricNotFound)
 
 	err = repo.Update(domain.NewCounterMetric("A", 1))
 

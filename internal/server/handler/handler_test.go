@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/nikimonax/go-metrics/internal/impl"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/mock"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
@@ -275,7 +275,7 @@ func TestGetMetricHandler(t *testing.T) {
 					"Execute",
 					tc.metricType,
 					tc.metricName,
-				).Return(nil, impl.ErrMetricNotFound).Once()
+				).Return(nil, app.ErrMetricNotFound).Once()
 				errorPresenter.On(
 					"Render",
 					m.MatchedBy(func(arg any) bool {

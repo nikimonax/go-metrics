@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/model"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 )
@@ -46,7 +46,7 @@ func (h *GetMetricV2Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status := http.StatusInternalServerError
 
-		if errors.Is(err, impl.ErrMetricNotFound) {
+		if errors.Is(err, app.ErrMetricNotFound) {
 			status = http.StatusNotFound
 		}
 
