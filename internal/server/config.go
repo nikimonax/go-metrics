@@ -1,5 +1,10 @@
 package server
 
+import "time"
+
 type ServerConfig struct {
-	BaseURL string
+	BaseURL      string
+	DumpFile     string
+	DumpInterval time.Duration
+	DumpRestore  bool
 }

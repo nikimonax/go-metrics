@@ -7,6 +7,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
+	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
@@ -18,9 +19,10 @@ import (
 )
 
 type Server struct {
-	config *ServerConfig
-	logger *zap.Logger
-	router chi.Router
+	config   *ServerConfig
+	logger   *zap.Logger
+	lifespan *Lifespan
+	router   chi.Router
 }
 
 func (s *Server) Run() {
@@ -30,7 +32,12 @@ func (s *Server) Run() {
 		"listen", s.config.BaseURL,
 	)
 
-	err := http.ListenAndServe(s.config.BaseURL, s.router)
+	err := s.lifespan.Open()
+
+	if err == nil {
+		defer s.lifespan.Close()
+		err = http.ListenAndServe(s.config.BaseURL, s.router)
+	}
 
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		sugar.Errorf("failed start server: %s", err)
@@ -39,6 +46,9 @@ func (s *Server) Run() {
 
 func New(config *ServerConfig) *Server {
 	logger := zapextra.NewZapLogger(zapextra.EnvDev)
+	sugar := logger.Sugar()
+
+	lifespan := NewLifespan()
 
 	metricRepository := impl.NewInMemoryMetricRepository()
 
@@ -51,6 +61,37 @@ func New(config *ServerConfig) *Server {
 	plainTextMetricPresenter := presenter.NewPlainTextMetricPresenter(logger)
 	jsonMetricPresenter := presenter.NewJsonMetricPresenter(logger)
 	htmlTableMetricsPresenter := presenter.NewHtmlTableMetricsPresenter(logger)
+
+	var dumper app.MetricDumper
+	if config.DumpFile != "" {
+		serializer := impl.NewJsonMetricSerializer()
+		dumper = impl.NewFileMetricDumper(config.DumpFile, serializer)
+	}
+
+	if config.DumpRestore {
+		restoreMetricsUseCase := app.NewRestoreMetricsUseCase(dumper, metricRepository)
+		lifespan.OnStartup(restoreMetricsUseCase.Execute)
+	}
+
+	updateMetricsHook := mymiddleware.NewRequestHook()
+
+	if config.DumpInterval == 0 {
+		saveMetricsUseCase := app.NewSaveMetricsUseCase(dumper, metricRepository)
+		updateMetricsHook.AfterRequest(func(r *http.Request) { saveMetricsUseCase.Execute() })
+	}
+
+	if config.DumpInterval > 0 {
+		saveMetricsUseCase := app.NewSaveMetricsUseCase(dumper, metricRepository)
+
+		s := scheduler.New()
+		s.OnError = func(name string, err error) {
+			sugar.Errorw("task failed", "task", name, "err", err)
+		}
+		s.Schedule("dump metrics", config.DumpInterval, saveMetricsUseCase.Execute)
+
+		lifespan.OnStartup(s.Start)
+		lifespan.OnShutdown(s.Stop)
+	}
 
 	updateMetricHandler := handler.NewUpdateMetricHandler(
 		updateMetricUseCase,
@@ -93,7 +134,9 @@ func New(config *ServerConfig) *Server {
 		PreviewMetricsHandler.ServeHTTP,
 	)
 
-	routerV1.Post(
+	routerV1.With(
+		updateMetricsHook.Middleware,
+	).Post(
 		"/update/{metricType}/{metricName}/{metricValue}",
 		updateMetricHandler.ServeHTTP,
 	)
@@ -111,7 +154,9 @@ func New(config *ServerConfig) *Server {
 		middlewareLogger,
 	)
 
-	routerV2.Post(
+	routerV2.With(
+		updateMetricsHook.Middleware,
+	).Post(
 		"/update",
 		updateMetricHandlerV2.ServeHTTP,
 	)
@@ -121,8 +166,9 @@ func New(config *ServerConfig) *Server {
 	)
 
 	return &Server{
-		config: config,
-		logger: logger,
-		router: baseRouter,
+		config:   config,
+		logger:   logger,
+		lifespan: lifespan,
+		router:   baseRouter,
 	}
 }
