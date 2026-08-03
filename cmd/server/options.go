@@ -3,24 +3,71 @@ package main
 import (
 	"flag"
 	"log"
+	"time"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/nikimonax/go-metrics/internal/server"
 )
 
-const defaultBaseURL = "localhost:8080"
+const (
+	defaultBaseURL      = "localhost:8080"
+	defaultDumpFile     = ""
+	defaultDumpInterval = 300
+	defaultDumpRestore  = false
+)
 
 type Options struct {
-	BaseURL string `env:"ADDRESS"`
+	BaseURL      string  `env:"ADDRESS"`
+	DumpFile     string  `env:"FILE_STORAGE_PATH"`
+	DumpInterval *uint64 `env:"STORE_INTERVAL"`
+	DumpRestore  *bool   `env:"RESTORE"`
 }
 
 func (opts *Options) ToServerConfig() *server.ServerConfig {
-	return &server.ServerConfig{BaseURL: opts.BaseURL}
+	var (
+		DumpInterval = defaultDumpInterval * time.Second
+		DumpRestore  = defaultDumpRestore
+	)
+
+	if opts.DumpInterval != nil {
+		DumpInterval = time.Duration(*opts.DumpInterval) * time.Second
+	}
+
+	if opts.DumpRestore != nil {
+		DumpRestore = *opts.DumpRestore
+	}
+
+	if DumpRestore && opts.DumpFile == "" {
+		log.Fatalf("required metrics dump file if 'restore' enabled")
+	}
+
+	if opts.DumpFile == "" {
+		DumpInterval = -1
+	}
+
+	return &server.ServerConfig{
+		BaseURL:      opts.BaseURL,
+		DumpFile:     opts.DumpFile,
+		DumpInterval: DumpInterval,
+		DumpRestore:  DumpRestore,
+	}
 }
 
 func (opts *Options) Merge(other Options) {
 	if other.BaseURL != "" {
 		opts.BaseURL = other.BaseURL
+	}
+
+	if other.DumpFile != "" {
+		opts.DumpFile = other.DumpFile
+	}
+
+	if other.DumpInterval != nil {
+		opts.DumpInterval = other.DumpInterval
+	}
+
+	if other.DumpRestore != nil {
+		opts.DumpRestore = other.DumpRestore
 	}
 }
 
@@ -31,11 +78,37 @@ func ReadOptions() *Options {
 		log.Fatalf("failed read env vars: %s", err)
 	}
 
+	var (
+		DumpInterval uint64
+		DumpRestore  bool
+	)
+
+	optionsFromCli.DumpInterval = &DumpInterval
+	optionsFromCli.DumpRestore = &DumpRestore
+
 	flag.StringVar(
 		&optionsFromCli.BaseURL,
 		"a",
 		defaultBaseURL,
 		"host and port to listen",
+	)
+	flag.StringVar(
+		&optionsFromCli.DumpFile,
+		"f",
+		defaultDumpFile,
+		"file path to dump metrics",
+	)
+	flag.Uint64Var(
+		&DumpInterval,
+		"i",
+		defaultDumpInterval,
+		"time interval to dump metrics",
+	)
+	flag.BoolVar(
+		&DumpRestore,
+		"r",
+		defaultDumpRestore,
+		"restore metrics from the dump file at startup",
 	)
 	flag.Parse()
 
