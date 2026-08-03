@@ -20,3 +20,8 @@ type MetricGateway interface {
 	Send(domain.Metric) error
 	SendBatch([]domain.Metric) error
 }
+
+type MetricDumper interface {
+	Save([]domain.Metric) error
+	Load() ([]domain.Metric, error)
+}

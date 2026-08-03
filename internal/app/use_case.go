@@ -123,3 +123,57 @@ func NewSendMetricsUseCase(
 		repository: repository,
 	}
 }
+
+// save metrics
+
+type SaveMetricsUseCase struct {
+	dumper     MetricDumper
+	repository MetricRepository
+}
+
+func (useCase *SaveMetricsUseCase) Execute() error {
+	metrics, err := useCase.repository.GetAll()
+
+	if err != nil {
+		return err
+	}
+
+	return useCase.dumper.Save(metrics)
+}
+
+func NewSaveMetricsUseCase(
+	dumper MetricDumper,
+	repository MetricRepository,
+) *SaveMetricsUseCase {
+	return &SaveMetricsUseCase{
+		dumper:     dumper,
+		repository: repository,
+	}
+}
+
+// restore metrics
+
+type RestoreMetricsUseCase struct {
+	dumper     MetricDumper
+	repository MetricRepository
+}
+
+func (useCase *RestoreMetricsUseCase) Execute() error {
+	metrics, err := useCase.dumper.Load()
+
+	if err != nil {
+		return err
+	}
+
+	return useCase.repository.UpdateBatch(metrics)
+}
+
+func NewRestoreMetricsUseCase(
+	dumper MetricDumper,
+	repository MetricRepository,
+) *RestoreMetricsUseCase {
+	return &RestoreMetricsUseCase{
+		dumper:     dumper,
+		repository: repository,
+	}
+}
