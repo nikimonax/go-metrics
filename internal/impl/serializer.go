@@ -26,6 +26,10 @@ func (s *JsonMetricSerializer) Encode(metrics []domain.Metric) ([]byte, error) {
 }
 
 func (s *JsonMetricSerializer) Decode(data []byte) ([]domain.Metric, error) {
+	if len(data) == 0 {
+		return make([]domain.Metric, 0), nil
+	}
+
 	var models []model.Metric
 
 	if err := json.Unmarshal(data, &models); err != nil {
