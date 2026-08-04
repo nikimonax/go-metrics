@@ -11,7 +11,7 @@ import (
 
 const (
 	defaultBaseURL      = "localhost:8080"
-	defaultDumpFile     = ""
+	defaultDumpFile     = "metrics.json"
 	defaultDumpInterval = 300
 	defaultDumpRestore  = false
 )
@@ -35,14 +35,6 @@ func (opts *Options) ToServerConfig() *server.ServerConfig {
 
 	if opts.DumpRestore != nil {
 		DumpRestore = *opts.DumpRestore
-	}
-
-	if DumpRestore && opts.DumpFile == "" {
-		log.Fatalf("required metrics dump file if 'restore' enabled")
-	}
-
-	if opts.DumpFile == "" {
-		DumpInterval = -1
 	}
 
 	return &server.ServerConfig{
