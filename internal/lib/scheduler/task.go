@@ -1,9 +1,12 @@
 package scheduler
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Task struct {
 	Name     string
 	Interval time.Duration
-	Callback func() error
+	Callback func(context.Context) error
 }
