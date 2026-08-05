@@ -212,7 +212,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          export ADDRESS="localhost:${SERVER_PORT}"
+          unset ADDRESS
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration7$ \
             -agent-binary-path=cmd/agent/agent \
