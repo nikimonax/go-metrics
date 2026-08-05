@@ -2,12 +2,14 @@ package impl
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
@@ -18,6 +20,7 @@ import (
 type HttpMetricV2Gateway struct {
 	endpoint string
 	client   *http.Client
+	timeout  time.Duration
 }
 
 // Send implements [app.MetricGateway].
@@ -30,11 +33,26 @@ func (gateway *HttpMetricV2Gateway) Send(metric domain.Metric) (err error) {
 		return fmt.Errorf("failed serialize metric: %w", err)
 	}
 
-	resp, err := gateway.client.Post(
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		gateway.timeout,
+	)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
 		gateway.endpoint,
-		httpextra.MIMEJSON,
 		bytes.NewBuffer(content),
-	) // nolint:noctx
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed create request: %w", err)
+	}
+
+	req.Header.Set(httpextra.HDRContentType, httpextra.MIMEJSON)
+
+	resp, err := gateway.client.Do(req)
 
 	if err != nil {
 		return fmt.Errorf("failed send metric: %w", err)
@@ -87,5 +105,6 @@ func NewHttpMetricV2Gateway(baseUrl *url.URL) app.MetricGateway {
 				http.DefaultTransport, "gzip",
 			),
 		},
+		timeout: defaultRequestTimeout,
 	}
 }

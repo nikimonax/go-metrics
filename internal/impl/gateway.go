@@ -1,20 +1,25 @@
 package impl
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 )
 
+const defaultRequestTimeout = time.Second
+
 type HttpMetricGateway struct {
 	baseUrl *url.URL
 	client  *http.Client
+	timeout time.Duration
 }
 
 // Send implements [app.MetricGateway].
@@ -26,7 +31,21 @@ func (gateway *HttpMetricGateway) Send(metric domain.Metric) (err error) {
 		metric.Value().String(),
 	).String()
 
-	resp, err := gateway.client.Post(url, httpextra.MIMEText, nil) // nolint:noctx
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		gateway.timeout,
+	)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+
+	if err != nil {
+		return fmt.Errorf("failed create request: %w", err)
+	}
+
+	req.Header.Set(httpextra.HDRContentType, httpextra.MIMEText)
+
+	resp, err := gateway.client.Do(req)
 
 	if err != nil {
 		return fmt.Errorf("failed send metric: %w", err)
@@ -75,5 +94,6 @@ func NewHttpMetricGateway(baseUrl *url.URL) app.MetricGateway {
 	return &HttpMetricGateway{
 		baseUrl: baseUrl,
 		client:  &http.Client{},
+		timeout: defaultRequestTimeout,
 	}
 }
