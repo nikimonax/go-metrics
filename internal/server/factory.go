@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"os/signal"
+	"syscall"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
@@ -34,15 +36,65 @@ func (s *Server) Run() {
 		"listen", s.config.BaseURL,
 	)
 
-	err := s.lifespan.Open()
+	appCtx, appCancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	defer appCancel()
 
-	if err == nil {
-		defer s.lifespan.Close()
-		err = http.ListenAndServe(s.config.BaseURL, s.router)
+	if err := s.lifespan.Open(appCtx); err != nil {
+		sugar.Errorw("failed open lifespan", "err", err)
+		return
 	}
 
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		sugar.Errorf("failed start server: %s", err)
+	defer func() {
+		shutdownCtx := context.Background()
+
+		if timeout := s.config.LifespanCloseTimeout; timeout > 0 {
+			var shutdownCancel context.CancelFunc
+			shutdownCtx, shutdownCancel = context.WithTimeout(shutdownCtx, timeout)
+			defer shutdownCancel()
+		}
+
+		if err := s.lifespan.Close(shutdownCtx); err != nil {
+			sugar.Errorw("failed close lifespan", "err", err)
+		}
+	}()
+
+	httpServer := &http.Server{
+		Addr:    s.config.BaseURL,
+		Handler: s.router,
+	}
+
+	serverErr := make(chan error, 1)
+
+	go func() {
+		serverErr <- httpServer.ListenAndServe()
+	}()
+
+	select {
+	case <-appCtx.Done():
+		shutdownCtx := context.Background()
+
+		if timeout := s.config.ServerStopTimeout; timeout > 0 {
+			var shutdownCancel context.CancelFunc
+			shutdownCtx, shutdownCancel = context.WithTimeout(shutdownCtx, timeout)
+			defer shutdownCancel()
+		}
+
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			sugar.Errorw("failed server shutdown", "err", err)
+		}
+
+		if err := <-serverErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
+			sugar.Errorw("failed listen and serve", "err", err)
+		}
+
+	case err := <-serverErr:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			sugar.Errorw("failed listen and serve", "err", err)
+		}
 	}
 }
 
@@ -72,14 +124,22 @@ func New(config *ServerConfig) *Server {
 
 	if config.DumpRestore {
 		restoreMetricsUseCase := app.NewRestoreMetricsUseCase(dumper, metricRepository)
-		lifespan.OnStartup(restoreMetricsUseCase.Execute)
+		lifespan.OnStartup(
+			func(_ context.Context) error {
+				return restoreMetricsUseCase.Execute()
+			},
+		)
 	}
 
 	updateMetricsHook := mymiddleware.NewRequestHook()
 
 	if config.DumpInterval == 0 {
 		saveMetricsUseCase := app.NewSaveMetricsUseCase(dumper, metricRepository)
-		updateMetricsHook.AfterRequest(func(r *http.Request) { saveMetricsUseCase.Execute() })
+		updateMetricsHook.AfterRequest(
+			func(r *http.Request) {
+				saveMetricsUseCase.Execute()
+			},
+		)
 	}
 
 	if config.DumpInterval > 0 {
@@ -89,13 +149,16 @@ func New(config *ServerConfig) *Server {
 		scheduler.OnError = func(name string, err error) {
 			sugar.Errorw("task failed", "task", name, "err", err)
 		}
-		scheduler.Schedule("dump metrics", config.DumpInterval, func(_ context.Context) error {
-			return saveMetricsUseCase.Execute()
-		})
+		scheduler.Schedule(
+			"dump metrics",
+			config.DumpInterval,
+			func(_ context.Context) error {
+				return saveMetricsUseCase.Execute()
+			},
+		)
 
-		ctx := context.Background()
-		lifespan.OnStartup(func() error { return scheduler.Start(ctx) })
-		lifespan.OnShutdown(func() error { scheduler.Stop(); return nil })
+		lifespan.OnStartup(scheduler.Start)
+		lifespan.OnShutdown(scheduler.Stop)
 	}
 
 	updateMetricHandler := handler.NewUpdateMetricHandler(

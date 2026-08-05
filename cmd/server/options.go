@@ -38,10 +38,12 @@ func (opts *Options) ToServerConfig() *server.ServerConfig {
 	}
 
 	return &server.ServerConfig{
-		BaseURL:      opts.BaseURL,
-		DumpFile:     opts.DumpFile,
-		DumpInterval: DumpInterval,
-		DumpRestore:  DumpRestore,
+		BaseURL:              opts.BaseURL,
+		DumpFile:             opts.DumpFile,
+		DumpInterval:         DumpInterval,
+		DumpRestore:          DumpRestore,
+		LifespanCloseTimeout: server.DefaultLifespanCloseTimeout,
+		ServerStopTimeout:    server.DefaultServerStopTimeout,
 	}
 }
 
