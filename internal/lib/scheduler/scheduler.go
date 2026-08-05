@@ -6,13 +6,16 @@ import (
 	"time"
 )
 
+const defaultShutdownTimeout = 5 * time.Second
+
 type Scheduler struct {
-	tasks   []Task
-	mu      sync.Mutex
-	cancel  context.CancelFunc
-	wg      *sync.WaitGroup
-	running bool
-	OnError func(name string, err error)
+	tasks           []Task
+	mu              sync.Mutex
+	cancel          context.CancelFunc
+	wg              *sync.WaitGroup
+	running         bool
+	ShutdownTimeout time.Duration
+	OnError         func(name string, err error)
 }
 
 func (s *Scheduler) Start(ctx context.Context) error {
@@ -44,29 +47,47 @@ func (s *Scheduler) Run(ctx context.Context) error {
 
 	<-ctx.Done()
 
-	s.Stop()
-	return nil
+	shutdownCtx, cancel := context.WithTimeout(
+		context.Background(),
+		s.ShutdownTimeout,
+	)
+	defer cancel()
+
+	return s.Stop(shutdownCtx)
 }
 
-func (s *Scheduler) Stop() {
+func (s *Scheduler) Stop(ctx context.Context) error {
 	s.mu.Lock()
 
 	if !s.running {
 		s.mu.Unlock()
-		return
+		return nil
 	}
 
 	cancel := s.cancel
 	wg := s.wg
 
-	s.cancel = nil
-	s.wg = nil
-	s.running = false
-
 	s.mu.Unlock()
 
 	cancel()
-	wg.Wait()
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		s.mu.Lock()
+		s.cancel = nil
+		s.wg = nil
+		s.running = false
+		s.mu.Unlock()
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (s *Scheduler) Schedule(
@@ -120,7 +141,8 @@ func (s *Scheduler) runWorker(ctx context.Context, wg *sync.WaitGroup, task *Tas
 
 func New() *Scheduler {
 	return &Scheduler{
-		tasks:   make([]Task, 0),
-		running: false,
+		tasks:           make([]Task, 0),
+		running:         false,
+		ShutdownTimeout: defaultShutdownTimeout,
 	}
 }
