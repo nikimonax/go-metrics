@@ -146,7 +146,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration4$ \
             -agent-binary-path=cmd/agent/agent \
@@ -169,7 +169,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration5$ \
             -agent-binary-path=cmd/agent/agent \
@@ -191,7 +191,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration6$ \
             -agent-binary-path=cmd/agent/agent \
@@ -212,7 +212,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration7$ \
             -agent-binary-path=cmd/agent/agent \
@@ -232,7 +232,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration8$ \
             -agent-binary-path=cmd/agent/agent \
@@ -251,7 +251,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration9$ \
             -agent-binary-path=cmd/agent/agent \
@@ -270,7 +270,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration10[AB]$ \
             -agent-binary-path=cmd/agent/agent \
@@ -288,7 +288,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration11$ \
             -agent-binary-path=cmd/agent/agent \
@@ -305,7 +305,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration12$ \
             -agent-binary-path=cmd/agent/agent \
@@ -321,7 +321,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration13$ \
             -agent-binary-path=cmd/agent/agent \
@@ -336,7 +336,7 @@ jobs:
           github.head_ref == 'iter14'
         run: |
           SERVER_PORT=$(random unused-port)
-          ADDRESS="localhost:${SERVER_PORT}"
+          export ADDRESS="localhost:${SERVER_PORT}"
           TEMP_FILE=$(random tempfile)
           metricstest -test.v -test.run=^TestIteration14$ \
             -agent-binary-path=cmd/agent/agent \
