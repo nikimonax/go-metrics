@@ -27,7 +27,7 @@ lint:
 
 .PHONY: test
 test:
-	go test $(TEST_ARGS) $$(go list ./... | grep -v internal/mock)
+	go test $(TEST_ARGS) $$(go list ./... | grep -v internal/testing)
 
 .PHONY: cover
 cover: $(COV_FILE)

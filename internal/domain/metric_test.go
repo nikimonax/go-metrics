@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/nikimonax/go-metrics/internal/mock"
+	"github.com/nikimonax/go-metrics/internal/testing/mock"
 	"github.com/stretchr/testify/assert"
 )
 
