@@ -8,11 +8,13 @@ type IdempotentCloser struct {
 }
 
 func (c *IdempotentCloser) Close() error {
+	if c.closed {
+		return nil
+	}
+
 	err := c.closer.Close()
 
-	if err != nil {
-		c.closed = true
-	}
+	c.closed = true
 
 	return err
 }

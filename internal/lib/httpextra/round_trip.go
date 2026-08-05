@@ -8,6 +8,10 @@ import (
 	"net/http"
 )
 
+type RoundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f RoundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
 type encoderFunc func(io.Writer) io.WriteCloser
 
 func encoderGzip(w io.Writer) io.WriteCloser {
