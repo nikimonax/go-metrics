@@ -1,16 +1,16 @@
-package impl_test
+package repository_test
 
 import (
 	"testing"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/impl/repository"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInMemoryMetricRepository(t *testing.T) {
-	repo := impl.NewInMemoryMetricRepository()
+	repo := repository.NewInMemoryMetricRepository()
 
 	metricA := domain.NewCounterMetric("A", 42)
 	metricB := domain.NewGaugeMetric("B", 3.14)

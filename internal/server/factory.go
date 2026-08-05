@@ -8,7 +8,9 @@ import (
 	"syscall"
 
 	"github.com/nikimonax/go-metrics/internal/app"
-	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/impl/dumper"
+	"github.com/nikimonax/go-metrics/internal/impl/repository"
+	"github.com/nikimonax/go-metrics/internal/impl/serializer"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/lifespan"
 	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
@@ -108,7 +110,7 @@ func New(config *ServerConfig) *Server {
 
 	lifespan := lifespan.New()
 
-	metricRepository := impl.NewInMemoryMetricRepository()
+	metricRepository := repository.NewInMemoryMetricRepository()
 
 	updateMetricUseCase := app.NewUpdateMetricUseCase(metricRepository)
 	getMetricUseCase := app.NewGetMetricUseCase(metricRepository)
@@ -120,14 +122,14 @@ func New(config *ServerConfig) *Server {
 	jsonMetricPresenter := presenter.NewJsonMetricPresenter(logger)
 	htmlTableMetricsPresenter := presenter.NewHtmlTableMetricsPresenter(logger)
 
-	var dumper app.MetricDumper
+	var metricDumper app.MetricDumper
 	if config.DumpFile != "" {
-		serializer := impl.NewJsonMetricSerializer()
-		dumper = impl.NewFileMetricDumper(config.DumpFile, serializer)
+		serializer := serializer.NewJsonMetricSerializer()
+		metricDumper = dumper.NewFileMetricDumper(config.DumpFile, serializer)
 	}
 
 	if config.DumpRestore {
-		restoreMetricsUseCase := app.NewRestoreMetricsUseCase(dumper, metricRepository)
+		restoreMetricsUseCase := app.NewRestoreMetricsUseCase(metricDumper, metricRepository)
 		lifespan.OnStartup(
 			func(_ context.Context) error {
 				return restoreMetricsUseCase.Execute()
@@ -138,7 +140,7 @@ func New(config *ServerConfig) *Server {
 	updateMetricsHook := mymiddleware.NewRequestHook()
 
 	if config.DumpInterval == 0 {
-		saveMetricsUseCase := app.NewSaveMetricsUseCase(dumper, metricRepository)
+		saveMetricsUseCase := app.NewSaveMetricsUseCase(metricDumper, metricRepository)
 		updateMetricsHook.AfterRequest(
 			func(r *http.Request) {
 				saveMetricsUseCase.Execute()
@@ -147,7 +149,7 @@ func New(config *ServerConfig) *Server {
 	}
 
 	if config.DumpInterval > 0 {
-		saveMetricsUseCase := app.NewSaveMetricsUseCase(dumper, metricRepository)
+		saveMetricsUseCase := app.NewSaveMetricsUseCase(metricDumper, metricRepository)
 
 		scheduler := scheduler.New()
 		scheduler.OnError = func(name string, err error) {

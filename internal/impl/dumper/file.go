@@ -1,4 +1,4 @@
-package impl
+package dumper
 
 import (
 	"errors"
@@ -6,11 +6,12 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
+	"github.com/nikimonax/go-metrics/internal/impl/serializer"
 )
 
 type FileMetricDumper struct {
 	filePath   string
-	serializer MetricSerializer
+	serializer serializer.MetricSerializer
 }
 
 // Load implements [app.MetricDumper].
@@ -43,7 +44,7 @@ var _ app.MetricDumper = (*FileMetricDumper)(nil)
 
 func NewFileMetricDumper(
 	filePath string,
-	serializer MetricSerializer,
+	serializer serializer.MetricSerializer,
 ) *FileMetricDumper {
 	return &FileMetricDumper{
 		filePath:   filePath,

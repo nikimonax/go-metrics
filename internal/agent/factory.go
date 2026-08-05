@@ -7,7 +7,9 @@ import (
 	"syscall"
 
 	"github.com/nikimonax/go-metrics/internal/app"
-	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/impl/collector"
+	"github.com/nikimonax/go-metrics/internal/impl/gateway"
+	"github.com/nikimonax/go-metrics/internal/impl/repository"
 	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 
@@ -46,24 +48,24 @@ func New(config *AgentConfig) *Agent {
 	logger := zapextra.NewZapLogger(zapextra.EnvDev)
 	sugar := logger.Sugar()
 
-	metricCollector := impl.NewCollectorsGroup(
-		impl.CollectorFunc(impl.CollectMemStats),
-		impl.CollectorFunc(impl.CollectRandomValue),
-		impl.CollectorFunc(impl.CollectIncrOne),
+	metricCollector := collector.NewCollectorsGroup(
+		collector.CollectorFunc(collector.CollectMemStats),
+		collector.CollectorFunc(collector.CollectRandomValue),
+		collector.CollectorFunc(collector.CollectIncrOne),
 	)
 
 	var metricGateway app.MetricGateway
 
 	switch config.ApiVersion {
 	case 1:
-		metricGateway = impl.NewHttpMetricGateway(config.BaseURL)
+		metricGateway = gateway.NewHttpMetricGateway(config.BaseURL)
 	case 2:
-		metricGateway = impl.NewHttpMetricV2Gateway(config.BaseURL)
+		metricGateway = gateway.NewHttpMetricV2Gateway(config.BaseURL)
 	default:
 		log.Fatalf("unknown metrics server api version: %d", config.ApiVersion)
 	}
 
-	metricRepository := impl.NewInMemoryMetricRepository()
+	metricRepository := repository.NewInMemoryMetricRepository()
 
 	collectMetricsUseCase := app.NewCollectMetricsUseCase(
 		metricCollector,

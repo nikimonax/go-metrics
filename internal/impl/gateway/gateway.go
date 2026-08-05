@@ -1,9 +1,7 @@
-package impl
+package gateway
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,24 +12,24 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
-	"github.com/nikimonax/go-metrics/internal/model"
 )
 
-type HttpMetricV2Gateway struct {
-	endpoint string
-	client   *http.Client
-	timeout  time.Duration
+const defaultRequestTimeout = time.Second
+
+type HttpMetricGateway struct {
+	baseUrl *url.URL
+	client  *http.Client
+	timeout time.Duration
 }
 
 // Send implements [app.MetricGateway].
-func (gateway *HttpMetricV2Gateway) Send(metric domain.Metric) (err error) {
-	payload := model.NewMetricFromDomain(metric)
-
-	content, err := json.Marshal(payload)
-
-	if err != nil {
-		return fmt.Errorf("failed serialize metric: %w", err)
-	}
+func (gateway *HttpMetricGateway) Send(metric domain.Metric) (err error) {
+	url := gateway.baseUrl.JoinPath(
+		"update",
+		string(metric.Type()),
+		string(metric.Name()),
+		metric.Value().String(),
+	).String()
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
@@ -39,18 +37,13 @@ func (gateway *HttpMetricV2Gateway) Send(metric domain.Metric) (err error) {
 	)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		gateway.endpoint,
-		bytes.NewBuffer(content),
-	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 
 	if err != nil {
 		return fmt.Errorf("failed create request: %w", err)
 	}
 
-	req.Header.Set(httpextra.HDRContentType, httpextra.MIMEJSON)
+	req.Header.Set(httpextra.HDRContentType, httpextra.MIMEText)
 
 	resp, err := gateway.client.Do(req)
 
@@ -88,7 +81,7 @@ func (gateway *HttpMetricV2Gateway) Send(metric domain.Metric) (err error) {
 }
 
 // SendBatch implements [app.MetricGateway].
-func (gateway *HttpMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
+func (gateway *HttpMetricGateway) SendBatch(metrics []domain.Metric) error {
 	for _, metric := range metrics {
 		if err := gateway.Send(metric); err != nil {
 			return err
@@ -97,14 +90,10 @@ func (gateway *HttpMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
 	return nil
 }
 
-func NewHttpMetricV2Gateway(baseUrl *url.URL) app.MetricGateway {
-	return &HttpMetricV2Gateway{
-		endpoint: baseUrl.JoinPath("update").String() + "/",
-		client: &http.Client{
-			Transport: httpextra.NewCompressRoundTripper(
-				http.DefaultTransport, "gzip",
-			),
-		},
+func NewHttpMetricGateway(baseUrl *url.URL) app.MetricGateway {
+	return &HttpMetricGateway{
+		baseUrl: baseUrl,
+		client:  &http.Client{},
 		timeout: defaultRequestTimeout,
 	}
 }

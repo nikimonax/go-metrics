@@ -1,4 +1,4 @@
-package impl_test
+package collector_test
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/impl/collector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,10 +35,10 @@ func TestCollectorsGroup(t *testing.T) {
 		{
 			name: "success",
 			collectors: []app.MetricCollector{
-				impl.CollectorFunc(func() ([]domain.Metric, error) {
+				collector.CollectorFunc(func() ([]domain.Metric, error) {
 					return []domain.Metric{metricA}, nil
 				}),
-				impl.CollectorFunc(func() ([]domain.Metric, error) {
+				collector.CollectorFunc(func() ([]domain.Metric, error) {
 					return []domain.Metric{metricB}, nil
 				}),
 			},
@@ -48,10 +48,10 @@ func TestCollectorsGroup(t *testing.T) {
 		{
 			name: "error",
 			collectors: []app.MetricCollector{
-				impl.CollectorFunc(func() ([]domain.Metric, error) {
+				collector.CollectorFunc(func() ([]domain.Metric, error) {
 					return []domain.Metric{metricA, metricB}, nil
 				}),
-				impl.CollectorFunc(func() ([]domain.Metric, error) {
+				collector.CollectorFunc(func() ([]domain.Metric, error) {
 					return []domain.Metric{}, someErr
 				}),
 			},
@@ -62,7 +62,7 @@ func TestCollectorsGroup(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			collector := impl.NewCollectorsGroup(tc.collectors...)
+			collector := collector.NewCollectorsGroup(tc.collectors...)
 			metrics, err := collector.Collect()
 
 			assert.ElementsMatch(t, metrics, tc.wantMetrics)
@@ -79,7 +79,7 @@ func TestCollectorsGroup(t *testing.T) {
 }
 
 func TestCollectMemStats(t *testing.T) {
-	metrics, err := impl.CollectMemStats()
+	metrics, err := collector.CollectMemStats()
 
 	require.NoError(t, err)
 	require.NotEmpty(t, metrics)
@@ -95,7 +95,7 @@ func TestCollectMemStats(t *testing.T) {
 }
 
 func TestCollectRandomValue(t *testing.T) {
-	metrics, err := impl.CollectRandomValue()
+	metrics, err := collector.CollectRandomValue()
 
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
@@ -107,7 +107,7 @@ func TestCollectRandomValue(t *testing.T) {
 }
 
 func TestCollectIncrOne(t *testing.T) {
-	metrics, err := impl.CollectIncrOne()
+	metrics, err := collector.CollectIncrOne()
 
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
