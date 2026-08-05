@@ -31,9 +31,13 @@ type Server struct {
 
 func (s *Server) Run() {
 	sugar := s.logger.Sugar()
+
 	sugar.Infow(
 		"starting server",
 		"listen", s.config.BaseURL,
+		"dump_file", s.config.DumpFile,
+		"dump_interval", s.config.DumpInterval,
+		"dump_restore", s.config.DumpRestore,
 	)
 
 	appCtx, appCancel := signal.NotifyContext(
