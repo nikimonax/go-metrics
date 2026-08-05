@@ -3,6 +3,8 @@ BIN_DIR := ./bin
 COV_FILE := coverage.out
 COV_FILE_HTML := coverage.html
 
+AUTOTEST_CMD := metricstest_v2
+
 TEST_ARGS += $(ARGS)
 
 
@@ -50,7 +52,7 @@ $(COV_FILE): TEST_ARGS += -coverprofile=$(COV_FILE)
 $(COV_FILE): test
 
 $(BIN_DIR)/metricstest: .FORCE
-	cd tools/go-autotests && go test -c -o ../../$@ ./cmd/$(@F)
+	cd tools/go-autotests && go test -c -o ../../$@ ./cmd/$(AUTOTEST_CMD)
 
 $(BIN_DIR)/server $(BIN_DIR)/agent: $(BIN_DIR)/%: cmd/% .FORCE
 	go build -o $@ ./$<
