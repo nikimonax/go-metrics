@@ -13,13 +13,13 @@ import (
 	"go.uber.org/zap"
 )
 
-type JsonErrorPresenter struct {
+type JSONErrorPresenter struct {
 	translator ut.Translator
 	sugar      *zap.SugaredLogger
 }
 
 // RenderError implements [ErrorPresenter].
-func (presenter *JsonErrorPresenter) Render(
+func (presenter *JSONErrorPresenter) Render(
 	w http.ResponseWriter, err error, code int,
 ) {
 	payload := model.NewErrorResponse()
@@ -50,14 +50,14 @@ func (presenter *JsonErrorPresenter) Render(
 	)
 }
 
-func NewJsonErrorPresenter(logger *zap.Logger) ErrorPresenter {
+func NewJSONErrorPresenter(logger *zap.Logger) ErrorPresenter {
 	var sugar *zap.SugaredLogger
 
 	if logger != nil {
 		sugar = logger.Sugar()
 	}
 
-	return &JsonErrorPresenter{
+	return &JSONErrorPresenter{
 		translator: getTranslator(),
 		sugar:      sugar,
 	}

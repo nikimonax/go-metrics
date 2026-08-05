@@ -63,7 +63,7 @@ func (m *CounterMetric) UpdateCounter(applyTo *CounterMetric) error {
 }
 
 // UpdateGauge implements [MetricUpdater].
-func (m *CounterMetric) UpdateGauge(applyTo *GaugeMetric) error {
+func (*CounterMetric) UpdateGauge(*GaugeMetric) error {
 	return fmt.Errorf(
 		"%w: can't apply counter updater to the gauge metric",
 		ErrUpdate,
@@ -116,7 +116,7 @@ type GaugeMetric struct {
 }
 
 // UpdateCounter implements [MetricUpdater].
-func (*GaugeMetric) UpdateCounter(m *CounterMetric) error {
+func (*GaugeMetric) UpdateCounter(*CounterMetric) error {
 	return fmt.Errorf(
 		"%w: can't apply gauge updater to the counter metric",
 		ErrUpdate,

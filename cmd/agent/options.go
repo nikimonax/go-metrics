@@ -13,38 +13,38 @@ import (
 
 const (
 	defaultBaseURL            = "http://localhost:8080"
-	defaultApiVersion         = 1
+	defaultAPIVersion         = 1
 	defaultPollIntervalSecs   = 2
 	defaultReportIntervalSecs = 10
 )
 
 type Options struct {
 	BaseURL            string `env:"ADDRESS"`
-	ApiVersion         uint   `env:"API"`
+	APIVersion         uint   `env:"API"`
 	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"`
 	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL"`
 }
 
 func (opts *Options) ToAgentConfig() *agent.AgentConfig {
-	rawUrl := opts.BaseURL
+	rawURL := opts.BaseURL
 
 	hasScheme := false
-	hasScheme = hasScheme || strings.HasPrefix(rawUrl, "http://")
-	hasScheme = hasScheme || strings.HasPrefix(rawUrl, "https://")
+	hasScheme = hasScheme || strings.HasPrefix(rawURL, "http://")
+	hasScheme = hasScheme || strings.HasPrefix(rawURL, "https://")
 
 	if !hasScheme {
-		rawUrl = "http://" + rawUrl
+		rawURL = "http://" + rawURL
 	}
 
-	baseUrl, err := url.Parse(rawUrl)
+	baseURL, err := url.Parse(rawURL)
 
 	if err != nil {
-		log.Fatalf("failed parse url '%s': %s", rawUrl, err)
+		log.Fatalf("failed parse url '%s': %s", rawURL, err)
 	}
 
 	return &agent.AgentConfig{
-		BaseURL:        baseUrl,
-		ApiVersion:     opts.ApiVersion,
+		BaseURL:        baseURL,
+		APIVersion:     opts.APIVersion,
 		PollInterval:   time.Duration(opts.PollIntervalSecs) * time.Second,
 		ReportInterval: time.Duration(opts.ReportIntervalSecs) * time.Second,
 	}
@@ -55,8 +55,8 @@ func (opts *Options) Merge(other Options) {
 		opts.BaseURL = other.BaseURL
 	}
 
-	if other.ApiVersion > 0 {
-		opts.ApiVersion = other.ApiVersion
+	if other.APIVersion > 0 {
+		opts.APIVersion = other.APIVersion
 	}
 
 	if other.PollIntervalSecs > 0 {
@@ -82,9 +82,9 @@ func ReadOptions() *Options {
 		"metrics server base url",
 	)
 	flag.UintVar(
-		&optionsFromCli.ApiVersion,
+		&optionsFromCli.APIVersion,
 		"v",
-		defaultApiVersion,
+		defaultAPIVersion,
 		"metrics server api version",
 	)
 	flag.Uint64Var(

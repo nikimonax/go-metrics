@@ -7,6 +7,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/testing/mock"
+	"github.com/nikimonax/go-metrics/internal/testing/shared"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +26,7 @@ func TestUpdateMetricUseCase(t *testing.T) {
 		{
 			name: "success",
 			setup: func(
-				tc *TestCase,
+				_ *TestCase,
 				repo *mock.MetricRepository,
 			) {
 				repo.On("Update", metric).Return(nil).Once()
@@ -71,7 +72,7 @@ func TestGetMetricUseCase(t *testing.T) {
 	tests := []TestCase{
 		{
 			name:   "success",
-			metric: domain.NewCounterMetric("TestMetric", 42),
+			metric: domain.NewCounterMetric(shared.TestMetricName, 42),
 			setup: func(tc *TestCase, repo *mock.MetricRepository) {
 				repo.On("Get", tc.metric.Type(), tc.metric.Name()).Return(tc.metric, nil).Once()
 			},
@@ -79,7 +80,7 @@ func TestGetMetricUseCase(t *testing.T) {
 		},
 		{
 			name:   "error",
-			metric: domain.NewCounterMetric("TestMetric", 42),
+			metric: domain.NewCounterMetric(shared.TestMetricName, 42),
 			setup: func(tc *TestCase, repo *mock.MetricRepository) {
 				err := errors.New("test error")
 				repo.On("Get", tc.metric.Type(), tc.metric.Name()).Return(nil, err).Once()
@@ -166,7 +167,7 @@ func TestCollectMetricsUseCase(t *testing.T) {
 		{
 			name: "success",
 			setup: func(
-				tc *TestCase,
+				_ *TestCase,
 				collector *mock.MetricCollector,
 				repository *mock.MetricRepository,
 			) {
@@ -178,9 +179,9 @@ func TestCollectMetricsUseCase(t *testing.T) {
 		{
 			name: "empty metrics",
 			setup: func(
-				tc *TestCase,
+				_ *TestCase,
 				collector *mock.MetricCollector,
-				repository *mock.MetricRepository,
+				_ *mock.MetricRepository,
 			) {
 				collector.On("Collect").Return(metricsEmpty, nil).Once()
 				// repository must not be called
@@ -192,7 +193,7 @@ func TestCollectMetricsUseCase(t *testing.T) {
 			setup: func(
 				tc *TestCase,
 				collector *mock.MetricCollector,
-				repository *mock.MetricRepository,
+				_ *mock.MetricRepository,
 			) {
 				collector.On("Collect").Return(metricsEmpty, tc.err).Once()
 				// repository must not be called
@@ -241,7 +242,7 @@ func TestSendMetricsUseCase(t *testing.T) {
 		{
 			name: "success",
 			setup: func(
-				tc *TestCase,
+				_ *TestCase,
 				gateway *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
@@ -254,8 +255,8 @@ func TestSendMetricsUseCase(t *testing.T) {
 		{
 			name: "empty metrics",
 			setup: func(
-				tc *TestCase,
-				gateway *mock.MetricGateway,
+				_ *TestCase,
+				_ *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
 				repository.On("GetAll").Return(metricsEmpty, nil).Once()
@@ -266,7 +267,7 @@ func TestSendMetricsUseCase(t *testing.T) {
 			name: "get error",
 			setup: func(
 				tc *TestCase,
-				gateway *mock.MetricGateway,
+				_ *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
 				repository.On("GetAll").Return(metricsEmpty, tc.err).Once()
@@ -277,7 +278,7 @@ func TestSendMetricsUseCase(t *testing.T) {
 			name: "clear error",
 			setup: func(
 				tc *TestCase,
-				gateway *mock.MetricGateway,
+				_ *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
 				getAllCall := repository.On("GetAll").Return(metricsNonEmpty, nil).Once()

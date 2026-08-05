@@ -11,6 +11,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
+	"github.com/nikimonax/go-metrics/internal/testing/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +26,7 @@ func TestPlainTextErrorPresenter(t *testing.T) {
 	presenter.Render(rr, err, status)
 
 	resp := rr.Result()
-	defer resp.Body.Close()
+	defer func() { assert.NoError(t, resp.Body.Close()) }()
 
 	contentType := resp.Header.Get(httpextra.HDRContentType)
 	body, err := io.ReadAll(resp.Body)
@@ -39,7 +40,7 @@ func TestPlainTextErrorPresenter(t *testing.T) {
 }
 
 func TestPlainTextMetricPresenter(t *testing.T) {
-	metric := domain.NewCounterMetric("TestMetric", 42)
+	metric := domain.NewCounterMetric(shared.TestMetricName, 42)
 	status := http.StatusOK
 	rr := httptest.NewRecorder()
 
@@ -47,7 +48,7 @@ func TestPlainTextMetricPresenter(t *testing.T) {
 	presenter.Render(rr, metric, status)
 
 	resp := rr.Result()
-	defer resp.Body.Close()
+	defer func() { assert.NoError(t, resp.Body.Close()) }()
 
 	contentType := resp.Header.Get(httpextra.HDRContentType)
 	body, err := io.ReadAll(resp.Body)
@@ -67,24 +68,24 @@ func TestHtmlTableMetricsPresenter(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	presenter := presenter.NewHtmlTableMetricsPresenter(nil)
+	presenter := presenter.NewHTMLTableMetricsPresenter(nil)
 	presenter.Render(rr, metrics, status)
 
 	resp := rr.Result()
-	defer resp.Body.Close()
+	defer func() { assert.NoError(t, resp.Body.Close()) }()
 
 	contentType := resp.Header.Get(httpextra.HDRContentType)
 	body, err := io.ReadAll(resp.Body)
 
-	pageHtml := string(body)
+	pageHTML := string(body)
 
 	require.NoError(t, err)
 	assert.Equal(t, resp.StatusCode, status)
 	assert.Contains(t, contentType, httpextra.MIMEHTML)
 
 	for _, metric := range metrics {
-		assert.Contains(t, pageHtml, metric.Type())
-		assert.Contains(t, pageHtml, metric.Name())
-		assert.Contains(t, pageHtml, metric.Value().String())
+		assert.Contains(t, pageHTML, metric.Type())
+		assert.Contains(t, pageHTML, metric.Name())
+		assert.Contains(t, pageHTML, metric.Value().String())
 	}
 }

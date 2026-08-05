@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -91,7 +92,12 @@ func (d *Decompressor) Handler(next http.Handler) http.Handler {
 		// 	2 - потенциально в следующем хендлере r.Body.Close().
 
 		decoderCloser := ioextra.NewIdempotentCloser(newBody)
-		defer decoderCloser.Close()
+		defer func() {
+			if err := decoderCloser.Close(); err != nil {
+				// TODO: заменить на zap sugar
+				log.Printf("failed close decoder: %s", err)
+			}
+		}()
 
 		r.Body = ioextra.NewReadCloser(newBody, ioextra.NewMultiCloser(decoderCloser, r.Body))
 		r.Header.Del(httpextra.HDRContentLength)

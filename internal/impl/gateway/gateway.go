@@ -16,15 +16,15 @@ import (
 
 const defaultRequestTimeout = time.Second
 
-type HttpMetricGateway struct {
-	baseUrl *url.URL
+type HTTPMetricGateway struct {
+	baseURL *url.URL
 	client  *http.Client
 	timeout time.Duration
 }
 
 // Send implements [interfaces.MetricGateway].
-func (gateway *HttpMetricGateway) Send(metric domain.Metric) (err error) {
-	url := gateway.baseUrl.JoinPath(
+func (gateway *HTTPMetricGateway) Send(metric domain.Metric) (err error) {
+	url := gateway.baseURL.JoinPath(
 		"update",
 		string(metric.Type()),
 		string(metric.Name()),
@@ -81,7 +81,7 @@ func (gateway *HttpMetricGateway) Send(metric domain.Metric) (err error) {
 }
 
 // SendBatch implements [interfaces.MetricGateway].
-func (gateway *HttpMetricGateway) SendBatch(metrics []domain.Metric) error {
+func (gateway *HTTPMetricGateway) SendBatch(metrics []domain.Metric) error {
 	for _, metric := range metrics {
 		if err := gateway.Send(metric); err != nil {
 			return err
@@ -90,9 +90,9 @@ func (gateway *HttpMetricGateway) SendBatch(metrics []domain.Metric) error {
 	return nil
 }
 
-func NewHttpMetricGateway(baseUrl *url.URL) interfaces.MetricGateway {
-	return &HttpMetricGateway{
-		baseUrl: baseUrl,
+func NewHTTPMetricGateway(baseURL *url.URL) interfaces.MetricGateway {
+	return &HTTPMetricGateway{
+		baseURL: baseURL,
 		client:  &http.Client{},
 		timeout: defaultRequestTimeout,
 	}

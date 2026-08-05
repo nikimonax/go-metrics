@@ -12,10 +12,10 @@ type MetricSerializer interface {
 	Decode([]byte) ([]domain.Metric, error)
 }
 
-type JsonMetricSerializer struct {
+type JSONMetricSerializer struct {
 }
 
-func (s *JsonMetricSerializer) Encode(metrics []domain.Metric) ([]byte, error) {
+func (s *JSONMetricSerializer) Encode(metrics []domain.Metric) ([]byte, error) {
 	models := make([]*model.Metric, 0, len(metrics))
 
 	for _, metric := range metrics {
@@ -25,7 +25,7 @@ func (s *JsonMetricSerializer) Encode(metrics []domain.Metric) ([]byte, error) {
 	return json.Marshal(models)
 }
 
-func (s *JsonMetricSerializer) Decode(data []byte) ([]domain.Metric, error) {
+func (s *JSONMetricSerializer) Decode(data []byte) ([]domain.Metric, error) {
 	if len(data) == 0 {
 		return make([]domain.Metric, 0), nil
 	}
@@ -45,6 +45,6 @@ func (s *JsonMetricSerializer) Decode(data []byte) ([]domain.Metric, error) {
 	return metrics, nil
 }
 
-func NewJsonMetricSerializer() MetricSerializer {
-	return new(JsonMetricSerializer)
+func NewJSONMetricSerializer() MetricSerializer {
+	return new(JSONMetricSerializer)
 }

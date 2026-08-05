@@ -39,7 +39,7 @@ func TestCompressRoundTripper(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 
-		defer resp.Body.Close()
+		defer func() { assert.NoError(t, resp.Body.Close()) }()
 
 		assert.Equal(t, httpextra.ENCGzip, got.Header.Get(httpextra.HDRContentEncoding))
 
@@ -72,7 +72,7 @@ func TestCompressRoundTripper(t *testing.T) {
 	})
 
 	t.Run("reader error", func(t *testing.T) {
-		next := httpextra.RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		next := httpextra.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			t.Fatal("transport must not be called")
 			return nil, nil
 		})

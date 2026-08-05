@@ -12,7 +12,7 @@ type PreviewMetricsHandler struct {
 	metricsPresenter presenter.MetricsPresenter
 }
 
-func (h *PreviewMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *PreviewMetricsHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	metrics, err := h.useCase.Execute()
 
 	if err != nil {

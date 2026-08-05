@@ -15,19 +15,18 @@ import (
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 	"github.com/nikimonax/go-metrics/internal/testing/mock"
+	"github.com/nikimonax/go-metrics/internal/testing/shared"
 	"github.com/stretchr/testify/assert"
 	m "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-const testMetricName = "TestMetric"
-
 func TestUpdateMetricHandler(t *testing.T) {
 	type TestCase struct {
 		name            string
 		method          string
-		metricType      string
-		metricName      string
+		metricType      domain.MetricType
+		metricName      domain.MetricName
 		metricValue     string
 		setup           func(*TestCase, *mock.UpdateMetricUseCase)
 		wantStatus      int
@@ -38,11 +37,11 @@ func TestUpdateMetricHandler(t *testing.T) {
 		{
 			name:        "counter success",
 			method:      http.MethodPost,
-			metricType:  "counter",
-			metricName:  testMetricName,
+			metricType:  domain.Counter,
+			metricName:  shared.TestMetricName,
 			metricValue: "42",
-			setup: func(tc *TestCase, useCase *mock.UpdateMetricUseCase) {
-				wantMetricValue := domain.NewCounterMetric(testMetricName, 42)
+			setup: func(_ *TestCase, useCase *mock.UpdateMetricUseCase) {
+				wantMetricValue := domain.NewCounterMetric(shared.TestMetricName, 42)
 				useCase.On("Execute", wantMetricValue).Return(nil).Once()
 			},
 			wantStatus:      http.StatusOK,
@@ -51,11 +50,11 @@ func TestUpdateMetricHandler(t *testing.T) {
 		{
 			name:        "gauge success",
 			method:      http.MethodPost,
-			metricType:  "gauge",
-			metricName:  testMetricName,
+			metricType:  domain.Gauge,
+			metricName:  shared.TestMetricName,
 			metricValue: "3.14",
-			setup: func(tc *TestCase, useCase *mock.UpdateMetricUseCase) {
-				wantMetricValue := domain.NewGaugeMetric(testMetricName, 3.14)
+			setup: func(_ *TestCase, useCase *mock.UpdateMetricUseCase) {
+				wantMetricValue := domain.NewGaugeMetric(shared.TestMetricName, 3.14)
 				useCase.On("Execute", wantMetricValue).Return(nil).Once()
 			},
 			wantStatus:      http.StatusOK,
@@ -64,11 +63,11 @@ func TestUpdateMetricHandler(t *testing.T) {
 		{
 			name:        "update error",
 			method:      http.MethodPost,
-			metricType:  "counter",
-			metricName:  testMetricName,
+			metricType:  domain.Counter,
+			metricName:  shared.TestMetricName,
 			metricValue: "42",
-			setup: func(tc *TestCase, useCase *mock.UpdateMetricUseCase) {
-				wantMetricValue := domain.NewCounterMetric(testMetricName, 42)
+			setup: func(_ *TestCase, useCase *mock.UpdateMetricUseCase) {
+				wantMetricValue := domain.NewCounterMetric(shared.TestMetricName, 42)
 				useCaseErr := errors.New("test error")
 				useCase.On("Execute", wantMetricValue).Return(useCaseErr).Once()
 			},
@@ -78,8 +77,8 @@ func TestUpdateMetricHandler(t *testing.T) {
 		{
 			name:            "invalid counter metric value",
 			method:          http.MethodPost,
-			metricType:      "counter",
-			metricName:      testMetricName,
+			metricType:      domain.Counter,
+			metricName:      shared.TestMetricName,
 			metricValue:     "foo42",
 			wantStatus:      http.StatusBadRequest,
 			wantContentType: httpextra.MIMEText,
@@ -87,8 +86,8 @@ func TestUpdateMetricHandler(t *testing.T) {
 		{
 			name:            "invalid gauge metric value",
 			method:          http.MethodPost,
-			metricType:      "gauge",
-			metricName:      testMetricName,
+			metricType:      domain.Gauge,
+			metricName:      shared.TestMetricName,
 			metricValue:     "foo3.14",
 			wantStatus:      http.StatusBadRequest,
 			wantContentType: httpextra.MIMEText,
@@ -96,8 +95,8 @@ func TestUpdateMetricHandler(t *testing.T) {
 		{
 			name:            "invalid metric type",
 			method:          http.MethodPost,
-			metricType:      "foobar",
-			metricName:      testMetricName,
+			metricType:      domain.MetricType("other"),
+			metricName:      shared.TestMetricName,
 			metricValue:     "43",
 			wantStatus:      http.StatusBadRequest,
 			wantContentType: httpextra.MIMEText,
@@ -105,8 +104,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 		{
 			name:            "empty metric type",
 			method:          http.MethodPost,
-			metricType:      "",
-			metricName:      testMetricName,
+			metricName:      shared.TestMetricName,
 			metricValue:     "42",
 			wantStatus:      http.StatusBadRequest,
 			wantContentType: httpextra.MIMEText,
@@ -114,8 +112,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 		{
 			name:            "empty metric name",
 			method:          http.MethodPost,
-			metricType:      "counter",
-			metricName:      "",
+			metricType:      domain.Counter,
 			metricValue:     "42",
 			wantStatus:      http.StatusBadRequest,
 			wantContentType: httpextra.MIMEText,
@@ -123,18 +120,16 @@ func TestUpdateMetricHandler(t *testing.T) {
 		{
 			name:            "empty metric counter value",
 			method:          http.MethodPost,
-			metricType:      "counter",
-			metricName:      testMetricName,
-			metricValue:     "",
+			metricType:      domain.Counter,
+			metricName:      shared.TestMetricName,
 			wantStatus:      http.StatusBadRequest,
 			wantContentType: httpextra.MIMEText,
 		},
 		{
 			name:            "empty metric gauge value",
 			method:          http.MethodPost,
-			metricType:      "gauge",
-			metricName:      testMetricName,
-			metricValue:     "",
+			metricType:      domain.Gauge,
+			metricName:      shared.TestMetricName,
 			wantStatus:      http.StatusBadRequest,
 			wantContentType: httpextra.MIMEText,
 		},
@@ -151,7 +146,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 			handler := handler.NewUpdateMetricHandler(useCase, errorPresenter)
 
-			req := httptest.NewRequest(tc.method, "/update", nil) // nolint:noctx
+			req := httptest.NewRequestWithContext(context.Background(), tc.method, "/update", nil)
 			rr := httptest.NewRecorder()
 
 			chiCtx := chi.NewRouteContext()
@@ -165,7 +160,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			handler.ServeHTTP(rr, req)
 
 			resp := rr.Result()
-			defer resp.Body.Close()
+			defer func() { assert.NoError(t, resp.Body.Close()) }()
 
 			body, err := io.ReadAll(resp.Body)
 
@@ -205,11 +200,11 @@ func TestGetMetricHandler(t *testing.T) {
 			name:       "success",
 			method:     http.MethodGet,
 			metricType: domain.Counter,
-			metricName: "TestMetric",
+			metricName: shared.TestMetricName,
 			setup: func(
 				tc *TestCase,
 				useCase *mock.GetMetricUseCase,
-				errorPresenter *mock.ErrorPresenter,
+				_ *mock.ErrorPresenter,
 				metricPresenter *mock.MetricPresenter,
 			) {
 				metric := domain.NewCounterMetric(tc.metricName, 42)
@@ -233,12 +228,12 @@ func TestGetMetricHandler(t *testing.T) {
 			name:       "usecase error",
 			method:     http.MethodGet,
 			metricType: domain.Counter,
-			metricName: "TestMetric",
+			metricName: shared.TestMetricName,
 			setup: func(
 				tc *TestCase,
 				useCase *mock.GetMetricUseCase,
 				errorPresenter *mock.ErrorPresenter,
-				metricPresenter *mock.MetricPresenter,
+				_ *mock.MetricPresenter,
 			) {
 				err := errors.New("test error")
 				useCase.On(
@@ -264,12 +259,12 @@ func TestGetMetricHandler(t *testing.T) {
 			name:       "metric not found",
 			method:     http.MethodGet,
 			metricType: domain.Counter,
-			metricName: "TestMetric",
+			metricName: shared.TestMetricName,
 			setup: func(
 				tc *TestCase,
 				useCase *mock.GetMetricUseCase,
 				errorPresenter *mock.ErrorPresenter,
-				metricPresenter *mock.MetricPresenter,
+				_ *mock.MetricPresenter,
 			) {
 				useCase.On(
 					"Execute",
@@ -296,10 +291,10 @@ func TestGetMetricHandler(t *testing.T) {
 			metricType: domain.Counter,
 			metricName: "",
 			setup: func(
-				tc *TestCase,
-				useCase *mock.GetMetricUseCase,
+				_ *TestCase,
+				_ *mock.GetMetricUseCase,
 				errorPresenter *mock.ErrorPresenter,
-				metricPresenter *mock.MetricPresenter,
+				_ *mock.MetricPresenter,
 			) {
 				errorPresenter.On(
 					"Render",
@@ -319,12 +314,12 @@ func TestGetMetricHandler(t *testing.T) {
 			name:       "invalid metric type",
 			method:     http.MethodGet,
 			metricType: "foo",
-			metricName: "TestMetric",
+			metricName: shared.TestMetricName,
 			setup: func(
-				tc *TestCase,
-				useCase *mock.GetMetricUseCase,
+				_ *TestCase,
+				_ *mock.GetMetricUseCase,
 				errorPresenter *mock.ErrorPresenter,
-				metricPresenter *mock.MetricPresenter,
+				_ *mock.MetricPresenter,
 			) {
 				errorPresenter.On(
 					"Render",
@@ -358,7 +353,7 @@ func TestGetMetricHandler(t *testing.T) {
 				metricPresenter,
 			)
 
-			req := httptest.NewRequest(tc.method, "/value", nil) // nolint:noctx
+			req := httptest.NewRequestWithContext(context.Background(), tc.method, "/value", nil)
 			rr := httptest.NewRecorder()
 
 			chiCtx := chi.NewRouteContext()
@@ -394,9 +389,9 @@ func TestPreviewMetricsHandler(t *testing.T) {
 			name:   "success",
 			method: http.MethodGet,
 			setup: func(
-				tc *TestCase,
+				_ *TestCase,
 				useCase *mock.GetAllMetricsUseCase,
-				errorPresenter *mock.ErrorPresenter,
+				_ *mock.ErrorPresenter,
 				metricsPresenter *mock.MetricsPresenter,
 			) {
 				metrics := []domain.Metric{
@@ -420,10 +415,10 @@ func TestPreviewMetricsHandler(t *testing.T) {
 			name:   "usecase error",
 			method: http.MethodGet,
 			setup: func(
-				tc *TestCase,
+				_ *TestCase,
 				useCase *mock.GetAllMetricsUseCase,
 				errorPresenter *mock.ErrorPresenter,
-				metricsPresenter *mock.MetricsPresenter,
+				_ *mock.MetricsPresenter,
 			) {
 				err := errors.New("test error")
 
@@ -457,7 +452,7 @@ func TestPreviewMetricsHandler(t *testing.T) {
 				metricsPresenter,
 			)
 
-			req := httptest.NewRequest(tc.method, "/", nil) // nolint:noctx
+			req := httptest.NewRequestWithContext(context.Background(), tc.method, "/", nil)
 			rr := httptest.NewRecorder()
 
 			handler.ServeHTTP(rr, req)

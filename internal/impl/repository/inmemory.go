@@ -60,9 +60,8 @@ func (index MetricIndex) Clear() error {
 func (repo *InMemoryMetricRepository) Update(other domain.Metric) error {
 	if metric, ok := repo.index.Find(other.Type(), other.Name()); ok {
 		return metric.Accept(other)
-	} else {
-		return repo.index.Add(other)
 	}
+	return repo.index.Add(other)
 }
 
 // UpdateBatch implements [interfaces.MetricRepository].

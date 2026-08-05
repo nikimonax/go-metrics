@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"log"
 	"os/signal"
 	"syscall"
 
@@ -57,13 +56,13 @@ func New(config *AgentConfig) *Agent {
 
 	var metricGateway interfaces.MetricGateway
 
-	switch config.ApiVersion {
+	switch config.APIVersion {
 	case 1:
-		metricGateway = gateway.NewHttpMetricGateway(config.BaseURL)
+		metricGateway = gateway.NewHTTPMetricGateway(config.BaseURL)
 	case 2:
-		metricGateway = gateway.NewHttpMetricV2Gateway(config.BaseURL)
+		metricGateway = gateway.NewHTTPMetricV2Gateway(config.BaseURL)
 	default:
-		log.Fatalf("unknown metrics server api version: %d", config.ApiVersion)
+		sugar.Fatalw("unknown metrics server api version", "version", config.APIVersion)
 	}
 
 	metricRepository := repository.NewInMemoryMetricRepository()
@@ -86,21 +85,41 @@ func New(config *AgentConfig) *Agent {
 	// TODO: в usecase, repository, gateway и т.п. расширить интерфейсы,
 	// пробрасывать context первым аргументом
 
-	scheduler.Schedule(
-		"collect metrics",
+	var err error
+
+	collectMetricsTaskName := "collect metrics"
+	err = scheduler.Schedule(
+		collectMetricsTaskName,
 		config.PollInterval,
 		func(_ context.Context) error {
 			return collectMetricsUseCase.Execute()
 		},
 	)
 
-	scheduler.Schedule(
-		"send metrics",
+	if err != nil {
+		sugar.Fatalw(
+			"failed schedule",
+			"task", collectMetricsTaskName,
+			"err", err,
+		)
+	}
+
+	sendMetricsTaskName := "send metrics"
+	err = scheduler.Schedule(
+		sendMetricsTaskName,
 		config.ReportInterval,
 		func(_ context.Context) error {
 			return sendMetricsUseCase.Execute()
 		},
 	)
+
+	if err != nil {
+		sugar.Fatalw(
+			"failed schedule",
+			"task", sendMetricsTaskName,
+			"err", err,
+		)
+	}
 
 	return &Agent{
 		config:    config,

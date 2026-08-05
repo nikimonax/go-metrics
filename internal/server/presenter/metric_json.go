@@ -10,12 +10,12 @@ import (
 	"go.uber.org/zap"
 )
 
-type JsonMetricPresenter struct {
+type JSONMetricPresenter struct {
 	sugar *zap.SugaredLogger
 }
 
 // RenderMetric implements [MetricPresenter].
-func (presenter *JsonMetricPresenter) Render(
+func (presenter *JSONMetricPresenter) Render(
 	w http.ResponseWriter, metric domain.Metric, code int,
 ) {
 	w.Header().Set(httpextra.HDRContentType, httpextra.MIMEJSON)
@@ -39,12 +39,12 @@ func (presenter *JsonMetricPresenter) Render(
 	)
 }
 
-func NewJsonMetricPresenter(logger *zap.Logger) MetricPresenter {
+func NewJSONMetricPresenter(logger *zap.Logger) MetricPresenter {
 	var sugar *zap.SugaredLogger
 
 	if logger != nil {
 		sugar = logger.Sugar()
 	}
 
-	return &JsonMetricPresenter{sugar: sugar}
+	return &JSONMetricPresenter{sugar: sugar}
 }

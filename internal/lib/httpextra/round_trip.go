@@ -3,6 +3,7 @@ package httpextra
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,13 +48,13 @@ func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (*http.Response, er
 	return rt.next.RoundTrip(newReq)
 }
 
-func (rt *CompressRoundTripper) compress(r io.Reader) (*bytes.Buffer, error) {
-	buf := new(bytes.Buffer)
+func (rt *CompressRoundTripper) compress(r io.Reader) (buf *bytes.Buffer, err error) {
+	buf = new(bytes.Buffer)
 
 	w := rt.encoderFunc(buf)
-	defer w.Close()
+	defer func() { err = errors.Join(err, w.Close()) }()
 
-	if _, err := io.Copy(w, r); err != nil {
+	if _, err = io.Copy(w, r); err != nil {
 		return nil, err
 	}
 

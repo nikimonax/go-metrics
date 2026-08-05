@@ -14,14 +14,14 @@ import (
 //go:embed templates/*.html
 var templateFolder embed.FS
 
-type HtmlTableMetricsPresenter struct {
+type HTMLTableMetricsPresenter struct {
 	pageTemplate *template.Template
 	sugar        *zap.SugaredLogger
 }
 
 // RenderMetrics implements [MetricsPresenter].
-func (presenter *HtmlTableMetricsPresenter) Render(
-	w http.ResponseWriter, metrics []domain.Metric, code int,
+func (presenter *HTMLTableMetricsPresenter) Render(
+	w http.ResponseWriter, metrics []domain.Metric, _ int,
 ) {
 	w.Header().Set(httpextra.HDRContentType, httpextra.MIMEHTML)
 	w.WriteHeader(http.StatusOK)
@@ -42,7 +42,7 @@ func (presenter *HtmlTableMetricsPresenter) Render(
 	)
 }
 
-func NewHtmlTableMetricsPresenter(logger *zap.Logger) MetricsPresenter {
+func NewHTMLTableMetricsPresenter(logger *zap.Logger) MetricsPresenter {
 	tmpl, err := template.ParseFS(templateFolder, "templates/metrics_table.html")
 
 	if err != nil {
@@ -55,7 +55,7 @@ func NewHtmlTableMetricsPresenter(logger *zap.Logger) MetricsPresenter {
 		sugar = logger.Sugar()
 	}
 
-	return &HtmlTableMetricsPresenter{
+	return &HTMLTableMetricsPresenter{
 		pageTemplate: tmpl,
 		sugar:        sugar,
 	}

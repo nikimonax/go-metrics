@@ -1,4 +1,4 @@
-version: 2
+version: "2"
 
 linters:
   enable:
@@ -11,24 +11,31 @@ linters:
     - gocyclo
     - dupl
     - misspell
-    # - revive
+    - revive
     - bodyclose
     - noctx
     - sqlclosecheck
+  exclusions:
+    rules:
+      - text: 'string `(success|error)` has [0-9]+ occurrences'
+        linters:
+          - goconst
+      - text: '^(package-comments|exported):'
+        linters:
+          - revive
+  settings:
+    gocyclo:
+      min-complexity: 15
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    dupl:
+      threshold: 100
 
 formatters:
   enable:
     - gofmt
     - goimports
-
-linters-settings:
-  gocyclo:
-    min-complexity: 15
-  goconst:
-    min-len: 3
-    min-occurrences: 3
-  dupl:
-    threshold: 100
 
 run:
   timeout: 1m
@@ -36,6 +43,5 @@ run:
   tests: true
 
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0

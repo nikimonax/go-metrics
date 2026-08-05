@@ -118,14 +118,14 @@ func New(config *ServerConfig) *Server {
 	getAllMetricsUseCase := usecase.NewGetAllMetricsUseCase(metricRepository)
 
 	plainTextErrorPresenter := presenter.NewPlainTextErrorPresenter()
-	jsonErrorPresenter := presenter.NewJsonErrorPresenter(logger)
+	jsonErrorPresenter := presenter.NewJSONErrorPresenter(logger)
 	plainTextMetricPresenter := presenter.NewPlainTextMetricPresenter(logger)
-	jsonMetricPresenter := presenter.NewJsonMetricPresenter(logger)
-	htmlTableMetricsPresenter := presenter.NewHtmlTableMetricsPresenter(logger)
+	jsonMetricPresenter := presenter.NewJSONMetricPresenter(logger)
+	htmlTableMetricsPresenter := presenter.NewHTMLTableMetricsPresenter(logger)
 
 	var metricDumper interfaces.MetricDumper
 	if config.DumpFile != "" {
-		serializer := serializer.NewJsonMetricSerializer()
+		serializer := serializer.NewJSONMetricSerializer()
 		metricDumper = dumper.NewFileMetricDumper(config.DumpFile, serializer)
 	}
 
@@ -143,8 +143,8 @@ func New(config *ServerConfig) *Server {
 	if config.DumpInterval == 0 {
 		saveMetricsUseCase := usecase.NewSaveMetricsUseCase(metricDumper, metricRepository)
 		updateMetricsHook.AfterRequest(
-			func(r *http.Request) {
-				saveMetricsUseCase.Execute()
+			func(_ *http.Request) error {
+				return saveMetricsUseCase.Execute()
 			},
 		)
 	}
@@ -156,13 +156,23 @@ func New(config *ServerConfig) *Server {
 		scheduler.OnError = func(name string, err error) {
 			sugar.Errorw("task failed", "task", name, "err", err)
 		}
-		scheduler.Schedule(
-			"dump metrics",
+
+		dumpMetricsTaskName := "dump metrics"
+		err := scheduler.Schedule(
+			dumpMetricsTaskName,
 			config.DumpInterval,
 			func(_ context.Context) error {
 				return saveMetricsUseCase.Execute()
 			},
 		)
+
+		if err != nil {
+			sugar.Fatalw(
+				"failed schedule",
+				"task", dumpMetricsTaskName,
+				"err", err,
+			)
+		}
 
 		lifespan.OnStartup(scheduler.Start)
 		lifespan.OnShutdown(scheduler.Stop)

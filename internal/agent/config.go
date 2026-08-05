@@ -7,7 +7,7 @@ import (
 
 type AgentConfig struct {
 	BaseURL        *url.URL
-	ApiVersion     uint
+	APIVersion     uint
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 }

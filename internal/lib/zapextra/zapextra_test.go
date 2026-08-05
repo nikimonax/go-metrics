@@ -55,10 +55,10 @@ func TestZapLoggerFactory(t *testing.T) {
 func TestZapLoggerMiddleware(t *testing.T) {
 	core, logs := observer.New(zap.InfoLevel)
 	logger := zap.New(core)
-	defer logger.Sync()
+	defer func() { assert.NoError(t, logger.Sync()) }()
 
 	middleware := zapextra.NewZapSugarLoggingMiddleware(logger)
-	handlerFunc := func(w http.ResponseWriter, r *http.Request) {
+	handlerFunc := func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte("body"))
 	}
@@ -74,7 +74,7 @@ func TestZapLoggerMiddleware(t *testing.T) {
 	entry := logs.All()[0]
 	assert.Equal(t, "handle request", entry.Message)
 	assert.Equal(t, "POST", entry.ContextMap()["method"])
-	assert.Equal(t, shared.DefaultUrl, entry.ContextMap()["uri"])
+	assert.Equal(t, shared.DefaultURL, entry.ContextMap()["uri"])
 	assert.Equal(t, int64(http.StatusCreated), entry.ContextMap()["status"])
 	assert.Equal(t, int64(len("body")), entry.ContextMap()["size"])
 }

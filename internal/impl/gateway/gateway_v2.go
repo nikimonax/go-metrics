@@ -17,14 +17,14 @@ import (
 	"github.com/nikimonax/go-metrics/internal/model"
 )
 
-type HttpMetricV2Gateway struct {
+type HTTPMetricV2Gateway struct {
 	endpoint string
 	client   *http.Client
 	timeout  time.Duration
 }
 
 // Send implements [interfaces.MetricGateway].
-func (gateway *HttpMetricV2Gateway) Send(metric domain.Metric) (err error) {
+func (gateway *HTTPMetricV2Gateway) Send(metric domain.Metric) (err error) {
 	payload := model.NewMetricFromDomain(metric)
 
 	content, err := json.Marshal(payload)
@@ -88,7 +88,7 @@ func (gateway *HttpMetricV2Gateway) Send(metric domain.Metric) (err error) {
 }
 
 // SendBatch implements [interfaces.MetricGateway].
-func (gateway *HttpMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
+func (gateway *HTTPMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
 	for _, metric := range metrics {
 		if err := gateway.Send(metric); err != nil {
 			return err
@@ -97,9 +97,9 @@ func (gateway *HttpMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
 	return nil
 }
 
-func NewHttpMetricV2Gateway(baseUrl *url.URL) interfaces.MetricGateway {
-	return &HttpMetricV2Gateway{
-		endpoint: baseUrl.JoinPath("update").String() + "/",
+func NewHTTPMetricV2Gateway(baseURL *url.URL) interfaces.MetricGateway {
+	return &HTTPMetricV2Gateway{
+		endpoint: baseURL.JoinPath("update").String() + "/",
 		client: &http.Client{
 			Transport: httpextra.NewCompressRoundTripper(
 				http.DefaultTransport, "gzip",
