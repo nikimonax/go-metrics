@@ -1,49 +1,50 @@
 package agent
 
 import (
+	"context"
 	"log"
-	"time"
+	"os/signal"
+	"syscall"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 
 	"go.uber.org/zap"
 )
 
 type Agent struct {
-	config                *AgentConfig
-	logger                *zap.Logger
-	collectMetricsUseCase *app.CollectMetricsUseCase
-	sendMetricsUseCase    *app.SendMetricsUseCase
+	config    *AgentConfig
+	logger    *zap.Logger
+	scheduler *scheduler.Scheduler
 }
 
 func (a *Agent) Run() {
-	a.logger.Sugar().Infow(
+	sugar := a.logger.Sugar()
+
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	defer cancel()
+
+	sugar.Infow(
 		"starting agent",
 		"server", a.config.BaseURL,
 		"poll interval", a.config.PollInterval,
 		"send interval", a.config.ReportInterval,
 	)
 
-	tasks := []Task{
-		{
-			Name:     "collect metrics",
-			Interval: a.config.PollInterval,
-			Callback: a.collectMetricsUseCase.Execute,
-		},
-		{
-			Name:     "send metrics",
-			Interval: a.config.ReportInterval,
-			Callback: a.sendMetricsUseCase.Execute,
-		},
+	if err := a.scheduler.Run(ctx); err != nil {
+		sugar.Errorw("scheduler stopped", "err", err)
 	}
-
-	NewScheduler(time.Now, a.logger).Run(tasks)
 }
 
 func New(config *AgentConfig) *Agent {
 	logger := zapextra.NewZapLogger(zapextra.EnvDev)
+	sugar := logger.Sugar()
 
 	metricCollector := impl.NewCollectorsGroup(
 		impl.CollectorFunc(impl.CollectMemStats),
@@ -74,10 +75,33 @@ func New(config *AgentConfig) *Agent {
 		metricRepository,
 	)
 
+	scheduler := scheduler.New()
+	scheduler.OnError = func(name string, err error) {
+		sugar.Errorw("task failed", "task", name, "err", err)
+	}
+
+	// TODO: в usecase, repository, gateway и т.п. расширить интерфейсы,
+	// пробрасывать context первым аргументом
+
+	scheduler.Schedule(
+		"collect metrics",
+		config.PollInterval,
+		func(_ context.Context) error {
+			return collectMetricsUseCase.Execute()
+		},
+	)
+
+	scheduler.Schedule(
+		"send metrics",
+		config.ReportInterval,
+		func(_ context.Context) error {
+			return sendMetricsUseCase.Execute()
+		},
+	)
+
 	return &Agent{
-		config:                config,
-		logger:                logger,
-		collectMetricsUseCase: collectMetricsUseCase,
-		sendMetricsUseCase:    sendMetricsUseCase,
+		config:    config,
+		logger:    logger,
+		scheduler: scheduler,
 	}
 }
