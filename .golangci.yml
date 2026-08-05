@@ -1,0 +1,41 @@
+version: 2
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - goconst
+    - gocyclo
+    - dupl
+    - misspell
+    # - revive
+    - bodyclose
+    - noctx
+    - sqlclosecheck
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  dupl:
+    threshold: 100
+
+run:
+  timeout: 1m
+  issues-exit-code: 1
+  tests: true
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
