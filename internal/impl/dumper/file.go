@@ -4,7 +4,7 @@ import (
 	"errors"
 	"os"
 
-	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/impl/serializer"
 )
@@ -14,7 +14,7 @@ type FileMetricDumper struct {
 	serializer serializer.MetricSerializer
 }
 
-// Load implements [app.MetricDumper].
+// Load implements [interfaces.MetricDumper].
 func (dumper *FileMetricDumper) Load() ([]domain.Metric, error) {
 	content, err := os.ReadFile(dumper.filePath)
 
@@ -29,7 +29,7 @@ func (dumper *FileMetricDumper) Load() ([]domain.Metric, error) {
 	return dumper.serializer.Decode(content)
 }
 
-// Save implements [app.MetricDumper].
+// Save implements [interfaces.MetricDumper].
 func (dumper *FileMetricDumper) Save(metrics []domain.Metric) error {
 	content, err := dumper.serializer.Encode(metrics)
 
@@ -40,7 +40,7 @@ func (dumper *FileMetricDumper) Save(metrics []domain.Metric) error {
 	return os.WriteFile(dumper.filePath, content, 0644)
 }
 
-var _ app.MetricDumper = (*FileMetricDumper)(nil)
+var _ interfaces.MetricDumper = (*FileMetricDumper)(nil)
 
 func NewFileMetricDumper(
 	filePath string,

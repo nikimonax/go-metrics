@@ -5,7 +5,7 @@ import (
 	"math/rand/v2"
 	"runtime"
 
-	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
@@ -16,7 +16,7 @@ func (f CollectorFunc) Collect() ([]domain.Metric, error) {
 }
 
 type CollectorsGroup struct {
-	collectors []app.MetricCollector
+	collectors []interfaces.MetricCollector
 }
 
 func (group *CollectorsGroup) Collect() ([]domain.Metric, error) {
@@ -36,7 +36,7 @@ func (group *CollectorsGroup) Collect() ([]domain.Metric, error) {
 	return metrics, errors.Join(errs...)
 }
 
-func NewCollectorsGroup(collectors ...app.MetricCollector) app.MetricCollector {
+func NewCollectorsGroup(collectors ...interfaces.MetricCollector) interfaces.MetricCollector {
 	return &CollectorsGroup{collectors: collectors}
 }
 

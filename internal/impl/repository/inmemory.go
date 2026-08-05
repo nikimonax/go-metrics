@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
@@ -55,7 +56,7 @@ func (index MetricIndex) Clear() error {
 	return nil
 }
 
-// Update implements [app.MetricRepository].
+// Update implements [interfaces.MetricRepository].
 func (repo *InMemoryMetricRepository) Update(other domain.Metric) error {
 	if metric, ok := repo.index.Find(other.Type(), other.Name()); ok {
 		return metric.Accept(other)
@@ -64,7 +65,7 @@ func (repo *InMemoryMetricRepository) Update(other domain.Metric) error {
 	}
 }
 
-// UpdateBatch implements [app.MetricRepository].
+// UpdateBatch implements [interfaces.MetricRepository].
 func (repo *InMemoryMetricRepository) UpdateBatch(metrics []domain.Metric) error {
 	for _, metric := range metrics {
 		if err := repo.Update(metric); err != nil {
@@ -74,7 +75,7 @@ func (repo *InMemoryMetricRepository) UpdateBatch(metrics []domain.Metric) error
 	return nil
 }
 
-// Get implements [app.MetricRepository].
+// Get implements [interfaces.MetricRepository].
 func (repo *InMemoryMetricRepository) Get(
 	metricType domain.MetricType,
 	metricName domain.MetricName,
@@ -88,7 +89,7 @@ func (repo *InMemoryMetricRepository) Get(
 	return metric, nil
 }
 
-// GetAll implements [app.MetricRepository].
+// GetAll implements [interfaces.MetricRepository].
 func (repo *InMemoryMetricRepository) GetAll() ([]domain.Metric, error) {
 	metrics := make([]domain.Metric, 0, repo.index.Len())
 
@@ -103,7 +104,7 @@ func (repo *InMemoryMetricRepository) Clear() error {
 	return repo.index.Clear()
 }
 
-func NewInMemoryMetricRepository() app.MetricRepository {
+func NewInMemoryMetricRepository() interfaces.MetricRepository {
 	return &InMemoryMetricRepository{
 		index: make(MetricIndex),
 	}

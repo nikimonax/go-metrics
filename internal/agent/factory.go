@@ -6,7 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
+	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/collector"
 	"github.com/nikimonax/go-metrics/internal/impl/gateway"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
@@ -54,7 +55,7 @@ func New(config *AgentConfig) *Agent {
 		collector.CollectorFunc(collector.CollectIncrOne),
 	)
 
-	var metricGateway app.MetricGateway
+	var metricGateway interfaces.MetricGateway
 
 	switch config.ApiVersion {
 	case 1:
@@ -67,12 +68,12 @@ func New(config *AgentConfig) *Agent {
 
 	metricRepository := repository.NewInMemoryMetricRepository()
 
-	collectMetricsUseCase := app.NewCollectMetricsUseCase(
+	collectMetricsUseCase := usecase.NewCollectMetricsUseCase(
 		metricCollector,
 		metricRepository,
 	)
 
-	sendMetricsUseCase := app.NewSendMetricsUseCase(
+	sendMetricsUseCase := usecase.NewSendMetricsUseCase(
 		metricGateway,
 		metricRepository,
 	)

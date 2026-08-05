@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 )
@@ -22,7 +22,7 @@ type HttpMetricGateway struct {
 	timeout time.Duration
 }
 
-// Send implements [app.MetricGateway].
+// Send implements [interfaces.MetricGateway].
 func (gateway *HttpMetricGateway) Send(metric domain.Metric) (err error) {
 	url := gateway.baseUrl.JoinPath(
 		"update",
@@ -80,7 +80,7 @@ func (gateway *HttpMetricGateway) Send(metric domain.Metric) (err error) {
 	return nil
 }
 
-// SendBatch implements [app.MetricGateway].
+// SendBatch implements [interfaces.MetricGateway].
 func (gateway *HttpMetricGateway) SendBatch(metrics []domain.Metric) error {
 	for _, metric := range metrics {
 		if err := gateway.Send(metric); err != nil {
@@ -90,7 +90,7 @@ func (gateway *HttpMetricGateway) SendBatch(metrics []domain.Metric) error {
 	return nil
 }
 
-func NewHttpMetricGateway(baseUrl *url.URL) app.MetricGateway {
+func NewHttpMetricGateway(baseUrl *url.URL) interfaces.MetricGateway {
 	return &HttpMetricGateway{
 		baseUrl: baseUrl,
 		client:  &http.Client{},

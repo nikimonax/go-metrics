@@ -1,10 +1,10 @@
-package app_test
+package usecase_test
 
 import (
 	"errors"
 	"testing"
 
-	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/mock"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +51,7 @@ func TestUpdateMetricUseCase(t *testing.T) {
 
 			tc.setup(&tc, repository)
 
-			useCase := app.NewUpdateMetricUseCase(repository)
+			useCase := usecase.NewUpdateMetricUseCase(repository)
 			err := useCase.Execute(metric)
 
 			assert.ErrorIs(t, err, tc.err)
@@ -93,7 +93,7 @@ func TestGetMetricUseCase(t *testing.T) {
 			repository := new(mock.MetricRepository)
 			tc.setup(&tc, repository)
 
-			useCase := app.NewGetMetricUseCase(repository)
+			useCase := usecase.NewGetMetricUseCase(repository)
 			metric, err := useCase.Execute(tc.metric.Type(), tc.metric.Name())
 
 			if tc.wantErr {
@@ -142,7 +142,7 @@ func TestGetAllMetricsUseCase(t *testing.T) {
 			repository := new(mock.MetricRepository)
 			tc.setup(&tc, repository)
 
-			useCase := app.NewGetAllMetricsUseCase(repository)
+			useCase := usecase.NewGetAllMetricsUseCase(repository)
 			metrics, err := useCase.Execute()
 
 			if tc.wantErr {
@@ -220,7 +220,7 @@ func TestCollectMetricsUseCase(t *testing.T) {
 
 			tc.setup(&tc, collector, repository)
 
-			useCase := app.NewCollectMetricsUseCase(collector, repository)
+			useCase := usecase.NewCollectMetricsUseCase(collector, repository)
 			err := useCase.Execute()
 
 			assert.ErrorIs(t, err, tc.err)
@@ -307,7 +307,7 @@ func TestSendMetricsUseCase(t *testing.T) {
 
 			tc.setup(&tc, gateway, repository)
 
-			useCase := app.NewSendMetricsUseCase(gateway, repository)
+			useCase := usecase.NewSendMetricsUseCase(gateway, repository)
 			err := useCase.Execute()
 
 			assert.ErrorIs(t, err, tc.err)

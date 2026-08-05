@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/model"
@@ -23,7 +23,7 @@ type HttpMetricV2Gateway struct {
 	timeout  time.Duration
 }
 
-// Send implements [app.MetricGateway].
+// Send implements [interfaces.MetricGateway].
 func (gateway *HttpMetricV2Gateway) Send(metric domain.Metric) (err error) {
 	payload := model.NewMetricFromDomain(metric)
 
@@ -87,7 +87,7 @@ func (gateway *HttpMetricV2Gateway) Send(metric domain.Metric) (err error) {
 	return nil
 }
 
-// SendBatch implements [app.MetricGateway].
+// SendBatch implements [interfaces.MetricGateway].
 func (gateway *HttpMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
 	for _, metric := range metrics {
 		if err := gateway.Send(metric); err != nil {
@@ -97,7 +97,7 @@ func (gateway *HttpMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
 	return nil
 }
 
-func NewHttpMetricV2Gateway(baseUrl *url.URL) app.MetricGateway {
+func NewHttpMetricV2Gateway(baseUrl *url.URL) interfaces.MetricGateway {
 	return &HttpMetricV2Gateway{
 		endpoint: baseUrl.JoinPath("update").String() + "/",
 		client: &http.Client{

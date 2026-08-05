@@ -1,4 +1,4 @@
-package app
+package interfaces
 
 import (
 	"github.com/nikimonax/go-metrics/internal/domain"

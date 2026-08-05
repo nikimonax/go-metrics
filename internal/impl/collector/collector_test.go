@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/impl/collector"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ import (
 func TestCollectorsGroup(t *testing.T) {
 	type TestCase struct {
 		name        string
-		collectors  []app.MetricCollector
+		collectors  []interfaces.MetricCollector
 		wantMetrics []domain.Metric
 		wantErrs    []error
 	}
@@ -28,13 +28,13 @@ func TestCollectorsGroup(t *testing.T) {
 	tests := []TestCase{
 		{
 			name:        "empty",
-			collectors:  make([]app.MetricCollector, 0),
+			collectors:  make([]interfaces.MetricCollector, 0),
 			wantMetrics: make([]domain.Metric, 0),
 			wantErrs:    make([]error, 0),
 		},
 		{
 			name: "success",
-			collectors: []app.MetricCollector{
+			collectors: []interfaces.MetricCollector{
 				collector.CollectorFunc(func() ([]domain.Metric, error) {
 					return []domain.Metric{metricA}, nil
 				}),
@@ -47,7 +47,7 @@ func TestCollectorsGroup(t *testing.T) {
 		},
 		{
 			name: "error",
-			collectors: []app.MetricCollector{
+			collectors: []interfaces.MetricCollector{
 				collector.CollectorFunc(func() ([]domain.Metric, error) {
 					return []domain.Metric{metricA, metricB}, nil
 				}),

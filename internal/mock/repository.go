@@ -1,7 +1,7 @@
 package mock
 
 import (
-	"github.com/nikimonax/go-metrics/internal/app"
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/stretchr/testify/mock"
 )
@@ -48,4 +48,4 @@ func (repo *MetricRepository) Clear() error {
 	return repo.Called().Error(0)
 }
 
-var _ app.MetricRepository = (*MetricRepository)(nil)
+var _ interfaces.MetricRepository = (*MetricRepository)(nil)
