@@ -1,4 +1,4 @@
-package server
+package lifespan
 
 import "errors"
 
@@ -31,7 +31,7 @@ func (l *Lifespan) Close() (err error) {
 	return
 }
 
-func NewLifespan() *Lifespan {
+func New() *Lifespan {
 	return &Lifespan{
 		onStartup:  make([]func() error, 0),
 		onShutdown: make([]func() error, 0),

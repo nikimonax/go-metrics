@@ -1,12 +1,14 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/impl"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
+	"github.com/nikimonax/go-metrics/internal/lib/lifespan"
 	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
@@ -21,7 +23,7 @@ import (
 type Server struct {
 	config   *ServerConfig
 	logger   *zap.Logger
-	lifespan *Lifespan
+	lifespan *lifespan.Lifespan
 	router   chi.Router
 }
 
@@ -48,7 +50,7 @@ func New(config *ServerConfig) *Server {
 	logger := zapextra.NewZapLogger(zapextra.EnvDev)
 	sugar := logger.Sugar()
 
-	lifespan := NewLifespan()
+	lifespan := lifespan.New()
 
 	metricRepository := impl.NewInMemoryMetricRepository()
 
@@ -83,14 +85,17 @@ func New(config *ServerConfig) *Server {
 	if config.DumpInterval > 0 {
 		saveMetricsUseCase := app.NewSaveMetricsUseCase(dumper, metricRepository)
 
-		s := scheduler.New()
-		s.OnError = func(name string, err error) {
+		scheduler := scheduler.New()
+		scheduler.OnError = func(name string, err error) {
 			sugar.Errorw("task failed", "task", name, "err", err)
 		}
-		s.Schedule("dump metrics", config.DumpInterval, saveMetricsUseCase.Execute)
+		scheduler.Schedule("dump metrics", config.DumpInterval, func(_ context.Context) error {
+			return saveMetricsUseCase.Execute()
+		})
 
-		lifespan.OnStartup(s.Start)
-		lifespan.OnShutdown(s.Stop)
+		ctx := context.Background()
+		lifespan.OnStartup(func() error { return scheduler.Start(ctx) })
+		lifespan.OnShutdown(func() error { scheduler.Stop(); return nil })
 	}
 
 	updateMetricHandler := handler.NewUpdateMetricHandler(
