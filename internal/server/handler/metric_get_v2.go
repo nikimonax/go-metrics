@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/model"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
@@ -62,11 +63,12 @@ func NewGetMetricV2Handler(
 	useCase GetMetricUseCase,
 	errorPresenter presenter.ErrorPresenter,
 	metricPresenter presenter.MetricPresenter,
+	validate *validator.Validate,
 ) http.Handler {
 	return &GetMetricV2Handler{
 		useCase:         useCase,
 		errorPresenter:  errorPresenter,
 		metricPresenter: metricPresenter,
-		validate:        getValidate(),
+		validate:        validate,
 	}
 }

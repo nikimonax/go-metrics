@@ -56,10 +56,11 @@ func (h *UpdateMetricV2Handler) ServeHTTP(w http.ResponseWriter, r *http.Request
 func NewUpdateMetricV2Handler(
 	useCase UpdateMetricUseCase,
 	errorPresenter presenter.ErrorPresenter,
+	validate *validator.Validate,
 ) http.Handler {
 	return &UpdateMetricV2Handler{
 		useCase:        useCase,
 		errorPresenter: errorPresenter,
-		validate:       getValidate(),
+		validate:       validate,
 	}
 }

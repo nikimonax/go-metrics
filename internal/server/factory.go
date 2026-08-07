@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/go-playground/validator/v10"
+
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/dumper"
@@ -109,6 +111,9 @@ func New(config *ServerConfig) *Server {
 	logger := zapextra.NewZapLogger(zapextra.EnvDev)
 	sugar := logger.Sugar()
 
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	translator := presenter.NewTranslator()
+
 	lifespan := lifespan.New()
 
 	metricRepository := repository.NewInMemoryMetricRepository()
@@ -118,7 +123,7 @@ func New(config *ServerConfig) *Server {
 	getAllMetricsUseCase := usecase.NewGetAllMetricsUseCase(metricRepository)
 
 	plainTextErrorPresenter := presenter.NewPlainTextErrorPresenter()
-	jsonErrorPresenter := presenter.NewJSONErrorPresenter(logger)
+	jsonErrorPresenter := presenter.NewJSONErrorPresenter(translator, logger)
 	plainTextMetricPresenter := presenter.NewPlainTextMetricPresenter(logger)
 	jsonMetricPresenter := presenter.NewJSONMetricPresenter(logger)
 	htmlTableMetricsPresenter := presenter.NewHTMLTableMetricsPresenter(logger)
@@ -185,6 +190,7 @@ func New(config *ServerConfig) *Server {
 	updateMetricHandlerV2 := handler.NewUpdateMetricV2Handler(
 		updateMetricUseCase,
 		jsonErrorPresenter,
+		validate,
 	)
 	getMetricHandler := handler.NewGetMetricHandler(
 		getMetricUseCase,
@@ -195,6 +201,7 @@ func New(config *ServerConfig) *Server {
 		getMetricUseCase,
 		jsonErrorPresenter,
 		jsonMetricPresenter,
+		validate,
 	)
 	PreviewMetricsHandler := handler.NewPreviewMetricsHandler(
 		getAllMetricsUseCase,
