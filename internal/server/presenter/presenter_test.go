@@ -8,12 +8,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 	"github.com/nikimonax/go-metrics/internal/testing/shared"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPlainTextErrorPresenter(t *testing.T) {

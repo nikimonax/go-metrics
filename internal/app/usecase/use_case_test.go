@@ -4,11 +4,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/testing/mock"
 	"github.com/nikimonax/go-metrics/internal/testing/shared"
-	"github.com/stretchr/testify/assert"
 )
 
 var metric domain.Metric = new(mock.Metric)

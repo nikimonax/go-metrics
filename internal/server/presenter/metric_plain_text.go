@@ -3,9 +3,10 @@ package presenter
 import (
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
-	"go.uber.org/zap"
 )
 
 type PlainTextMetricPresenter struct {

@@ -3,10 +3,11 @@ package repository_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
-	"github.com/stretchr/testify/require"
 )
 
 func TestInMemoryMetricRepository(t *testing.T) {

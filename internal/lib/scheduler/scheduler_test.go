@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
 )
 
 func TestScheduler(t *testing.T) {

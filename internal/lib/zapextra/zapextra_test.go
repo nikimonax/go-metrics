@@ -5,12 +5,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
-	"github.com/nikimonax/go-metrics/internal/testing/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+
+	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/testing/shared"
 )
 
 func TestZapLoggerFactory(t *testing.T) {

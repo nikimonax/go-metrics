@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"text/template"
 
+	"go.uber.org/zap"
+
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
-	"go.uber.org/zap"
 )
 
 //go:embed templates/*.html

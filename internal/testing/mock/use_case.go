@@ -1,9 +1,10 @@
 package mock
 
 import (
+	"github.com/stretchr/testify/mock"
+
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
-	"github.com/stretchr/testify/mock"
 )
 
 // update metric

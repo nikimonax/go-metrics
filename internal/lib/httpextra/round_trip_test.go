@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
-	"github.com/nikimonax/go-metrics/internal/testing/shared"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
+	"github.com/nikimonax/go-metrics/internal/testing/shared"
 )
 
 type errorReader struct{}

@@ -1,9 +1,10 @@
 package mock
 
 import (
+	"github.com/stretchr/testify/mock"
+
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/stretchr/testify/mock"
 )
 
 type MetricCollector struct {

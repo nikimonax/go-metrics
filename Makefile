@@ -27,6 +27,10 @@ build: $(BIN_DIR)/server $(BIN_DIR)/agent
 lint:
 	golangci-lint run
 
+.PHONY: format
+format:
+	golangci-lint fmt
+
 .PHONY: test
 test:
 	go test $(TEST_ARGS) $$(go list ./... | grep -v internal/testing)

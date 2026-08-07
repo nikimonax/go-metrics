@@ -36,6 +36,10 @@ formatters:
   enable:
     - gofmt
     - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/nikimonax/go-metrics
 
 run:
   timeout: 1m

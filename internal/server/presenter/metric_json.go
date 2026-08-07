@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/model"
-	"go.uber.org/zap"
 )
 
 type JSONMetricPresenter struct {

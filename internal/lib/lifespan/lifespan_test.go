@@ -5,8 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/nikimonax/go-metrics/internal/lib/lifespan"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/nikimonax/go-metrics/internal/lib/lifespan"
 )
 
 func TestLifespanOpen(t *testing.T) {

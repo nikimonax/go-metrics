@@ -7,7 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
 
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
@@ -21,10 +24,6 @@ import (
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"go.uber.org/zap"
 )
 
 type Server struct {

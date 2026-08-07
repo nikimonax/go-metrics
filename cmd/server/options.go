@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v6"
+
 	"github.com/nikimonax/go-metrics/internal/server"
 )
 

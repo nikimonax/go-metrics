@@ -1,8 +1,9 @@
 package mock
 
 import (
-	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
 type Metric struct {

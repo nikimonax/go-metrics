@@ -9,6 +9,10 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/stretchr/testify/assert"
+	m "github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
@@ -16,9 +20,6 @@ import (
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 	"github.com/nikimonax/go-metrics/internal/testing/mock"
 	"github.com/nikimonax/go-metrics/internal/testing/shared"
-	"github.com/stretchr/testify/assert"
-	m "github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateMetricHandler(t *testing.T) {

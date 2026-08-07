@@ -4,9 +4,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/testing/mock"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMetricType(t *testing.T) {
