@@ -9,13 +9,14 @@ import (
 const defaultShutdownTimeout = 5 * time.Second
 
 type Scheduler struct {
-	tasks           []Task
+	tasks           []*Task
 	mu              sync.Mutex
 	cancel          context.CancelFunc
 	wg              *sync.WaitGroup
 	running         bool
 	ShutdownTimeout time.Duration
 	OnError         func(name string, err error)
+	OnPanic         func(name string, r interface{})
 }
 
 func (s *Scheduler) Start(ctx context.Context) error {
@@ -34,7 +35,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	s.wg.Add(len(s.tasks))
 
 	for i := range s.tasks {
-		go s.runWorker(ctx, s.wg, &s.tasks[i])
+		go s.runWorker(ctx, s.wg, s.tasks[i])
 	}
 
 	return nil
@@ -102,18 +103,10 @@ func (s *Scheduler) Schedule(
 		return ErrAlreadyRunning
 	}
 
-	if interval <= 0 {
-		return ErrInvalidInterval
-	}
+	task, err := NewTask(name, interval, callback)
 
-	if callback == nil {
-		return ErrInvalidCallback
-	}
-
-	task := Task{
-		Name:     name,
-		Interval: interval,
-		Callback: callback,
+	if err != nil {
+		return err
 	}
 
 	s.tasks = append(s.tasks, task)
@@ -126,22 +119,32 @@ func (s *Scheduler) runWorker(ctx context.Context, wg *sync.WaitGroup, task *Tas
 	ticker := time.NewTicker(task.Interval)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			err := task.Callback(ctx)
-			if err != nil && s.OnError != nil {
-				s.OnError(task.Name, err)
-			}
-		case <-ctx.Done():
-			return
+	for ctx.Err() == nil {
+		s.handleTask(ctx, ticker, task)
+	}
+}
+
+func (s *Scheduler) handleTask(ctx context.Context, ticker *time.Ticker, task *Task) {
+	defer func() {
+		if r := recover(); r != nil && s.OnPanic != nil {
+			s.OnPanic(task.Name, r)
 		}
+	}()
+
+	select {
+	case <-ticker.C:
+		err := task.Callback(ctx)
+		if err != nil && s.OnError != nil {
+			s.OnError(task.Name, err)
+		}
+	case <-ctx.Done():
+		return
 	}
 }
 
 func New() *Scheduler {
 	return &Scheduler{
-		tasks:           make([]Task, 0),
+		tasks:           make([]*Task, 0),
 		running:         false,
 		ShutdownTimeout: defaultShutdownTimeout,
 	}

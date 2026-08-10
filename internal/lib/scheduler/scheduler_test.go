@@ -42,13 +42,13 @@ func TestScheduler(t *testing.T) {
 	t.Run("on error callback", func(t *testing.T) {
 		callbackErr := errors.New("callback error")
 		called := make(chan struct{}, 1)
-		errorsSeen := make(chan string, 1)
+		errorSeen := make(chan string, 1)
 
 		s := scheduler.New()
 		s.OnError = func(name string, err error) {
 			assert.Equal(t, "task", name)
 			assert.ErrorIs(t, err, callbackErr)
-			errorsSeen <- name
+			errorSeen <- name
 		}
 
 		var err error
@@ -67,14 +67,54 @@ func TestScheduler(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Fatal("scheduled callback was not called")
 		}
+
 		select {
-		case <-errorsSeen:
+		case <-errorSeen:
 		case <-time.After(time.Second):
 			t.Fatal("scheduler error was not reported")
 		}
 
 		require.NoError(t, s.Stop(context.Background()))
 		assert.NoError(t, s.Stop(context.Background()))
+	})
+
+	t.Run("on panic callback", func(t *testing.T) {
+		panicValue := errors.New("panic")
+		called := make(chan struct{}, 1)
+
+		s := scheduler.New()
+		s.OnPanic = func(name string, r interface{}) {
+			assert.Equal(t, "task", name)
+			assert.Equal(t, panicValue, r)
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		err := s.Schedule("task", time.Millisecond, func(_ context.Context) error {
+			called <- struct{}{}
+			defer cancel()
+			panic(panicValue)
+		})
+		require.NoError(t, err)
+
+		go func() {
+			assert.NotPanics(t, func() {
+				assert.NoError(t, s.Run(ctx))
+			})
+		}()
+
+		select {
+		case <-called:
+		case <-time.After(time.Second):
+			t.Fatal("scheduled callback was not called")
+		}
+
+		select {
+		case <-ctx.Done():
+		case <-time.After(time.Second):
+			t.Fatal("scheduler not stopped")
+		}
 	})
 
 	t.Run("stop when context done", func(t *testing.T) {
