@@ -3,6 +3,7 @@ package dumper
 import (
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
@@ -10,8 +11,10 @@ import (
 )
 
 type FileMetricDumper struct {
-	filePath   string
-	serializer serializer.MetricSerializer
+	mu          sync.Mutex
+	filePath    string
+	filePathTmp string
+	serializer  serializer.MetricSerializer
 }
 
 // Load implements [interfaces.MetricDumper].
@@ -37,7 +40,18 @@ func (dumper *FileMetricDumper) Save(metrics []domain.Metric) error {
 		return err
 	}
 
-	return os.WriteFile(dumper.filePath, content, 0644)
+	dumper.mu.Lock()
+	defer dumper.mu.Unlock()
+
+	err = os.WriteFile(dumper.filePathTmp, content, 0644)
+
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = os.Remove(dumper.filePathTmp) }()
+
+	return os.Rename(dumper.filePathTmp, dumper.filePath)
 }
 
 var _ interfaces.MetricDumper = (*FileMetricDumper)(nil)
@@ -47,7 +61,8 @@ func NewFileMetricDumper(
 	serializer serializer.MetricSerializer,
 ) *FileMetricDumper {
 	return &FileMetricDumper{
-		filePath:   filePath,
-		serializer: serializer,
+		filePath:    filePath,
+		filePathTmp: filePath + ".tmp",
+		serializer:  serializer,
 	}
 }
