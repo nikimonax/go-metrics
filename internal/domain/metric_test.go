@@ -4,40 +4,40 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/nikimonax/go-metrics/internal/mock"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/nikimonax/go-metrics/internal/domain"
+	"github.com/nikimonax/go-metrics/internal/testing/mock"
 )
 
 func TestMetricType(t *testing.T) {
 	type TestCase struct {
 		name       string
-		metricType string
+		metricType domain.MetricType
 		want       bool
 	}
 
 	tests := []TestCase{
 		{
 			name:       "valid counter",
-			metricType: "counter",
+			metricType: domain.Counter,
 			want:       true,
 		},
 		{
 			name:       "valid gauge",
-			metricType: "gauge",
+			metricType: domain.Gauge,
 			want:       true,
 		},
 		{
 			name:       "invalid",
-			metricType: "random",
+			metricType: domain.MetricType("random"),
 			want:       false,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			metricType := domain.MetricType(tc.metricType)
-			got := metricType.IsValid()
+			got := tc.metricType.IsValid()
 			assert.Equal(t, tc.want, got)
 		})
 	}

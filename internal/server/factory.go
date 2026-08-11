@@ -1,71 +1,265 @@
 package server
 
 import (
-	"log"
+	"context"
+	"errors"
 	"net/http"
+	"os/signal"
+	"syscall"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/nikimonax/go-metrics/internal/app"
-	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
+
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
+	"github.com/nikimonax/go-metrics/internal/app/usecase"
+	"github.com/nikimonax/go-metrics/internal/impl/dumper"
+	"github.com/nikimonax/go-metrics/internal/impl/repository"
+	"github.com/nikimonax/go-metrics/internal/impl/serializer"
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
+	"github.com/nikimonax/go-metrics/internal/lib/lifespan"
+	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
+	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/server/handler"
+	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
+	"github.com/nikimonax/go-metrics/internal/server/presenter"
 )
 
 type Server struct {
-	config ServerConfig
-	router chi.Router
+	config   *ServerConfig
+	logger   *zap.Logger
+	lifespan *lifespan.Lifespan
+	router   chi.Router
 }
 
 func (s *Server) Run() {
-	log.Printf("Starting server on %s\n", s.config.BaseURL)
+	sugar := s.logger.Sugar()
 
-	err := http.ListenAndServe(s.config.BaseURL, s.router)
+	sugar.Infow(
+		"starting server",
+		"listen", s.config.BaseURL,
+		"dump_file", s.config.DumpFile,
+		"dump_interval", s.config.DumpInterval,
+		"dump_restore", s.config.DumpRestore,
+	)
 
-	if err != nil {
-		log.Println(err)
+	appCtx, appCancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	defer appCancel()
+
+	if err := s.lifespan.Open(appCtx); err != nil {
+		sugar.Errorw("failed open lifespan", "err", err)
+		return
+	}
+
+	defer func() {
+		shutdownCtx := context.Background()
+
+		if timeout := s.config.LifespanCloseTimeout; timeout > 0 {
+			var shutdownCancel context.CancelFunc
+			shutdownCtx, shutdownCancel = context.WithTimeout(shutdownCtx, timeout)
+			defer shutdownCancel()
+		}
+
+		if err := s.lifespan.Close(shutdownCtx); err != nil {
+			sugar.Errorw("failed close lifespan", "err", err)
+		}
+	}()
+
+	httpServer := &http.Server{
+		Addr:    s.config.BaseURL,
+		Handler: s.router,
+	}
+
+	serverErr := make(chan error, 1)
+
+	go func() {
+		serverErr <- httpServer.ListenAndServe()
+	}()
+
+	select {
+	case <-appCtx.Done():
+		shutdownCtx := context.Background()
+
+		if timeout := s.config.ServerStopTimeout; timeout > 0 {
+			var shutdownCancel context.CancelFunc
+			shutdownCtx, shutdownCancel = context.WithTimeout(shutdownCtx, timeout)
+			defer shutdownCancel()
+		}
+
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			sugar.Errorw("failed server shutdown", "err", err)
+		}
+
+		if err := <-serverErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
+			sugar.Errorw("failed listen and serve", "err", err)
+		}
+
+	case err := <-serverErr:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			sugar.Errorw("failed listen and serve", "err", err)
+		}
 	}
 }
 
-func New(config ServerConfig) *Server {
-	metricRepository := impl.NewInMemoryMetricRepository()
+func New(config *ServerConfig) *Server {
+	logger := zapextra.NewZapLogger(zapextra.EnvDev)
+	sugar := logger.Sugar()
 
-	updateMetricUseCase := app.NewUpdateMetricUseCase(metricRepository)
-	getMetricUseCase := app.NewGetMetricUseCase(metricRepository)
-	getAllMetricsUseCase := app.NewGetAllMetricsUseCase(metricRepository)
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	translator := presenter.NewTranslator()
 
-	plainTextErrorPresenter := NewPlainTextErrorPresenter()
-	plainTextMetricPresenter := NewPlainTextMetricPresenter()
-	htmlTableMetricsPresenter := NewHtmlTableMetricsPresenter()
+	lifespan := lifespan.New()
 
-	updateMetricHandler := NewUpdateMetricHandler(
+	metricRepository := repository.NewInMemoryMetricRepository()
+
+	updateMetricUseCase := usecase.NewUpdateMetricUseCase(metricRepository)
+	getMetricUseCase := usecase.NewGetMetricUseCase(metricRepository)
+	getAllMetricsUseCase := usecase.NewGetAllMetricsUseCase(metricRepository)
+
+	plainTextErrorPresenter := presenter.NewPlainTextErrorPresenter()
+	jsonErrorPresenter := presenter.NewJSONErrorPresenter(translator, logger)
+	plainTextMetricPresenter := presenter.NewPlainTextMetricPresenter(logger)
+	jsonMetricPresenter := presenter.NewJSONMetricPresenter(logger)
+	htmlTableMetricsPresenter := presenter.NewHTMLTableMetricsPresenter(logger)
+
+	var metricDumper interfaces.MetricDumper
+	if config.DumpFile != "" {
+		serializer := serializer.NewJSONMetricSerializer()
+		metricDumper = dumper.NewFileMetricDumper(config.DumpFile, serializer)
+	}
+
+	if config.DumpRestore {
+		restoreMetricsUseCase := usecase.NewRestoreMetricsUseCase(metricDumper, metricRepository)
+		lifespan.OnStartup(
+			func(_ context.Context) error {
+				return restoreMetricsUseCase.Execute()
+			},
+		)
+	}
+
+	updateMetricsHook := mymiddleware.NewRequestHook()
+
+	if config.DumpInterval == 0 {
+		saveMetricsUseCase := usecase.NewSaveMetricsUseCase(metricDumper, metricRepository)
+		updateMetricsHook.AfterRequest(
+			func(_ *http.Request) error {
+				return saveMetricsUseCase.Execute()
+			},
+		)
+	}
+
+	if config.DumpInterval > 0 {
+		saveMetricsUseCase := usecase.NewSaveMetricsUseCase(metricDumper, metricRepository)
+
+		scheduler := scheduler.New()
+		scheduler.OnError = func(name string, err error) {
+			sugar.Errorw("task failed", "task", name, "err", err)
+		}
+
+		dumpMetricsTaskName := "dump metrics"
+		err := scheduler.Schedule(
+			dumpMetricsTaskName,
+			config.DumpInterval,
+			func(_ context.Context) error {
+				return saveMetricsUseCase.Execute()
+			},
+		)
+
+		if err != nil {
+			sugar.Fatalw(
+				"failed schedule",
+				"task", dumpMetricsTaskName,
+				"err", err,
+			)
+		}
+
+		lifespan.OnStartup(scheduler.Start)
+		lifespan.OnShutdown(scheduler.Stop)
+	}
+
+	updateMetricHandler := handler.NewUpdateMetricHandler(
 		updateMetricUseCase,
 		plainTextErrorPresenter,
 	)
-	getMetricHandler := NewGetMetricHandler(
+	updateMetricHandlerV2 := handler.NewUpdateMetricV2Handler(
+		updateMetricUseCase,
+		jsonErrorPresenter,
+		validate,
+	)
+	getMetricHandler := handler.NewGetMetricHandler(
 		getMetricUseCase,
 		plainTextErrorPresenter,
 		plainTextMetricPresenter,
 	)
-	PreviewMetricsHandler := NewPreviewMetricsHandler(
+	getMetricHandlerV2 := handler.NewGetMetricV2Handler(
+		getMetricUseCase,
+		jsonErrorPresenter,
+		jsonMetricPresenter,
+		validate,
+	)
+	PreviewMetricsHandler := handler.NewPreviewMetricsHandler(
 		getAllMetricsUseCase,
 		plainTextErrorPresenter,
 		htmlTableMetricsPresenter,
 	)
 
-	router := chi.NewRouter()
-	router.Use(middleware.Logger)
+	middlewareLogger := zapextra.NewZapSugarLoggingMiddleware(logger)
+	middlewareCompress := middleware.Compress(5)
 
-	router.Get("/", PreviewMetricsHandler.ServeHTTP)
-	router.Post(
+	baseRouter := chi.NewRouter()
+	baseRouter.Use(middleware.CleanPath)
+
+	// api v1 (спринт 1 - path params)
+	routerV1 := baseRouter.With(
+		middlewareCompress,
+		middlewareLogger,
+	)
+
+	routerV1.Get(
+		"/",
+		PreviewMetricsHandler.ServeHTTP,
+	)
+
+	routerV1.With(
+		updateMetricsHook.Middleware,
+	).Post(
 		"/update/{metricType}/{metricName}/{metricValue}",
 		updateMetricHandler.ServeHTTP,
 	)
-	router.Get(
+	routerV1.Get(
 		"/value/{metricType}/{metricName}",
 		getMetricHandler.ServeHTTP,
 	)
 
+	// api v2 (спринт 2 - json payload)
+	routerV2 := baseRouter.With(
+		middleware.AllowContentType(httpextra.MIMEJSON),
+		middleware.AllowContentEncoding(httpextra.ENCGzip),
+		mymiddleware.Decompress(),
+		middlewareCompress,
+		middlewareLogger,
+	)
+
+	routerV2.With(
+		updateMetricsHook.Middleware,
+	).Post(
+		"/update",
+		updateMetricHandlerV2.ServeHTTP,
+	)
+	routerV2.Post(
+		"/value",
+		getMetricHandlerV2.ServeHTTP,
+	)
+
 	return &Server{
-		config: config,
-		router: router,
+		config:   config,
+		logger:   logger,
+		lifespan: lifespan,
+		router:   baseRouter,
 	}
 }

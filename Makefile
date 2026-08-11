@@ -1,15 +1,11 @@
-SHELL := /bin/bash
-
 BIN_DIR := ./bin
 
 COV_FILE := coverage.out
 COV_FILE_HTML := coverage.html
 
-TEST_ARGS += $(ARGS)
+AUTOTEST_CMD := metricstest_v2
 
-ITER ?= $(shell \
-	git branch --show-current | \
-	sed -n 's/^iter\([0-9]\+\)$$/\1/p')
+TEST_ARGS += $(ARGS)
 
 
 all: build
@@ -31,9 +27,13 @@ build: $(BIN_DIR)/server $(BIN_DIR)/agent
 lint:
 	golangci-lint run
 
+.PHONY: format
+format:
+	golangci-lint fmt
+
 .PHONY: test
 test:
-	go test $(TEST_ARGS) $$(go list ./... | grep -v internal/mock)
+	go test $(TEST_ARGS) $$(go list ./... | grep -v internal/testing)
 
 .PHONY: cover
 cover: $(COV_FILE)
@@ -45,22 +45,7 @@ cover-html: $(COV_FILE)
 
 .PHONY: autotest
 autotest: $(BIN_DIR)/metricstest $(BIN_DIR)/server $(BIN_DIR)/agent
-	@if [ -z "$(ITER)" ]; then \
-		echo "\nTest iteration could not be determined."; \
-		echo "Please provide 'ITER' variable.\n"; \
-		exit 1; \
-	fi; \
-	export SERVER_PORT="$$(( 8000 + RANDOM % 1000 ))"; \
-	export ADDRESS="localhost:$$SERVER_PORT"; \
-	for i in $$(seq 1 $(ITER)); do \
-		echo -n "Iteration $$i: "; \
-		./$< \
-			-test.run=^TestIteration$$i[AB]*$$ \
-			-binary-path=$(BIN_DIR)/server \
-			-agent-binary-path=$(BIN_DIR)/agent \
-			-server-port=$$SERVER_PORT \
-			-source-path=.; \
-	done
+	./tools/autotest.sh
 
 .PHONY: clean
 clean:
@@ -71,7 +56,7 @@ $(COV_FILE): TEST_ARGS += -coverprofile=$(COV_FILE)
 $(COV_FILE): test
 
 $(BIN_DIR)/metricstest: .FORCE
-	cd tools/go-autotests && go test -c -o ../../$@ ./cmd/$(@F)
+	cd tools/go-autotests && go test -c -o ../../$@ ./cmd/$(AUTOTEST_CMD)
 
 $(BIN_DIR)/server $(BIN_DIR)/agent: $(BIN_DIR)/%: cmd/% .FORCE
 	go build -o $@ ./$<

@@ -1,72 +1,129 @@
 package agent
 
 import (
-	"fmt"
-	"time"
+	"context"
+	"os/signal"
+	"syscall"
 
-	"github.com/nikimonax/go-metrics/internal/app"
-	"github.com/nikimonax/go-metrics/internal/impl"
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
+	"github.com/nikimonax/go-metrics/internal/app/usecase"
+	"github.com/nikimonax/go-metrics/internal/impl/collector"
+	"github.com/nikimonax/go-metrics/internal/impl/gateway"
+	"github.com/nikimonax/go-metrics/internal/impl/repository"
+	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
+	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+
+	"go.uber.org/zap"
 )
 
 type Agent struct {
-	config                AgentConfig
-	collectMetricsUseCase *app.CollectMetricsUseCase
-	sendMetricsUseCase    *app.SendMetricsUseCase
+	config    *AgentConfig
+	logger    *zap.Logger
+	scheduler *scheduler.Scheduler
 }
 
 func (a *Agent) Run() {
-	fmt.Printf(
-		"Starting agent\n"+
-			"  server: %s\n"+
-			"  poll interval: %d secs\n"+
-			"  send interval: %d secs\n",
-		a.config.BaseURL,
-		a.config.PollIntervalSecs,
-		a.config.ReportIntervalSecs,
+	sugar := a.logger.Sugar()
+
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	defer cancel()
+
+	sugar.Infow(
+		"starting agent",
+		"server", a.config.BaseURL,
+		"poll interval", a.config.PollInterval,
+		"send interval", a.config.ReportInterval,
 	)
 
-	tasks := []Task{
-		{
-			Name:     "collect metrics",
-			Interval: time.Duration(a.config.PollIntervalSecs) * time.Second,
-			Callback: a.collectMetricsUseCase.Execute,
-		},
-		{
-			Name:     "send metrics",
-			Interval: time.Duration(a.config.ReportIntervalSecs) * time.Second,
-			Callback: a.sendMetricsUseCase.Execute,
-		},
+	if err := a.scheduler.Run(ctx); err != nil {
+		sugar.Errorw("scheduler stopped", "err", err)
 	}
-
-	NewScheduler(time.Now).Run(tasks)
 }
 
-func New(config AgentConfig) *Agent {
-	metricCollector := impl.NewCollectorsGroup(
-		impl.CollectorFunc(impl.CollectMemStats),
-		impl.CollectorFunc(impl.CollectRandomValue),
-		impl.CollectorFunc(impl.CollectIncrOne),
+func New(config *AgentConfig) *Agent {
+	logger := zapextra.NewZapLogger(zapextra.EnvDev)
+	sugar := logger.Sugar()
+
+	metricCollector := collector.NewCollectorsGroup(
+		collector.CollectorFunc(collector.CollectMemStats),
+		collector.CollectorFunc(collector.CollectRandomValue),
+		collector.CollectorFunc(collector.CollectIncrOne),
 	)
 
-	metricGateway := impl.NewHttpMetricGateway(
-		config.BaseURL,
-	)
+	var metricGateway interfaces.MetricGateway
 
-	metricRepository := impl.NewInMemoryMetricRepository()
+	switch config.APIVersion {
+	case 1:
+		metricGateway = gateway.NewHTTPMetricGateway(config.BaseURL)
+	case 2:
+		metricGateway = gateway.NewHTTPMetricV2Gateway(config.BaseURL)
+	default:
+		sugar.Fatalw("unknown metrics server api version", "version", config.APIVersion)
+	}
 
-	collectMetricsUseCase := app.NewCollectMetricsUseCase(
+	metricRepository := repository.NewInMemoryMetricRepository()
+
+	collectMetricsUseCase := usecase.NewCollectMetricsUseCase(
 		metricCollector,
 		metricRepository,
 	)
 
-	sendMetricsUseCase := app.NewSendMetricsUseCase(
+	sendMetricsUseCase := usecase.NewSendMetricsUseCase(
 		metricGateway,
 		metricRepository,
 	)
 
+	scheduler := scheduler.New()
+	scheduler.OnError = func(name string, err error) {
+		sugar.Errorw("task failed", "task", name, "err", err)
+	}
+
+	// TODO: в usecase, repository, gateway и т.п. расширить интерфейсы,
+	// пробрасывать context первым аргументом
+
+	var err error
+
+	collectMetricsTaskName := "collect metrics"
+	err = scheduler.Schedule(
+		collectMetricsTaskName,
+		config.PollInterval,
+		func(_ context.Context) error {
+			return collectMetricsUseCase.Execute()
+		},
+	)
+
+	if err != nil {
+		sugar.Fatalw(
+			"failed schedule",
+			"task", collectMetricsTaskName,
+			"err", err,
+		)
+	}
+
+	sendMetricsTaskName := "send metrics"
+	err = scheduler.Schedule(
+		sendMetricsTaskName,
+		config.ReportInterval,
+		func(_ context.Context) error {
+			return sendMetricsUseCase.Execute()
+		},
+	)
+
+	if err != nil {
+		sugar.Fatalw(
+			"failed schedule",
+			"task", sendMetricsTaskName,
+			"err", err,
+		)
+	}
+
 	return &Agent{
-		config:                config,
-		collectMetricsUseCase: collectMetricsUseCase,
-		sendMetricsUseCase:    sendMetricsUseCase,
+		config:    config,
+		logger:    logger,
+		scheduler: scheduler,
 	}
 }
