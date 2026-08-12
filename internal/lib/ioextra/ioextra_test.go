@@ -40,10 +40,18 @@ func TestMultiCloser(t *testing.T) {
 	errB := errors.New("error B")
 
 	t.Run("success", func(t *testing.T) {
+		c := ioextra.NewMultiCloser()
+
 		closerA := &closer{}
 		closerB := &closer{}
 
-		assert.NoError(t, ioextra.NewMultiCloser(closerA, closerB).Close())
+		c.Append(closerA)
+		c.Append(closerB)
+		c.Append(nil)
+
+		assert.NoError(t, c.Close())
+		assert.Equal(t, 1, closerA.closed)
+		assert.Equal(t, 1, closerB.closed)
 	})
 
 	t.Run("error", func(t *testing.T) {
