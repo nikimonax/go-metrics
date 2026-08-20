@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -19,7 +20,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/impl/serializer"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/lifespan"
-	"github.com/nikimonax/go-metrics/internal/lib/scheduler"
+	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
@@ -112,8 +113,35 @@ func New(config *ServerConfig) *Server {
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	translator := presenter.NewTranslator()
-
 	lifespan := lifespan.New()
+
+	dumpMetricsPoolConfig := work.PoolConfig{
+		WorkerConfig: work.WorkerConfig{
+			OnError: func(name string, err error) {
+				sugar.Errorw("task failed", "task", name, "err", err)
+			},
+			OnPanic: func(name string, v any) {
+				sugar.Errorw("task panic", "task", name, "value", v)
+			},
+		},
+		LifecycleConfig: work.LifecycleConfig{
+			StopTimeout: time.Second * 5,
+		},
+		WorkerCount: 1,
+		QueueSize:   20,
+	}
+
+	dumpMetricsPool, err := work.NewPool(dumpMetricsPoolConfig)
+
+	if err != nil {
+		sugar.Fatalw(
+			"failed create worker pool",
+			"err", err,
+		)
+	}
+
+	lifespan.OnStartup(dumpMetricsPool.Start)
+	lifespan.OnShutdown(dumpMetricsPool.Stop)
 
 	metricRepository := repository.NewInMemoryMetricRepository()
 
@@ -156,19 +184,41 @@ func New(config *ServerConfig) *Server {
 	if config.DumpInterval > 0 {
 		saveMetricsUseCase := usecase.NewSaveMetricsUseCase(metricDumper, metricRepository)
 
-		scheduler := scheduler.New()
-		scheduler.OnError = func(name string, err error) {
-			sugar.Errorw("task failed", "task", name, "err", err)
+		schedulerConfig := work.SchedulerConfig{
+			LifecycleConfig: work.LifecycleConfig{
+				StopTimeout: time.Second * 5,
+			},
+			OnError: func(name string, err error) {
+				sugar.Errorw("failed submit task", "task", name, "err", err)
+			},
+		}
+
+		scheduler, err := work.NewScheduler(dumpMetricsPool, schedulerConfig)
+
+		if err != nil {
+			sugar.Fatalw(
+				"failed create scheduler",
+				"err", err,
+			)
 		}
 
 		dumpMetricsTaskName := "dump metrics"
-		err := scheduler.Schedule(
+		dumpMetricsTask, err := work.NewTask(
 			dumpMetricsTaskName,
-			config.DumpInterval,
 			func(_ context.Context) error {
 				return saveMetricsUseCase.Execute()
 			},
 		)
+
+		if err != nil {
+			sugar.Fatalw(
+				"failed create task",
+				"task", dumpMetricsTaskName,
+				"err", err,
+			)
+		}
+
+		err = scheduler.Schedule(dumpMetricsTask, config.DumpInterval)
 
 		if err != nil {
 			sugar.Fatalw(
