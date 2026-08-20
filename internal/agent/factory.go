@@ -2,8 +2,7 @@ package agent
 
 import (
 	"context"
-	"os/signal"
-	"syscall"
+	"fmt"
 	"time"
 
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
@@ -11,55 +10,67 @@ import (
 	"github.com/nikimonax/go-metrics/internal/impl/collector"
 	"github.com/nikimonax/go-metrics/internal/impl/gateway"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
-	"github.com/nikimonax/go-metrics/internal/lib/lifespan"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Agent struct {
-	config   *AgentConfig
-	logger   *zap.Logger
-	lifespan *lifespan.Lifespan
+	app *fx.App
 }
 
-func (a *Agent) Run() {
-	sugar := a.logger.Sugar()
-
-	ctx, cancel := signal.NotifyContext(
-		context.Background(),
-		syscall.SIGINT,
-		syscall.SIGTERM,
-	)
-	defer cancel()
-
-	sugar.Infow(
-		"starting agent",
-		"server", a.config.BaseURL,
-		"poll interval", a.config.PollInterval,
-		"send interval", a.config.ReportInterval,
-	)
-
-	if err := a.lifespan.Open(ctx); err != nil {
-		sugar.Errorw("failed open lifespan", "err", err)
-		return
-	}
-
-	<-ctx.Done()
-
-	if err := a.lifespan.Close(context.Background()); err != nil {
-		sugar.Errorw("failed close lifespan", "err", err)
-	}
+func (agent *Agent) Run() {
+	agent.app.Run()
 }
 
 func New(config *AgentConfig) *Agent {
-	logger := zapextra.NewZapLogger(zapextra.EnvDev)
-	sugar := logger.Sugar()
+	app := fx.New(
+		fx.Supply(config),
+		fx.Provide(
+			provideLogger,
+			provideSugaredLogger,
+			providePoolConfig,
+			providePoolSubmitter,
+			provideSchedulerConfig,
+			provideMetricCollector,
+			provideMetricGateway,
+			repository.NewInMemoryMetricRepository,
+			usecase.NewCollectMetricsUseCase,
+			usecase.NewSendMetricsUseCase,
+			work.NewPool,
+			work.NewScheduler,
+		),
+		fx.Invoke(
+			registerCollectMetricsTask,
+			registerSendMetricsTask,
+			registerLifecycleHooks,
+		),
+		fx.WithLogger(provideFxLogger),
+	)
 
-	var err error
+	return &Agent{app: app}
+}
 
-	poolConfig := work.PoolConfig{
+func provideLogger() *zap.Logger {
+	return zapextra.NewZapLogger(zapextra.EnvDev)
+}
+
+func provideSugaredLogger(logger *zap.Logger) *zap.SugaredLogger {
+	return logger.Sugar()
+}
+
+func provideFxLogger(logger *zap.Logger) fxevent.Logger {
+	fxLogger := &fxevent.ZapLogger{Logger: logger}
+	fxLogger.UseLogLevel(zapcore.DebugLevel)
+	return fxLogger
+}
+
+func providePoolConfig(sugar *zap.SugaredLogger) work.PoolConfig {
+	return work.PoolConfig{
 		WorkerConfig: work.WorkerConfig{
 			OnError: func(name string, err error) {
 				sugar.Errorw("task failed", "task", name, "err", err)
@@ -74,16 +85,14 @@ func New(config *AgentConfig) *Agent {
 		WorkerCount: 2,
 		QueueSize:   2,
 	}
-	pool, err := work.NewPool(poolConfig)
+}
 
-	if err != nil {
-		sugar.Fatalw(
-			"failed create worker pool",
-			"err", err,
-		)
-	}
+func providePoolSubmitter(pool *work.WorkerPool) work.Submitter {
+	return pool
+}
 
-	schedulerConfig := work.SchedulerConfig{
+func provideSchedulerConfig(sugar *zap.SugaredLogger) work.SchedulerConfig {
+	return work.SchedulerConfig{
 		LifecycleConfig: work.LifecycleConfig{
 			StopTimeout: time.Second * 5,
 		},
@@ -91,114 +100,90 @@ func New(config *AgentConfig) *Agent {
 			sugar.Errorw("failed submit task", "task", name, "err", err)
 		},
 	}
-	scheduler, err := work.NewScheduler(pool, schedulerConfig)
+}
 
-	if err != nil {
-		sugar.Fatalw(
-			"failed create scheduler",
-			"err", err,
-		)
-	}
-
-	metricCollector := collector.NewCollectorsGroup(
+func provideMetricCollector() interfaces.MetricCollector {
+	return collector.NewCollectorsGroup(
 		collector.CollectorFunc(collector.CollectMemStats),
 		collector.CollectorFunc(collector.CollectRandomValue),
 		collector.CollectorFunc(collector.CollectIncrOne),
 	)
+}
 
-	var metricGateway interfaces.MetricGateway
-
+func provideMetricGateway(config *AgentConfig) (interfaces.MetricGateway, error) {
 	switch config.APIVersion {
 	case 1:
-		metricGateway = gateway.NewHTTPMetricGateway(config.BaseURL)
+		return gateway.NewHTTPMetricGateway(config.BaseURL), nil
 	case 2:
-		metricGateway = gateway.NewHTTPMetricV2Gateway(config.BaseURL)
+		return gateway.NewHTTPMetricV2Gateway(config.BaseURL), nil
 	default:
-		sugar.Fatalw("unknown metrics server api version", "version", config.APIVersion)
+		err := fmt.Errorf("unknown metrics server api version: %d", config.APIVersion)
+		return nil, err
 	}
+}
 
-	// TODO: в usecase, repository, gateway и т.п. расширить интерфейсы,
-	// пробрасывать context первым аргументом
-
-	metricRepository := repository.NewInMemoryMetricRepository()
-
-	collectMetricsUseCase := usecase.NewCollectMetricsUseCase(
-		metricCollector,
-		metricRepository,
-	)
-
-	sendMetricsUseCase := usecase.NewSendMetricsUseCase(
-		metricGateway,
-		metricRepository,
-	)
-
-	collectMetricsTaskName := "collect metrics"
-	collectMetricsTask, err := work.NewTask(
-		collectMetricsTaskName,
+func registerCollectMetricsTask(
+	scheduler *work.Scheduler,
+	config *AgentConfig,
+	useCase *usecase.CollectMetricsUseCase,
+) error {
+	task, err := work.NewTask(
+		"collect metrics",
 		func(_ context.Context) error {
-			return collectMetricsUseCase.Execute()
+			return useCase.Execute()
 		},
 	)
 
 	if err != nil {
-		sugar.Fatalw(
-			"failed create task",
-			"task", collectMetricsTaskName,
-			"err", err,
-		)
+		return err
 	}
 
-	err = scheduler.Schedule(
-		collectMetricsTask,
-		config.PollInterval,
-	)
+	return scheduler.Schedule(task, config.PollInterval)
+}
 
-	if err != nil {
-		sugar.Fatalw(
-			"failed schedule",
-			"task", collectMetricsTaskName,
-			"err", err,
-		)
-	}
-
-	sendMetricsTaskName := "send metrics"
-	sendMetricsTask, err := work.NewTask(
-		sendMetricsTaskName,
+func registerSendMetricsTask(
+	scheduler *work.Scheduler,
+	config *AgentConfig,
+	useCase *usecase.SendMetricsUseCase,
+) error {
+	task, err := work.NewTask(
+		"send metrics",
 		func(_ context.Context) error {
-			return sendMetricsUseCase.Execute()
+			return useCase.Execute()
 		},
 	)
 
 	if err != nil {
-		sugar.Fatalw(
-			"failed create task",
-			"task", sendMetricsTaskName,
-			"err", err,
-		)
+		return err
 	}
 
-	err = scheduler.Schedule(
-		sendMetricsTask,
-		config.ReportInterval,
-	)
+	return scheduler.Schedule(task, config.ReportInterval)
+}
 
-	if err != nil {
-		sugar.Fatalw(
-			"failed schedule",
-			"task", sendMetricsTaskName,
-			"err", err,
-		)
-	}
-
-	lifespan := lifespan.New()
-	lifespan.OnStartup(pool.Start)
-	lifespan.OnStartup(scheduler.Start)
-	lifespan.OnShutdown(scheduler.Stop)
-	lifespan.OnShutdown(pool.Stop)
-
-	return &Agent{
-		config:   config,
-		logger:   logger,
-		lifespan: lifespan,
-	}
+func registerLifecycleHooks(
+	lc fx.Lifecycle,
+	config *AgentConfig,
+	sugar *zap.SugaredLogger,
+	pool *work.WorkerPool,
+	scheduler *work.Scheduler,
+) {
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			sugar.Infow(
+				"starting agent",
+				"server", config.BaseURL,
+				"poll interval", config.PollInterval,
+				"send interval", config.ReportInterval,
+			)
+			return nil
+		},
+	})
+	lc.Append(fx.Hook{
+		OnStart: pool.Start,
+		OnStop:  pool.Stop,
+	})
+	lc.Append(fx.Hook{
+		OnStart: scheduler.Start,
+		OnStop:  scheduler.Stop,
+	})
 }
