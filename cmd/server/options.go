@@ -7,7 +7,7 @@ import (
 
 	"github.com/caarlos0/env/v6"
 
-	"github.com/nikimonax/go-metrics/internal/server"
+	"github.com/nikimonax/go-metrics/internal/server/config"
 )
 
 const (
@@ -24,7 +24,7 @@ type Options struct {
 	DumpRestore  *bool   `env:"RESTORE"`
 }
 
-func (opts *Options) ToServerConfig() *server.ServerConfig {
+func (opts *Options) ToServerConfig() *config.ServerConfig {
 	var (
 		DumpInterval = defaultDumpInterval * time.Second
 		DumpRestore  = defaultDumpRestore
@@ -38,13 +38,13 @@ func (opts *Options) ToServerConfig() *server.ServerConfig {
 		DumpRestore = *opts.DumpRestore
 	}
 
-	return &server.ServerConfig{
+	return &config.ServerConfig{
 		BaseURL:              opts.BaseURL,
 		DumpFile:             opts.DumpFile,
 		DumpInterval:         DumpInterval,
 		DumpRestore:          DumpRestore,
-		LifespanCloseTimeout: server.DefaultLifespanCloseTimeout,
-		ServerStopTimeout:    server.DefaultServerStopTimeout,
+		LifespanCloseTimeout: config.DefaultLifespanCloseTimeout,
+		ServerStopTimeout:    config.DefaultServerStopTimeout,
 	}
 }
 

@@ -1,315 +1,38 @@
 package server
 
 import (
-	"context"
-	"errors"
-	"net/http"
-	"os/signal"
-	"syscall"
-	"time"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-playground/validator/v10"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
-	"github.com/nikimonax/go-metrics/internal/app/interfaces"
-	"github.com/nikimonax/go-metrics/internal/app/usecase"
-	"github.com/nikimonax/go-metrics/internal/impl/dumper"
-	"github.com/nikimonax/go-metrics/internal/impl/repository"
-	"github.com/nikimonax/go-metrics/internal/impl/serializer"
-	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
-	"github.com/nikimonax/go-metrics/internal/lib/lifespan"
-	"github.com/nikimonax/go-metrics/internal/lib/work"
-	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
-	"github.com/nikimonax/go-metrics/internal/server/handler"
-	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
-	"github.com/nikimonax/go-metrics/internal/server/presenter"
+	"github.com/nikimonax/go-metrics/internal/server/config"
+	"github.com/nikimonax/go-metrics/internal/server/fxmodule"
 )
 
 type Server struct {
-	config   *ServerConfig
-	logger   *zap.Logger
-	lifespan *lifespan.Lifespan
-	router   chi.Router
+	app *fx.App
 }
 
-func (s *Server) Run() {
-	sugar := s.logger.Sugar()
-
-	sugar.Infow(
-		"starting server",
-		"listen", s.config.BaseURL,
-		"dump_file", s.config.DumpFile,
-		"dump_interval", s.config.DumpInterval,
-		"dump_restore", s.config.DumpRestore,
-	)
-
-	appCtx, appCancel := signal.NotifyContext(
-		context.Background(),
-		syscall.SIGINT,
-		syscall.SIGTERM,
-	)
-	defer appCancel()
-
-	if err := s.lifespan.Open(appCtx); err != nil {
-		sugar.Errorw("failed open lifespan", "err", err)
-		return
-	}
-
-	defer func() {
-		shutdownCtx := context.Background()
-
-		if timeout := s.config.LifespanCloseTimeout; timeout > 0 {
-			var shutdownCancel context.CancelFunc
-			shutdownCtx, shutdownCancel = context.WithTimeout(shutdownCtx, timeout)
-			defer shutdownCancel()
-		}
-
-		if err := s.lifespan.Close(shutdownCtx); err != nil {
-			sugar.Errorw("failed close lifespan", "err", err)
-		}
-	}()
-
-	httpServer := &http.Server{
-		Addr:    s.config.BaseURL,
-		Handler: s.router,
-	}
-
-	serverErr := make(chan error, 1)
-
-	go func() {
-		serverErr <- httpServer.ListenAndServe()
-	}()
-
-	select {
-	case <-appCtx.Done():
-		shutdownCtx := context.Background()
-
-		if timeout := s.config.ServerStopTimeout; timeout > 0 {
-			var shutdownCancel context.CancelFunc
-			shutdownCtx, shutdownCancel = context.WithTimeout(shutdownCtx, timeout)
-			defer shutdownCancel()
-		}
-
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			sugar.Errorw("failed server shutdown", "err", err)
-		}
-
-		if err := <-serverErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
-			sugar.Errorw("failed listen and serve", "err", err)
-		}
-
-	case err := <-serverErr:
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			sugar.Errorw("failed listen and serve", "err", err)
-		}
-	}
+func (server *Server) Run() {
+	server.app.Run()
 }
 
-func New(config *ServerConfig) *Server {
-	logger := zapextra.NewZapLogger(zapextra.EnvDev)
-	sugar := logger.Sugar()
-
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	translator := presenter.NewTranslator()
-	lifespan := lifespan.New()
-
-	dumpMetricsPoolConfig := work.PoolConfig{
-		WorkerConfig: work.WorkerConfig{
-			OnError: func(name string, err error) {
-				sugar.Errorw("task failed", "task", name, "err", err)
-			},
-			OnPanic: func(name string, v any) {
-				sugar.Errorw("task panic", "task", name, "value", v)
-			},
-		},
-		LifecycleConfig: work.LifecycleConfig{
-			StopTimeout: time.Second * 5,
-		},
-		WorkerCount: 1,
-		QueueSize:   20,
-	}
-
-	dumpMetricsPool, err := work.NewPool(dumpMetricsPoolConfig)
-
-	if err != nil {
-		sugar.Fatalw(
-			"failed create worker pool",
-			"err", err,
-		)
-	}
-
-	lifespan.OnStartup(dumpMetricsPool.Start)
-	lifespan.OnShutdown(dumpMetricsPool.Stop)
-
-	metricRepository := repository.NewInMemoryMetricRepository()
-
-	updateMetricUseCase := usecase.NewUpdateMetricUseCase(metricRepository)
-	getMetricUseCase := usecase.NewGetMetricUseCase(metricRepository)
-	getAllMetricsUseCase := usecase.NewGetAllMetricsUseCase(metricRepository)
-
-	plainTextErrorPresenter := presenter.NewPlainTextErrorPresenter()
-	jsonErrorPresenter := presenter.NewJSONErrorPresenter(translator, logger)
-	plainTextMetricPresenter := presenter.NewPlainTextMetricPresenter(logger)
-	jsonMetricPresenter := presenter.NewJSONMetricPresenter(logger)
-	htmlTableMetricsPresenter := presenter.NewHTMLTableMetricsPresenter(logger)
-
-	var metricDumper interfaces.MetricDumper
-	if config.DumpFile != "" {
-		serializer := serializer.NewJSONMetricSerializer()
-		metricDumper = dumper.NewFileMetricDumper(config.DumpFile, serializer)
-	}
-
-	if config.DumpRestore {
-		restoreMetricsUseCase := usecase.NewRestoreMetricsUseCase(metricDumper, metricRepository)
-		lifespan.OnStartup(
-			func(_ context.Context) error {
-				return restoreMetricsUseCase.Execute()
-			},
-		)
-	}
-
-	updateMetricsHook := mymiddleware.NewRequestHook()
-
-	if config.DumpInterval == 0 {
-		saveMetricsUseCase := usecase.NewSaveMetricsUseCase(metricDumper, metricRepository)
-		updateMetricsHook.AfterRequest(
-			func(_ *http.Request) error {
-				return saveMetricsUseCase.Execute()
-			},
-		)
-	}
-
-	if config.DumpInterval > 0 {
-		saveMetricsUseCase := usecase.NewSaveMetricsUseCase(metricDumper, metricRepository)
-
-		schedulerConfig := work.SchedulerConfig{
-			LifecycleConfig: work.LifecycleConfig{
-				StopTimeout: time.Second * 5,
-			},
-			OnError: func(name string, err error) {
-				sugar.Errorw("failed submit task", "task", name, "err", err)
-			},
-		}
-
-		scheduler, err := work.NewScheduler(dumpMetricsPool, schedulerConfig)
-
-		if err != nil {
-			sugar.Fatalw(
-				"failed create scheduler",
-				"err", err,
-			)
-		}
-
-		dumpMetricsTaskName := "dump metrics"
-		dumpMetricsTask, err := work.NewTask(
-			dumpMetricsTaskName,
-			func(_ context.Context) error {
-				return saveMetricsUseCase.Execute()
-			},
-		)
-
-		if err != nil {
-			sugar.Fatalw(
-				"failed create task",
-				"task", dumpMetricsTaskName,
-				"err", err,
-			)
-		}
-
-		err = scheduler.Schedule(dumpMetricsTask, config.DumpInterval)
-
-		if err != nil {
-			sugar.Fatalw(
-				"failed schedule",
-				"task", dumpMetricsTaskName,
-				"err", err,
-			)
-		}
-
-		lifespan.OnStartup(scheduler.Start)
-		lifespan.OnShutdown(scheduler.Stop)
-	}
-
-	updateMetricHandler := handler.NewUpdateMetricHandler(
-		updateMetricUseCase,
-		plainTextErrorPresenter,
-	)
-	updateMetricHandlerV2 := handler.NewUpdateMetricV2Handler(
-		updateMetricUseCase,
-		jsonErrorPresenter,
-		validate,
-	)
-	getMetricHandler := handler.NewGetMetricHandler(
-		getMetricUseCase,
-		plainTextErrorPresenter,
-		plainTextMetricPresenter,
-	)
-	getMetricHandlerV2 := handler.NewGetMetricV2Handler(
-		getMetricUseCase,
-		jsonErrorPresenter,
-		jsonMetricPresenter,
-		validate,
-	)
-	PreviewMetricsHandler := handler.NewPreviewMetricsHandler(
-		getAllMetricsUseCase,
-		plainTextErrorPresenter,
-		htmlTableMetricsPresenter,
+func New(cfg *config.ServerConfig) *Server {
+	app := fx.New(
+		fx.Supply(cfg),
+		fxmodule.CoreModule(),
+		fxmodule.APIV1Module(),
+		fxmodule.APIV2Module(),
+		fxmodule.DumpModule(),
+		fx.WithLogger(provideFxLogger),
 	)
 
-	middlewareLogger := zapextra.NewZapSugarLoggingMiddleware(logger)
-	middlewareCompress := middleware.Compress(5)
+	return &Server{app: app}
+}
 
-	baseRouter := chi.NewRouter()
-	baseRouter.Use(middleware.CleanPath)
-
-	// api v1 (спринт 1 - path params)
-	routerV1 := baseRouter.With(
-		middlewareCompress,
-		middlewareLogger,
-	)
-
-	routerV1.Get(
-		"/",
-		PreviewMetricsHandler.ServeHTTP,
-	)
-
-	routerV1.With(
-		updateMetricsHook.Middleware,
-	).Post(
-		"/update/{metricType}/{metricName}/{metricValue}",
-		updateMetricHandler.ServeHTTP,
-	)
-	routerV1.Get(
-		"/value/{metricType}/{metricName}",
-		getMetricHandler.ServeHTTP,
-	)
-
-	// api v2 (спринт 2 - json payload)
-	routerV2 := baseRouter.With(
-		middleware.AllowContentType(httpextra.MIMEJSON),
-		middleware.AllowContentEncoding(httpextra.ENCGzip),
-		mymiddleware.Decompress(),
-		middlewareCompress,
-		middlewareLogger,
-	)
-
-	routerV2.With(
-		updateMetricsHook.Middleware,
-	).Post(
-		"/update",
-		updateMetricHandlerV2.ServeHTTP,
-	)
-	routerV2.Post(
-		"/value",
-		getMetricHandlerV2.ServeHTTP,
-	)
-
-	return &Server{
-		config:   config,
-		logger:   logger,
-		lifespan: lifespan,
-		router:   baseRouter,
-	}
+func provideFxLogger(logger *zap.Logger) fxevent.Logger {
+	fxLogger := &fxevent.ZapLogger{Logger: logger}
+	fxLogger.UseLogLevel(zapcore.DebugLevel)
+	return fxLogger
 }
