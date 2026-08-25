@@ -1,11 +1,13 @@
 package usecase_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/domain"
 	"github.com/nikimonax/go-metrics/internal/testing/mock"
@@ -19,7 +21,7 @@ var metricsNonEmpty = []domain.Metric{metric}
 func TestUpdateMetricUseCase(t *testing.T) {
 	type TestCase struct {
 		name  string
-		setup func(*TestCase, *mock.MetricRepository)
+		setup func(*TestCase, *mock.MetricRepository, *mock.PublisherMock)
 		err   error
 	}
 
@@ -29,17 +31,23 @@ func TestUpdateMetricUseCase(t *testing.T) {
 			setup: func(
 				_ *TestCase,
 				repo *mock.MetricRepository,
+				pub *mock.PublisherMock,
 			) {
 				repo.On("Update", metric).Return(nil).Once()
+				pub.On(
+					"Publish",
+					mock.MatchedBy(mock.IsImplements(new(context.Context))),
+					mock.MatchedBy(mock.IsImplements(new(interfaces.Event))),
+				).Once()
 			},
 			err: nil,
 		},
-
 		{
-			name: "error",
+			name: "repo error",
 			setup: func(
 				tc *TestCase,
 				repo *mock.MetricRepository,
+				_ *mock.PublisherMock,
 			) {
 				repo.On("Update", metric).Return(tc.err).Once()
 			},
@@ -50,10 +58,11 @@ func TestUpdateMetricUseCase(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			repository := new(mock.MetricRepository)
+			publisher := new(mock.PublisherMock)
 
-			tc.setup(&tc, repository)
+			tc.setup(&tc, repository, publisher)
 
-			useCase := usecase.NewUpdateMetricUseCase(repository)
+			useCase := usecase.NewUpdateMetricUseCase(repository, publisher)
 			err := useCase.Execute(metric)
 
 			assert.ErrorIs(t, err, tc.err)
