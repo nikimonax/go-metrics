@@ -56,7 +56,7 @@ func New(config *AgentConfig) *Agent {
 }
 
 func provideLogger() *zap.Logger {
-	return zapextra.NewZapLogger(zapextra.EnvDev)
+	return zapextra.NewZapLogger(zapextra.EnvDev, zap.InfoLevel)
 }
 
 func provideSugaredLogger(logger *zap.Logger) *zap.SugaredLogger {

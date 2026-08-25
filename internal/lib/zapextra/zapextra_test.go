@@ -43,10 +43,10 @@ func TestZapLoggerFactory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.panic {
 				assert.PanicsWithError(t, zapextra.ErrUnknownEnv.Error(), func() {
-					zapextra.NewZapLogger(tc.env)
+					zapextra.NewZapLogger(tc.env, zap.InfoLevel)
 				})
 			} else {
-				logger := zapextra.NewZapLogger(tc.env)
+				logger := zapextra.NewZapLogger(tc.env, zap.InfoLevel)
 				require.NotNil(t, logger)
 			}
 		})
