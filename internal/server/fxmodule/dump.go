@@ -2,17 +2,17 @@ package fxmodule
 
 import (
 	"context"
-	"net/http"
 
 	"go.uber.org/fx"
 
+	"github.com/nikimonax/go-metrics/internal/app/event"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/dumper"
+	"github.com/nikimonax/go-metrics/internal/impl/publisher"
 	"github.com/nikimonax/go-metrics/internal/impl/serializer"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/server/config"
-	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
 )
 
 func DumpModule() fx.Option {
@@ -26,10 +26,33 @@ func DumpModule() fx.Option {
 			usecase.NewRestoreMetricsUseCase,
 			usecase.NewSaveMetricsUseCase,
 		),
+		fx.Provide(
+			fx.Annotate(
+				provideSaveMetricsTask,
+				fx.ResultTags(`name:"task_metrics_save"`),
+			),
+			fx.Annotate(
+				publisher.NewSubmitTaskOnEventHandler,
+				fx.ParamTags(`name:"task_metrics_save"`, ""),
+				fx.ResultTags(`name:"event_handler_submit_task_metrics_save"`),
+			),
+		),
 		fx.Invoke(
 			registerRestore,
-			registerSyncDumps,
-			registerPeriodicDumps,
+			fx.Annotate(
+				registerSyncDumps,
+				fx.ParamTags(
+					"", "",
+					`name:"event_handler_submit_task_metrics_save"`,
+				),
+			),
+			fx.Annotate(
+				registerPeriodicDumps,
+				fx.ParamTags(
+					"", "",
+					`name:"task_metrics_save"`,
+				),
+			),
 		),
 	)
 }
@@ -39,6 +62,18 @@ func provideMetricDumper(
 	serializer serializer.MetricSerializer,
 ) interfaces.MetricDumper {
 	return dumper.NewFileMetricDumper(cfg.Dump.File, serializer)
+}
+
+func provideSaveMetricsTask(
+	useCase *usecase.SaveMetricsUseCase,
+) (work.Task, error) {
+	return work.NewTask(
+		"dump metrics",
+		func(_ context.Context) error {
+			// TODO: pass context
+			return useCase.Execute()
+		},
+	)
 }
 
 func registerRestore(
@@ -54,38 +89,23 @@ func registerRestore(
 
 func registerSyncDumps(
 	cfg *config.ServerConfig,
-	updateMetricsHook *mymiddleware.RequestHook,
-	saveMetricsUseCase *usecase.SaveMetricsUseCase,
+	dp *publisher.EventDispatcher,
+	handler publisher.EventHandler,
 ) {
 	if cfg.Dump.Interval != 0 {
 		return
 	}
 
-	updateMetricsHook.AfterRequest(
-		func(_ *http.Request) error {
-			return saveMetricsUseCase.Execute()
-		},
-	)
+	dp.Register(event.MetricsUpdatedEventName, handler)
 }
 
 func registerPeriodicDumps(
 	cfg *config.ServerConfig,
 	scheduler *work.Scheduler,
-	saveMetricsUseCase *usecase.SaveMetricsUseCase,
+	task work.Task,
 ) error {
 	if cfg.Dump.Interval <= 0 {
 		return nil
-	}
-
-	task, err := work.NewTask(
-		"dump metrics",
-		func(_ context.Context) error {
-			return saveMetricsUseCase.Execute()
-		},
-	)
-
-	if err != nil {
-		return err
 	}
 
 	return scheduler.Schedule(task, cfg.Dump.Interval)

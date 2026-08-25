@@ -1,6 +1,8 @@
 package interfaces
 
 import (
+	"context"
+
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
@@ -24,4 +26,12 @@ type MetricGateway interface {
 type MetricDumper interface {
 	Save([]domain.Metric) error
 	Load() ([]domain.Metric, error)
+}
+
+type Event interface {
+	Name() string
+}
+
+type EventPublisher interface {
+	Publish(context.Context, Event)
 }

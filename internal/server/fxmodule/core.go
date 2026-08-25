@@ -11,13 +11,14 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
+	"github.com/nikimonax/go-metrics/internal/impl/publisher"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
-	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
 )
 
 func CoreModule() fx.Option {
@@ -31,13 +32,14 @@ func CoreModule() fx.Option {
 			providerSchedulerConfig,
 			work.NewPool,
 			work.NewScheduler,
-			mymiddleware.NewRequestHook,
 		),
 		fx.Provide(
 			repository.NewInMemoryMetricRepository,
 			usecase.NewUpdateMetricUseCase,
 			usecase.NewGetMetricUseCase,
 			usecase.NewGetAllMetricsUseCase,
+			provideEventDispatcher,
+			provideEventPublisher,
 			provideHandlerUpdateMetricUseCase,
 			provideHandlerGetMetricUseCase,
 			provideHandlerGetAllMetricsUseCase,
@@ -107,8 +109,22 @@ func providerSchedulerConfig(
 	}
 }
 
+func provideEventDispatcher(
+	sugar *zap.SugaredLogger,
+) *publisher.EventDispatcher {
+	dp := publisher.NewEventDispatcher()
+	dp.OnError = func(e interfaces.Event, err error) {
+		sugar.Errorw("failed handle event", "event", e, "err", err)
+	}
+	return dp
+}
+
 func providePoolSubmitter(pool *work.WorkerPool) work.Submitter {
 	return pool
+}
+
+func provideEventPublisher(dp *publisher.EventDispatcher) interfaces.EventPublisher {
+	return dp
 }
 
 func provideHandlerUpdateMetricUseCase(

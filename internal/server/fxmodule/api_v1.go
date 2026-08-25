@@ -7,7 +7,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/nikimonax/go-metrics/internal/server/handler"
-	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 )
 
@@ -67,7 +66,6 @@ func APIV1Module() fx.Option {
 				registerHandlersV1,
 				fx.ParamTags(
 					`name:"router_v1"`,
-					"",
 					`name:"handler_metrics_preview_v1"`,
 					`name:"handler_metric_update_v1"`,
 					`name:"handler_metric_get_v1"`,
@@ -87,7 +85,6 @@ func provideRouterV1(
 
 func registerHandlersV1(
 	router chi.Router,
-	updateMetricHook *mymiddleware.RequestHook,
 	previewMetricsHandler http.Handler,
 	updateMetricHandler http.Handler,
 	getMetricHandler http.Handler,
@@ -97,9 +94,7 @@ func registerHandlersV1(
 		previewMetricsHandler.ServeHTTP,
 	)
 
-	router.With(
-		updateMetricHook.Middleware,
-	).Post(
+	router.Post(
 		"/update/{metricType}/{metricName}/{metricValue}",
 		updateMetricHandler.ServeHTTP,
 	)

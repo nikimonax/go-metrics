@@ -63,7 +63,6 @@ func APIV2Module() fx.Option {
 				registerHandlersV2,
 				fx.ParamTags(
 					`name:"router_v2"`,
-					"",
 					`name:"handler_metric_update_v2"`,
 					`name:"handler_metric_get_v2"`,
 				),
@@ -96,13 +95,10 @@ func provideRouterV2(
 
 func registerHandlersV2(
 	router chi.Router,
-	updateMetricHook *mymiddleware.RequestHook,
 	updateMetricHandler http.Handler,
 	getMetricHandler http.Handler,
 ) {
-	router.With(
-		updateMetricHook.Middleware,
-	).Post(
+	router.Post(
 		"/update",
 		updateMetricHandler.ServeHTTP,
 	)
