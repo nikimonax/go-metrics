@@ -35,29 +35,29 @@ func DumpModule() fx.Option {
 }
 
 func provideMetricDumper(
-	config *config.ServerConfig,
+	cfg *config.ServerConfig,
 	serializer serializer.MetricSerializer,
 ) interfaces.MetricDumper {
-	return dumper.NewFileMetricDumper(config.DumpFile, serializer)
+	return dumper.NewFileMetricDumper(cfg.Dump.File, serializer)
 }
 
 func registerRestore(
 	lc fx.Lifecycle,
-	config *config.ServerConfig,
+	cfg *config.ServerConfig,
 	restoreMetricsUseCase *usecase.RestoreMetricsUseCase,
 ) {
-	if config.DumpRestore {
+	if cfg.Dump.Restore {
 		lc.Append(fx.StartHook(restoreMetricsUseCase.Execute))
 	}
 
 }
 
 func registerSyncDumps(
-	config *config.ServerConfig,
+	cfg *config.ServerConfig,
 	updateMetricsHook *mymiddleware.RequestHook,
 	saveMetricsUseCase *usecase.SaveMetricsUseCase,
 ) {
-	if config.DumpInterval != 0 {
+	if cfg.Dump.Interval != 0 {
 		return
 	}
 
@@ -69,11 +69,11 @@ func registerSyncDumps(
 }
 
 func registerPeriodicDumps(
-	config *config.ServerConfig,
+	cfg *config.ServerConfig,
 	scheduler *work.Scheduler,
 	saveMetricsUseCase *usecase.SaveMetricsUseCase,
 ) error {
-	if config.DumpInterval <= 0 {
+	if cfg.Dump.Interval <= 0 {
 		return nil
 	}
 
@@ -88,5 +88,5 @@ func registerPeriodicDumps(
 		return err
 	}
 
-	return scheduler.Schedule(task, config.DumpInterval)
+	return scheduler.Schedule(task, cfg.Dump.Interval)
 }

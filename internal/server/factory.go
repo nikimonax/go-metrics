@@ -18,7 +18,11 @@ func (server *Server) Run() {
 	server.app.Run()
 }
 
-func New(cfg *config.ServerConfig) *Server {
+func New(cfg *config.ServerConfig) (*Server, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	app := fx.New(
 		fx.Supply(cfg),
 		fxmodule.CoreModule(),
@@ -28,7 +32,11 @@ func New(cfg *config.ServerConfig) *Server {
 		fx.WithLogger(provideFxLogger),
 	)
 
-	return &Server{app: app}
+	if err := app.Err(); err != nil {
+		return nil, err
+	}
+
+	return &Server{app: app}, nil
 }
 
 func provideFxLogger(logger *zap.Logger) fxevent.Logger {

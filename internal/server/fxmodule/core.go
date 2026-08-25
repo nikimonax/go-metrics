@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -69,15 +68,18 @@ func CoreModule() fx.Option {
 	)
 }
 
-func provideLogger() *zap.Logger {
-	return zapextra.NewZapLogger(zapextra.EnvDev)
+func provideLogger(cfg *config.ServerConfig) *zap.Logger {
+	return zapextra.NewZapLogger(cfg.Log.Env, cfg.Log.Level)
 }
 
 func provideSugaredLogger(logger *zap.Logger) *zap.SugaredLogger {
 	return logger.Sugar()
 }
 
-func providePoolConfig(sugar *zap.SugaredLogger) work.PoolConfig {
+func providePoolConfig(
+	cfg *config.ServerConfig,
+	sugar *zap.SugaredLogger,
+) work.PoolConfig {
 	return work.PoolConfig{
 		WorkerConfig: work.WorkerConfig{
 			OnError: func(name string, err error) {
@@ -87,19 +89,18 @@ func providePoolConfig(sugar *zap.SugaredLogger) work.PoolConfig {
 				sugar.Errorw("task panic", "task", name, "value", v)
 			},
 		},
-		LifecycleConfig: work.LifecycleConfig{
-			StopTimeout: time.Second * 5,
-		},
-		WorkerCount: 1,
-		QueueSize:   20,
+		LifecycleConfig: cfg.Pool.LifecycleConfig,
+		WorkerCount:     cfg.Pool.WorkerCount,
+		QueueSize:       cfg.Pool.QueueSize,
 	}
 }
 
-func providerSchedulerConfig(sugar *zap.SugaredLogger) work.SchedulerConfig {
+func providerSchedulerConfig(
+	cfg *config.ServerConfig,
+	sugar *zap.SugaredLogger,
+) work.SchedulerConfig {
 	return work.SchedulerConfig{
-		LifecycleConfig: work.LifecycleConfig{
-			StopTimeout: time.Second * 5,
-		},
+		LifecycleConfig: cfg.Scheduler.LifecycleConfig,
 		OnError: func(name string, err error) {
 			sugar.Errorw("failed submit task", "task", name, "err", err)
 		},
@@ -139,15 +140,15 @@ func providerBaseRouter() chi.Router {
 func registerStartupLog(
 	lc fx.Lifecycle,
 	sugar *zap.SugaredLogger,
-	config *config.ServerConfig,
+	cfg *config.ServerConfig,
 ) {
 	lc.Append(fx.StartHook(func() {
 		sugar.Infow(
 			"starting server",
-			"listen", config.BaseURL,
-			"dump_file", config.DumpFile,
-			"dump_interval", config.DumpInterval,
-			"dump_restore", config.DumpRestore,
+			"listen", cfg.Listen,
+			"dump_file", cfg.Dump.File,
+			"dump_interval", cfg.Dump.Interval,
+			"dump_restore", cfg.Dump.Restore,
 		)
 	}))
 }
@@ -178,11 +179,11 @@ func registerHTTPServerLifecycle(
 	router chi.Router,
 ) {
 	srv := &http.Server{
-		Addr:    cfg.BaseURL,
+		Addr:    cfg.Listen,
 		Handler: router,
 	}
 
-	errs := make(chan error)
+	errs := make(chan error, 1)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
