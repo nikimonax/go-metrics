@@ -117,6 +117,24 @@ func (repo *InMemoryMetricRepository) GetAll() ([]domain.Metric, error) {
 	return metrics, nil
 }
 
+// PopAll implements [interfaces.MetricRepository].
+func (repo *InMemoryMetricRepository) PopAll() ([]domain.Metric, error) {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
+	metrics := make([]domain.Metric, 0, repo.index.Len())
+
+	for _, sub := range repo.index {
+		metrics = append(metrics, slices.Collect(maps.Values(sub))...)
+	}
+
+	for _, sub := range repo.index {
+		clear(sub)
+	}
+
+	return metrics, nil
+}
+
 func (repo *InMemoryMetricRepository) Clear() error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()

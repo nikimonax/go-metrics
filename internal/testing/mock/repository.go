@@ -44,6 +44,12 @@ func (repo *MetricRepository) GetAll() ([]domain.Metric, error) {
 	return args.Get(0).([]domain.Metric), args.Error(1)
 }
 
+// PopAll implements [MetricRepository].
+func (repo *MetricRepository) PopAll() ([]domain.Metric, error) {
+	args := repo.Called()
+	return args.Get(0).([]domain.Metric), args.Error(1)
+}
+
 // Clear implements [MetricRepository].
 func (repo *MetricRepository) Clear() error {
 	return repo.Called().Error(0)

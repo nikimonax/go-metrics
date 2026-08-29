@@ -256,9 +256,8 @@ func TestSendMetricsUseCase(t *testing.T) {
 				gateway *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
-				getAllCall := repository.On("GetAll").Return(metricsNonEmpty, nil).Once()
-				repository.On("Clear").Return(nil).NotBefore(getAllCall).Once()
-				gateway.On("SendBatch", metricsNonEmpty).Return(nil).Once()
+				getAllCall := repository.On("PopAll").Return(metricsNonEmpty, nil).Once()
+				gateway.On("SendBatch", metricsNonEmpty).Return(nil).NotBefore(getAllCall).Once()
 			},
 			err: nil,
 		},
@@ -269,7 +268,7 @@ func TestSendMetricsUseCase(t *testing.T) {
 				_ *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
-				repository.On("GetAll").Return(metricsEmpty, nil).Once()
+				repository.On("PopAll").Return(metricsEmpty, nil).Once()
 			},
 			err: nil,
 		},
@@ -280,21 +279,9 @@ func TestSendMetricsUseCase(t *testing.T) {
 				_ *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
-				repository.On("GetAll").Return(metricsEmpty, tc.err).Once()
+				repository.On("PopAll").Return(metricsEmpty, tc.err).Once()
 			},
 			err: errors.New("get error"),
-		},
-		{
-			name: "clear error",
-			setup: func(
-				tc *TestCase,
-				_ *mock.MetricGateway,
-				repository *mock.MetricRepository,
-			) {
-				getAllCall := repository.On("GetAll").Return(metricsNonEmpty, nil).Once()
-				repository.On("Clear").Return(tc.err).NotBefore(getAllCall).Once()
-			},
-			err: errors.New("clear error"),
 		},
 		{
 			name: "send error",
@@ -303,9 +290,8 @@ func TestSendMetricsUseCase(t *testing.T) {
 				gateway *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
-				getAllCall := repository.On("GetAll").Return(metricsNonEmpty, nil).Once()
-				repository.On("Clear").Return(nil).NotBefore(getAllCall).Once()
-				gateway.On("SendBatch", metricsNonEmpty).Return(tc.err).Once()
+				getAllCall := repository.On("PopAll").Return(metricsNonEmpty, nil).Once()
+				gateway.On("SendBatch", metricsNonEmpty).Return(tc.err).NotBefore(getAllCall).Once()
 			},
 			err: errors.New("send error"),
 		},

@@ -11,6 +11,7 @@ type MetricRepository interface {
 	UpdateBatch([]domain.Metric) error
 	Get(domain.MetricType, domain.MetricName) (domain.Metric, error)
 	GetAll() ([]domain.Metric, error)
+	PopAll() ([]domain.Metric, error)
 	Clear() error
 }
 

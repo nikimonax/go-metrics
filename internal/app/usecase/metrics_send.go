@@ -8,8 +8,7 @@ type SendMetricsUseCase struct {
 }
 
 func (useCase *SendMetricsUseCase) Execute() error {
-	// TODO: заменить на атомарный GetAllAndClear
-	metrics, err := useCase.repository.GetAll()
+	metrics, err := useCase.repository.PopAll()
 
 	if err != nil {
 		return err
@@ -17,12 +16,6 @@ func (useCase *SendMetricsUseCase) Execute() error {
 
 	if len(metrics) == 0 {
 		return nil
-	}
-
-	err = useCase.repository.Clear()
-
-	if err != nil {
-		return err
 	}
 
 	return useCase.gateway.SendBatch(metrics)
