@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/nikimonax/go-metrics/internal/agent/config"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/collector"
@@ -27,9 +28,13 @@ func (agent *Agent) Run() {
 	agent.app.Run()
 }
 
-func New(config *AgentConfig) *Agent {
+func New(cfg *config.AgentConfig) (*Agent, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	app := fx.New(
-		fx.Supply(config),
+		fx.Supply(cfg),
 		fx.Provide(
 			provideLogger,
 			provideSugaredLogger,
@@ -52,7 +57,11 @@ func New(config *AgentConfig) *Agent {
 		fx.WithLogger(provideFxLogger),
 	)
 
-	return &Agent{app: app}
+	if err := app.Err(); err != nil {
+		return nil, err
+	}
+
+	return &Agent{app: app}, nil
 }
 
 func provideLogger() *zap.Logger {
@@ -110,21 +119,21 @@ func provideMetricCollector() interfaces.MetricCollector {
 	)
 }
 
-func provideMetricGateway(config *AgentConfig) (interfaces.MetricGateway, error) {
-	switch config.APIVersion {
+func provideMetricGateway(cfg *config.AgentConfig) (interfaces.MetricGateway, error) {
+	switch cfg.APIVersion {
 	case 1:
-		return gateway.NewHTTPMetricGateway(config.BaseURL), nil
+		return gateway.NewHTTPMetricGateway(cfg.BaseURL), nil
 	case 2:
-		return gateway.NewHTTPMetricV2Gateway(config.BaseURL), nil
+		return gateway.NewHTTPMetricV2Gateway(cfg.BaseURL), nil
 	default:
-		err := fmt.Errorf("unknown metrics server api version: %d", config.APIVersion)
+		err := fmt.Errorf("unknown metrics server api version: %d", cfg.APIVersion)
 		return nil, err
 	}
 }
 
 func registerCollectMetricsTask(
 	scheduler *work.Scheduler,
-	config *AgentConfig,
+	cfg *config.AgentConfig,
 	useCase *usecase.CollectMetricsUseCase,
 ) error {
 	task, err := work.NewTask(
@@ -138,12 +147,12 @@ func registerCollectMetricsTask(
 		return err
 	}
 
-	return scheduler.Schedule(task, config.PollInterval)
+	return scheduler.Schedule(task, cfg.PollInterval)
 }
 
 func registerSendMetricsTask(
 	scheduler *work.Scheduler,
-	config *AgentConfig,
+	cfg *config.AgentConfig,
 	useCase *usecase.SendMetricsUseCase,
 ) error {
 	task, err := work.NewTask(
@@ -157,12 +166,12 @@ func registerSendMetricsTask(
 		return err
 	}
 
-	return scheduler.Schedule(task, config.ReportInterval)
+	return scheduler.Schedule(task, cfg.ReportInterval)
 }
 
 func registerLifecycleHooks(
 	lc fx.Lifecycle,
-	config *AgentConfig,
+	cfg *config.AgentConfig,
 	sugar *zap.SugaredLogger,
 	pool *work.WorkerPool,
 	scheduler *work.Scheduler,
@@ -171,9 +180,9 @@ func registerLifecycleHooks(
 		OnStart: func(_ context.Context) error {
 			sugar.Infow(
 				"starting agent",
-				"server", config.BaseURL,
-				"poll interval", config.PollInterval,
-				"send interval", config.ReportInterval,
+				"server", cfg.BaseURL,
+				"poll interval", cfg.PollInterval,
+				"send interval", cfg.ReportInterval,
 			)
 			return nil
 		},

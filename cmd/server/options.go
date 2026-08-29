@@ -2,12 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/caarlos0/env/v6"
 
+	"github.com/nikimonax/go-metrics/internal/lib/flagextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 )
 
@@ -69,24 +69,13 @@ func ReadEnvOptions() (*Options, error) {
 }
 
 func ReadCliOptions() (*Options, error) {
-	var program string
-
-	if len(os.Args) > 0 {
-		program = os.Args[0]
-	}
-
-	cmd := flag.NewFlagSet(program, flag.ExitOnError)
-	cmd.Usage = func() {
-		_, _ = fmt.Fprintf(cmd.Output(), "Usage of %s:\n", program)
-		cmd.PrintDefaults()
-	}
-
 	var (
 		opts Options
 
 		dumpRestore bool
 	)
 
+	cmd := flagextra.NewFlagSet()
 	cmd.StringVar(
 		&opts.Listen,
 		"a",

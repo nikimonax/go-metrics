@@ -7,6 +7,7 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/shared/config"
 )
 
 const (
@@ -30,11 +31,11 @@ type DumpConfig struct {
 
 func (cfg DumpConfig) Validate() error {
 	if cfg.File == "" {
-		return newErrInvalidConfig("required 'File'")
+		return config.NewErrInvalidConfig("required 'File'")
 	}
 
 	if cfg.Interval < 0 {
-		return newErrInvalidConfig("required non negative 'Interval'")
+		return config.NewErrInvalidConfig("required non negative 'Interval'")
 	}
 
 	return nil
@@ -50,7 +51,7 @@ type ServerConfig struct {
 
 func (cfg ServerConfig) Validate() error {
 	if cfg.Listen == "" {
-		return newErrInvalidConfig("required 'Listen'")
+		return config.NewErrInvalidConfig("required 'Listen'")
 	}
 
 	if err := cfg.Dump.Validate(); err != nil {
