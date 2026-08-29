@@ -28,7 +28,7 @@ type lifecycle struct {
 	stopErr     error
 }
 
-func (l *lifecycle) Start(runCtx context.Context) error {
+func (l *lifecycle) Start(startCtx context.Context) error {
 	l.mu.Lock()
 
 	if l.state != lifecycleStopped {
@@ -39,14 +39,34 @@ func (l *lifecycle) Start(runCtx context.Context) error {
 	l.state = lifecycleStarting
 	l.mu.Unlock()
 
-	runCtx, cancel := context.WithCancel(runCtx)
+	runCtx, cancel := context.WithCancel(context.Background())
+
 	if l.onStart != nil {
-		if err := l.onStart(runCtx); err != nil {
+		startDone := make(chan struct{})
+		startErr := make(chan error, 1)
+
+		go func() {
+			defer close(startDone)
+			startErr <- l.onStart(runCtx)
+		}()
+
+		select {
+		case err := <-startErr:
+			if err != nil {
+				cancel()
+				<-startDone
+				l.mu.Lock()
+				l.state = lifecycleStopped
+				l.mu.Unlock()
+				return fmt.Errorf("failed start: %w", err)
+			}
+		case <-startCtx.Done():
 			cancel()
+			<-startDone
 			l.mu.Lock()
 			l.state = lifecycleStopped
 			l.mu.Unlock()
-			return fmt.Errorf("failed start: %w", err)
+			return nil
 		}
 	}
 
