@@ -3,6 +3,7 @@ package repository
 import (
 	"maps"
 	"slices"
+	"sync"
 
 	"github.com/nikimonax/go-metrics/internal/app"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
@@ -14,6 +15,7 @@ type MetricIndex map[domain.MetricType]map[domain.MetricName]domain.Metric
 // inmemory
 
 type InMemoryMetricRepository struct {
+	mu    sync.Mutex
 	index MetricIndex
 }
 
@@ -56,18 +58,28 @@ func (index MetricIndex) Clear() error {
 	return nil
 }
 
-// Update implements [interfaces.MetricRepository].
-func (repo *InMemoryMetricRepository) Update(other domain.Metric) error {
-	if metric, ok := repo.index.Find(other.Type(), other.Name()); ok {
-		return metric.Accept(other)
+func (repo *InMemoryMetricRepository) updateUnlocked(metric domain.Metric) error {
+	if existing, ok := repo.index.Find(metric.Type(), metric.Name()); ok {
+		return existing.Accept(metric)
 	}
-	return repo.index.Add(other)
+	return repo.index.Add(metric)
+}
+
+// Update implements [interfaces.MetricRepository].
+func (repo *InMemoryMetricRepository) Update(metric domain.Metric) error {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
+	return repo.updateUnlocked(metric)
 }
 
 // UpdateBatch implements [interfaces.MetricRepository].
 func (repo *InMemoryMetricRepository) UpdateBatch(metrics []domain.Metric) error {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
 	for _, metric := range metrics {
-		if err := repo.Update(metric); err != nil {
+		if err := repo.updateUnlocked(metric); err != nil {
 			return err
 		}
 	}
@@ -79,6 +91,9 @@ func (repo *InMemoryMetricRepository) Get(
 	metricType domain.MetricType,
 	metricName domain.MetricName,
 ) (domain.Metric, error) {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
 	metric, ok := repo.index.Find(metricType, metricName)
 
 	if !ok {
@@ -90,6 +105,9 @@ func (repo *InMemoryMetricRepository) Get(
 
 // GetAll implements [interfaces.MetricRepository].
 func (repo *InMemoryMetricRepository) GetAll() ([]domain.Metric, error) {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
 	metrics := make([]domain.Metric, 0, repo.index.Len())
 
 	for _, sub := range repo.index {
@@ -100,6 +118,9 @@ func (repo *InMemoryMetricRepository) GetAll() ([]domain.Metric, error) {
 }
 
 func (repo *InMemoryMetricRepository) Clear() error {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+
 	return repo.index.Clear()
 }
 
