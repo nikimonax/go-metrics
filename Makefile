@@ -5,7 +5,7 @@ COV_FILE_HTML := coverage.html
 
 AUTOTEST_CMD := metricstest_v2
 
-TEST_ARGS += $(ARGS)
+EXTRA_ARGS += $(ARGS)
 
 
 all: build
@@ -27,13 +27,13 @@ build: $(BIN_DIR)/server $(BIN_DIR)/agent
 lint:
 	golangci-lint run
 
-.PHONY: format
-format:
+.PHONY: fmt format
+fmt format:
 	golangci-lint fmt
 
 .PHONY: test
 test:
-	go test $(TEST_ARGS) $$(go list ./... | grep -v internal/testing)
+	go test $(EXTRA_ARGS) $$(go list ./... | grep -v internal/testing)
 
 .PHONY: cover
 cover: $(COV_FILE)
@@ -45,14 +45,19 @@ cover-html: $(COV_FILE)
 
 .PHONY: autotest
 autotest: $(BIN_DIR)/metricstest $(BIN_DIR)/server $(BIN_DIR)/agent
-	./tools/autotest.sh
+	./tools/autotest.sh $(EXTRA_ARGS)
 
 .PHONY: clean
 clean:
 	rm -rf $(BIN_DIR)
 	go clean -testcache
 
-$(COV_FILE): TEST_ARGS += -coverprofile=$(COV_FILE)
+.PHONY: up down logs
+up: EXTRA_ARGS+=-d
+up down logs:
+	docker compose $@ $(EXTRA_ARGS)
+
+$(COV_FILE): EXTRA_ARGS += -coverprofile=$(COV_FILE)
 $(COV_FILE): test
 
 $(BIN_DIR)/metricstest: .FORCE
