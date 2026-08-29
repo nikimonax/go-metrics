@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"net/url"
 	"time"
 
 	"go.uber.org/zap/zapcore"
@@ -12,6 +14,7 @@ import (
 
 const (
 	DefaultListen       = "localhost:8080"
+	DefaultDatabaseDsn  = ""
 	DefaultDumpFile     = "metrics.json"
 	DefaultDumpInterval = 300 * time.Second
 	DefaultDumpRestore  = false
@@ -42,16 +45,31 @@ func (cfg DumpConfig) Validate() error {
 }
 
 type ServerConfig struct {
-	Listen    string
-	Log       LogConfig
-	Dump      DumpConfig
-	Pool      work.PoolConfig
-	Scheduler work.SchedulerConfig
+	Listen      string
+	DatabaseDSN string
+	Log         LogConfig
+	Dump        DumpConfig
+	Pool        work.PoolConfig
+	Scheduler   work.SchedulerConfig
 }
 
 func (cfg ServerConfig) Validate() error {
 	if cfg.Listen == "" {
 		return config.NewErrInvalidConfig("required 'Listen'")
+	}
+
+	if cfg.DatabaseDSN != "" {
+		dsnURL, err := url.Parse(cfg.DatabaseDSN)
+
+		if err != nil {
+			msg := fmt.Sprintf("invalid database dsn: %s", err)
+			return config.NewErrInvalidConfig(msg)
+		}
+
+		if dsnURL.Scheme != "" && dsnURL.Scheme != "postgres" {
+			msg := fmt.Sprintf("unsupported database: %s", dsnURL.Scheme)
+			return config.NewErrInvalidConfig(msg)
+		}
 	}
 
 	if err := cfg.Dump.Validate(); err != nil {
@@ -71,7 +89,8 @@ func (cfg ServerConfig) Validate() error {
 
 func NewDefaultConfig() ServerConfig {
 	return ServerConfig{
-		Listen: DefaultListen,
+		Listen:      DefaultListen,
+		DatabaseDSN: DefaultDatabaseDsn,
 		Log: LogConfig{
 			Env:   zapextra.EnvDev,
 			Level: zapcore.InfoLevel,

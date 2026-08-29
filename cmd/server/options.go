@@ -13,6 +13,7 @@ import (
 
 type Options struct {
 	Listen       string `env:"ADDRESS"`
+	DatabaseDSN  string `env:"DATABASE_DSN"`
 	DumpFile     string `env:"FILE_STORAGE_PATH"`
 	DumpInterval int64  `env:"STORE_INTERVAL" envDefault:"-1"`
 	DumpRestore  *bool  `env:"RESTORE"`
@@ -23,6 +24,10 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 
 	if opts.Listen != "" {
 		cfg.Listen = opts.Listen
+	}
+
+	if opts.DatabaseDSN != "" {
+		cfg.DatabaseDSN = opts.DatabaseDSN
 	}
 
 	if opts.DumpFile != "" {
@@ -43,6 +48,10 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 func (opts *Options) Merge(other *Options) {
 	if other.Listen != "" {
 		opts.Listen = other.Listen
+	}
+
+	if other.DatabaseDSN != "" {
+		opts.DatabaseDSN = other.DatabaseDSN
 	}
 
 	if other.DumpFile != "" {
@@ -81,6 +90,12 @@ func ReadCliOptions() (*Options, error) {
 		"a",
 		"",
 		"host and port to listen",
+	)
+	cmd.StringVar(
+		&opts.DatabaseDSN,
+		"d",
+		"",
+		"database dsn for connection",
 	)
 	cmd.StringVar(
 		&opts.DumpFile,
