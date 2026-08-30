@@ -117,6 +117,8 @@ func provideMetricGateway(cfg *config.AgentConfig) (interfaces.MetricGateway, er
 		return gateway.NewHTTPMetricGateway(cfg.BaseURL), nil
 	case 2:
 		return gateway.NewHTTPMetricV2Gateway(cfg.BaseURL), nil
+	case 3:
+		return gateway.NewHTTPMetricV3Gateway(cfg.BaseURL), nil
 	default:
 		err := fmt.Errorf("unknown metrics server api version: %d", cfg.APIVersion)
 		return nil, err
@@ -173,6 +175,7 @@ func registerLifecycleHooks(
 			sugar.Infow(
 				"starting agent",
 				"server", cfg.BaseURL,
+				"api", "v"+fmt.Sprint(cfg.APIVersion),
 				"poll interval", cfg.PollInterval,
 				"send interval", cfg.ReportInterval,
 			)

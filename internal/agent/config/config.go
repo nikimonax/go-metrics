@@ -27,8 +27,8 @@ func (cfg AgentConfig) Validate() error {
 		return config.NewErrInvalidConfig("required non-nil 'BaseURL'")
 	}
 
-	if cfg.APIVersion != 1 && cfg.APIVersion != 2 {
-		return config.NewErrInvalidConfig("required 'APIVersion' equals 1 or 2")
+	if cfg.APIVersion == 0 && cfg.APIVersion > 3 {
+		return config.NewErrInvalidConfig("required 'APIVersion' equals 1-3")
 	}
 
 	if cfg.PollInterval <= 0 {

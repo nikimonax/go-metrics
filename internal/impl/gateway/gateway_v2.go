@@ -23,19 +23,10 @@ type HTTPMetricV2Gateway struct {
 	timeout  time.Duration
 }
 
-// Send implements [interfaces.MetricGateway].
-func (gateway *HTTPMetricV2Gateway) Send(
+func (gateway *HTTPMetricV2Gateway) makeRequest(
 	ctx context.Context,
-	metric domain.Metric,
+	content []byte,
 ) (err error) {
-	payload := model.NewMetricFromDomain(metric)
-
-	content, err := json.Marshal(payload)
-
-	if err != nil {
-		return fmt.Errorf("failed serialize metric: %w", err)
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, gateway.timeout)
 	defer cancel()
 
@@ -55,7 +46,7 @@ func (gateway *HTTPMetricV2Gateway) Send(
 	resp, err := gateway.client.Do(req)
 
 	if err != nil {
-		return fmt.Errorf("failed send metric: %w", err)
+		return fmt.Errorf("request failed: %w", err)
 	}
 
 	defer func() {
@@ -71,17 +62,33 @@ func (gateway *HTTPMetricV2Gateway) Send(
 	if resp.StatusCode >= 400 {
 		reason := "unknown"
 
-		if resp.Header.Get(httpextra.HDRContentType) == httpextra.MIMEText {
+		if resp.ContentLength > 0 {
 			if body, err := io.ReadAll(resp.Body); err == nil {
 				reason = string(body)
 			}
 		}
 
-		return fmt.Errorf(
-			"failed send metric (%d): %s",
-			resp.StatusCode,
-			reason,
-		)
+		return NewErrAPI(reason)
+	}
+
+	return nil
+}
+
+// Send implements [interfaces.MetricGateway].
+func (gateway *HTTPMetricV2Gateway) Send(
+	ctx context.Context,
+	metric domain.Metric,
+) error {
+	payload := model.NewMetricFromDomain(metric)
+
+	content, err := json.Marshal(payload)
+
+	if err != nil {
+		return fmt.Errorf("failed serialize metric: %w", err)
+	}
+
+	if err := gateway.makeRequest(ctx, content); err != nil {
+		return fmt.Errorf("failed send metric: %w", err)
 	}
 
 	return nil
