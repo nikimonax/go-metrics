@@ -15,9 +15,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 
 	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 type Agent struct {
@@ -54,7 +52,7 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			registerSendMetricsTask,
 			registerLifecycleHooks,
 		),
-		fx.WithLogger(provideFxLogger),
+		fx.WithLogger(zapextra.NewFxLogger),
 	)
 
 	if err := app.Err(); err != nil {
@@ -70,12 +68,6 @@ func provideLogger() *zap.Logger {
 
 func provideSugaredLogger(logger *zap.Logger) *zap.SugaredLogger {
 	return logger.Sugar()
-}
-
-func provideFxLogger(logger *zap.Logger) fxevent.Logger {
-	fxLogger := &fxevent.ZapLogger{Logger: logger}
-	fxLogger.UseLogLevel(zapcore.DebugLevel)
-	return fxLogger
 }
 
 func providePoolConfig(sugar *zap.SugaredLogger) work.PoolConfig {

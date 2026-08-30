@@ -2,10 +2,8 @@ package server
 
 import (
 	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
+	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/fxmodule"
 )
@@ -30,7 +28,7 @@ func New(cfg *config.ServerConfig) (*Server, error) {
 		fxmodule.APIV1Module(),
 		fxmodule.APIV2Module(),
 		fxmodule.DumpModule(),
-		fx.WithLogger(provideFxLogger),
+		fx.WithLogger(zapextra.NewFxLogger),
 	)
 
 	if err := app.Err(); err != nil {
@@ -38,10 +36,4 @@ func New(cfg *config.ServerConfig) (*Server, error) {
 	}
 
 	return &Server{app: app}, nil
-}
-
-func provideFxLogger(logger *zap.Logger) fxevent.Logger {
-	fxLogger := &fxevent.ZapLogger{Logger: logger}
-	fxLogger.UseLogLevel(zapcore.DebugLevel)
-	return fxLogger
 }
