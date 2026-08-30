@@ -73,7 +73,7 @@ func providePostgresMetricRepository(
 	return repository.NewRetryRepository(
 		repo,
 		cfg.Database.Backoff.Build,
-		func(_ error) bool { return true },
+		repository.PostgresErrorIsRetryable,
 	)
 }
 
