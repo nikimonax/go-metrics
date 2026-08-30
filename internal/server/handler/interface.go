@@ -13,6 +13,13 @@ type UpdateMetricUseCase interface {
 	) error
 }
 
+type UpdateMetricsUseCase interface {
+	Execute(
+		context.Context,
+		[]domain.Metric,
+	) error
+}
+
 type GetMetricUseCase interface {
 	Execute(
 		context.Context,
