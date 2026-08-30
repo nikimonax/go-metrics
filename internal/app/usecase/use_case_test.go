@@ -1,7 +1,6 @@
 package usecase_test
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -33,12 +32,16 @@ func TestUpdateMetricUseCase(t *testing.T) {
 				repo *mock.MetricRepository,
 				pub *mock.PublisherMock,
 			) {
-				repo.On("Update", metric).Return(nil).Once()
+				updateCall := repo.On(
+					"Update",
+					mock.MatchContext(),
+					metric,
+				).Return(nil).Once()
 				pub.On(
 					"Publish",
-					mock.MatchedBy(mock.IsImplements(new(context.Context))),
+					mock.MatchContext(),
 					mock.MatchedBy(mock.IsImplements(new(interfaces.Event))),
-				).Once()
+				).NotBefore(updateCall).Once()
 			},
 			err: nil,
 		},
@@ -49,7 +52,11 @@ func TestUpdateMetricUseCase(t *testing.T) {
 				repo *mock.MetricRepository,
 				_ *mock.PublisherMock,
 			) {
-				repo.On("Update", metric).Return(tc.err).Once()
+				repo.On(
+					"Update",
+					mock.MatchContext(),
+					metric,
+				).Return(tc.err).Once()
 			},
 			err: errors.New("test"),
 		},
@@ -63,7 +70,7 @@ func TestUpdateMetricUseCase(t *testing.T) {
 			tc.setup(&tc, repository, publisher)
 
 			useCase := usecase.NewUpdateMetricUseCase(repository, publisher)
-			err := useCase.Execute(metric)
+			err := useCase.Execute(t.Context(), metric)
 
 			assert.ErrorIs(t, err, tc.err)
 			repository.AssertExpectations(t)
@@ -84,7 +91,12 @@ func TestGetMetricUseCase(t *testing.T) {
 			name:   "success",
 			metric: domain.NewCounterMetric(shared.TestMetricName, 42),
 			setup: func(tc *TestCase, repo *mock.MetricRepository) {
-				repo.On("Get", tc.metric.Type(), tc.metric.Name()).Return(tc.metric, nil).Once()
+				repo.On(
+					"Get",
+					mock.MatchContext(),
+					tc.metric.Type(),
+					tc.metric.Name(),
+				).Return(tc.metric, nil).Once()
 			},
 			wantErr: false,
 		},
@@ -93,7 +105,12 @@ func TestGetMetricUseCase(t *testing.T) {
 			metric: domain.NewCounterMetric(shared.TestMetricName, 42),
 			setup: func(tc *TestCase, repo *mock.MetricRepository) {
 				err := errors.New("test error")
-				repo.On("Get", tc.metric.Type(), tc.metric.Name()).Return(nil, err).Once()
+				repo.On(
+					"Get",
+					mock.MatchContext(),
+					tc.metric.Type(),
+					tc.metric.Name(),
+				).Return(nil, err).Once()
 			},
 			wantErr: true,
 		},
@@ -105,7 +122,7 @@ func TestGetMetricUseCase(t *testing.T) {
 			tc.setup(&tc, repository)
 
 			useCase := usecase.NewGetMetricUseCase(repository)
-			metric, err := useCase.Execute(tc.metric.Type(), tc.metric.Name())
+			metric, err := useCase.Execute(t.Context(), tc.metric.Type(), tc.metric.Name())
 
 			if tc.wantErr {
 				assert.Error(t, err)
@@ -133,7 +150,10 @@ func TestGetAllMetricsUseCase(t *testing.T) {
 				domain.NewGaugeMetric("GaugeMetric", 3.14),
 			},
 			setup: func(tc *TestCase, repo *mock.MetricRepository) {
-				repo.On("GetAll").Return(tc.metrics, nil).Once()
+				repo.On(
+					"GetAll",
+					mock.MatchContext(),
+				).Return(tc.metrics, nil).Once()
 			},
 			wantErr: false,
 		},
@@ -142,7 +162,10 @@ func TestGetAllMetricsUseCase(t *testing.T) {
 			metrics: nil,
 			setup: func(tc *TestCase, repo *mock.MetricRepository) {
 				err := errors.New("test error")
-				repo.On("GetAll").Return(tc.metrics, err).Once()
+				repo.On(
+					"GetAll",
+					mock.MatchContext(),
+				).Return(tc.metrics, err).Once()
 			},
 			wantErr: true,
 		},
@@ -154,7 +177,7 @@ func TestGetAllMetricsUseCase(t *testing.T) {
 			tc.setup(&tc, repository)
 
 			useCase := usecase.NewGetAllMetricsUseCase(repository)
-			metrics, err := useCase.Execute()
+			metrics, err := useCase.Execute(t.Context())
 
 			if tc.wantErr {
 				assert.Error(t, err)
@@ -181,8 +204,12 @@ func TestCollectMetricsUseCase(t *testing.T) {
 				collector *mock.MetricCollector,
 				repository *mock.MetricRepository,
 			) {
-				collector.On("Collect").Return(metricsNonEmpty, nil).Once()
-				repository.On("UpdateBatch", metricsNonEmpty).Return(nil).Once()
+				collectCall := collector.On("Collect").Return(metricsNonEmpty, nil).Once()
+				repository.On(
+					"UpdateBatch",
+					mock.MatchContext(),
+					metricsNonEmpty,
+				).Return(nil).NotBefore(collectCall).Once()
 			},
 			err: nil,
 		},
@@ -217,8 +244,12 @@ func TestCollectMetricsUseCase(t *testing.T) {
 				collector *mock.MetricCollector,
 				repository *mock.MetricRepository,
 			) {
-				collector.On("Collect").Return(metricsNonEmpty, nil).Once()
-				repository.On("UpdateBatch", metricsNonEmpty).Return(tc.err).Once()
+				collectCall := collector.On("Collect").Return(metricsNonEmpty, nil).Once()
+				repository.On(
+					"UpdateBatch",
+					mock.MatchContext(),
+					metricsNonEmpty,
+				).Return(tc.err).NotBefore(collectCall).Once()
 			},
 			err: errors.New("collect error"),
 		},
@@ -232,7 +263,7 @@ func TestCollectMetricsUseCase(t *testing.T) {
 			tc.setup(&tc, collector, repository)
 
 			useCase := usecase.NewCollectMetricsUseCase(collector, repository)
-			err := useCase.Execute()
+			err := useCase.Execute(t.Context())
 
 			assert.ErrorIs(t, err, tc.err)
 			collector.AssertExpectations(t)
@@ -256,8 +287,15 @@ func TestSendMetricsUseCase(t *testing.T) {
 				gateway *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
-				getAllCall := repository.On("PopAll").Return(metricsNonEmpty, nil).Once()
-				gateway.On("SendBatch", metricsNonEmpty).Return(nil).NotBefore(getAllCall).Once()
+				getAllCall := repository.On(
+					"PopAll",
+					mock.MatchContext(),
+				).Return(metricsNonEmpty, nil).Once()
+				gateway.On(
+					"SendBatch",
+					mock.MatchContext(),
+					metricsNonEmpty,
+				).Return(nil).NotBefore(getAllCall).Once()
 			},
 			err: nil,
 		},
@@ -268,7 +306,10 @@ func TestSendMetricsUseCase(t *testing.T) {
 				_ *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
-				repository.On("PopAll").Return(metricsEmpty, nil).Once()
+				repository.On(
+					"PopAll",
+					mock.MatchContext(),
+				).Return(metricsEmpty, nil).Once()
 			},
 			err: nil,
 		},
@@ -279,7 +320,10 @@ func TestSendMetricsUseCase(t *testing.T) {
 				_ *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
-				repository.On("PopAll").Return(metricsEmpty, tc.err).Once()
+				repository.On(
+					"PopAll",
+					mock.MatchContext(),
+				).Return(metricsEmpty, tc.err).Once()
 			},
 			err: errors.New("get error"),
 		},
@@ -290,8 +334,15 @@ func TestSendMetricsUseCase(t *testing.T) {
 				gateway *mock.MetricGateway,
 				repository *mock.MetricRepository,
 			) {
-				getAllCall := repository.On("PopAll").Return(metricsNonEmpty, nil).Once()
-				gateway.On("SendBatch", metricsNonEmpty).Return(tc.err).NotBefore(getAllCall).Once()
+				getAllCall := repository.On(
+					"PopAll",
+					mock.MatchContext(),
+				).Return(metricsNonEmpty, nil).Once()
+				gateway.On(
+					"SendBatch",
+					mock.MatchContext(),
+					metricsNonEmpty,
+				).Return(tc.err).NotBefore(getAllCall).Once()
 			},
 			err: errors.New("send error"),
 		},
@@ -305,7 +356,7 @@ func TestSendMetricsUseCase(t *testing.T) {
 			tc.setup(&tc, gateway, repository)
 
 			useCase := usecase.NewSendMetricsUseCase(gateway, repository)
-			err := useCase.Execute()
+			err := useCase.Execute(t.Context())
 
 			assert.ErrorIs(t, err, tc.err)
 			gateway.AssertExpectations(t)

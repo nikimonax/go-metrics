@@ -24,7 +24,10 @@ type HTTPMetricV2Gateway struct {
 }
 
 // Send implements [interfaces.MetricGateway].
-func (gateway *HTTPMetricV2Gateway) Send(metric domain.Metric) (err error) {
+func (gateway *HTTPMetricV2Gateway) Send(
+	ctx context.Context,
+	metric domain.Metric,
+) (err error) {
 	payload := model.NewMetricFromDomain(metric)
 
 	content, err := json.Marshal(payload)
@@ -33,10 +36,7 @@ func (gateway *HTTPMetricV2Gateway) Send(metric domain.Metric) (err error) {
 		return fmt.Errorf("failed serialize metric: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(
-		context.Background(),
-		gateway.timeout,
-	)
+	ctx, cancel := context.WithTimeout(ctx, gateway.timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(
@@ -88,9 +88,12 @@ func (gateway *HTTPMetricV2Gateway) Send(metric domain.Metric) (err error) {
 }
 
 // SendBatch implements [interfaces.MetricGateway].
-func (gateway *HTTPMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
+func (gateway *HTTPMetricV2Gateway) SendBatch(
+	ctx context.Context,
+	metrics []domain.Metric,
+) error {
 	for _, metric := range metrics {
-		if err := gateway.Send(metric); err != nil {
+		if err := gateway.Send(ctx, metric); err != nil {
 			return err
 		}
 	}

@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
-	m "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/nikimonax/go-metrics/internal/app"
@@ -43,7 +42,11 @@ func TestUpdateMetricHandler(t *testing.T) {
 			metricValue: "42",
 			setup: func(_ *TestCase, useCase *mock.UpdateMetricUseCase) {
 				wantMetricValue := domain.NewCounterMetric(shared.TestMetricName, 42)
-				useCase.On("Execute", wantMetricValue).Return(nil).Once()
+				useCase.On(
+					"Execute",
+					mock.MatchContext(),
+					wantMetricValue,
+				).Return(nil).Once()
 			},
 			wantStatus:      http.StatusOK,
 			wantContentType: httpextra.MIMEText,
@@ -56,7 +59,11 @@ func TestUpdateMetricHandler(t *testing.T) {
 			metricValue: "3.14",
 			setup: func(_ *TestCase, useCase *mock.UpdateMetricUseCase) {
 				wantMetricValue := domain.NewGaugeMetric(shared.TestMetricName, 3.14)
-				useCase.On("Execute", wantMetricValue).Return(nil).Once()
+				useCase.On(
+					"Execute",
+					mock.MatchContext(),
+					wantMetricValue,
+				).Return(nil).Once()
 			},
 			wantStatus:      http.StatusOK,
 			wantContentType: httpextra.MIMEText,
@@ -70,7 +77,11 @@ func TestUpdateMetricHandler(t *testing.T) {
 			setup: func(_ *TestCase, useCase *mock.UpdateMetricUseCase) {
 				wantMetricValue := domain.NewCounterMetric(shared.TestMetricName, 42)
 				useCaseErr := errors.New("test error")
-				useCase.On("Execute", wantMetricValue).Return(useCaseErr).Once()
+				useCase.On(
+					"Execute",
+					mock.MatchContext(),
+					wantMetricValue,
+				).Return(useCaseErr).Once()
 			},
 			wantStatus:      http.StatusInternalServerError,
 			wantContentType: httpextra.MIMEText,
@@ -147,7 +158,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 			handler := handler.NewUpdateMetricHandler(useCase, errorPresenter)
 
-			req := httptest.NewRequestWithContext(context.Background(), tc.method, "/update", nil)
+			req := httptest.NewRequestWithContext(t.Context(), tc.method, "/update", nil)
 			rr := httptest.NewRecorder()
 
 			chiCtx := chi.NewRouteContext()
@@ -209,20 +220,18 @@ func TestGetMetricHandler(t *testing.T) {
 				metricPresenter *mock.MetricPresenter,
 			) {
 				metric := domain.NewCounterMetric(tc.metricName, 42)
-				useCase.On(
+				useCaseCall := useCase.On(
 					"Execute",
+					mock.MatchContext(),
 					tc.metricType,
 					tc.metricName,
 				).Return(metric, nil).Once()
 				metricPresenter.On(
 					"Render",
-					m.MatchedBy(func(arg any) bool {
-						_, ok := arg.(http.ResponseWriter)
-						return ok
-					}),
+					mock.MatchedBy(mock.IsImplements(new(http.ResponseWriter))),
 					metric,
 					http.StatusOK,
-				).Return().Once()
+				).Return().NotBefore(useCaseCall).Once()
 			},
 		},
 		{
@@ -237,23 +246,18 @@ func TestGetMetricHandler(t *testing.T) {
 				_ *mock.MetricPresenter,
 			) {
 				err := errors.New("test error")
-				useCase.On(
+				useCaseCall := useCase.On(
 					"Execute",
+					mock.MatchContext(),
 					tc.metricType,
 					tc.metricName,
 				).Return(nil, err).Once()
 				errorPresenter.On(
 					"Render",
-					m.MatchedBy(func(arg any) bool {
-						_, ok := arg.(http.ResponseWriter)
-						return ok
-					}),
-					m.MatchedBy(func(arg any) bool {
-						_, ok := arg.(error)
-						return ok
-					}),
+					mock.MatchedBy(mock.IsImplements(new(http.ResponseWriter))),
+					mock.MatchedBy(mock.IsImplements(new(error))),
 					http.StatusInternalServerError,
-				).Return().Once()
+				).Return().NotBefore(useCaseCall).Once()
 			},
 		},
 		{
@@ -267,23 +271,18 @@ func TestGetMetricHandler(t *testing.T) {
 				errorPresenter *mock.ErrorPresenter,
 				_ *mock.MetricPresenter,
 			) {
-				useCase.On(
+				useCaseCall := useCase.On(
 					"Execute",
+					mock.MatchContext(),
 					tc.metricType,
 					tc.metricName,
 				).Return(nil, app.ErrMetricNotFound).Once()
 				errorPresenter.On(
 					"Render",
-					m.MatchedBy(func(arg any) bool {
-						_, ok := arg.(http.ResponseWriter)
-						return ok
-					}),
-					m.MatchedBy(func(arg any) bool {
-						_, ok := arg.(error)
-						return ok
-					}),
+					mock.MatchedBy(mock.IsImplements(new(http.ResponseWriter))),
+					mock.MatchedBy(mock.IsImplements(new(error))),
 					http.StatusNotFound,
-				).Return().Once()
+				).Return().NotBefore(useCaseCall).Once()
 			},
 		},
 		{
@@ -299,11 +298,11 @@ func TestGetMetricHandler(t *testing.T) {
 			) {
 				errorPresenter.On(
 					"Render",
-					m.MatchedBy(func(arg any) bool {
+					mock.MatchedBy(func(arg any) bool {
 						_, ok := arg.(http.ResponseWriter)
 						return ok
 					}),
-					m.MatchedBy(func(arg any) bool {
+					mock.MatchedBy(func(arg any) bool {
 						_, ok := arg.(error)
 						return ok
 					}),
@@ -324,14 +323,8 @@ func TestGetMetricHandler(t *testing.T) {
 			) {
 				errorPresenter.On(
 					"Render",
-					m.MatchedBy(func(arg any) bool {
-						_, ok := arg.(http.ResponseWriter)
-						return ok
-					}),
-					m.MatchedBy(func(arg any) bool {
-						_, ok := arg.(error)
-						return ok
-					}),
+					mock.MatchedBy(mock.IsImplements(new(http.ResponseWriter))),
+					mock.MatchedBy(mock.IsImplements(new(error))),
 					http.StatusBadRequest,
 				).Return().Once()
 			},
@@ -354,7 +347,7 @@ func TestGetMetricHandler(t *testing.T) {
 				metricPresenter,
 			)
 
-			req := httptest.NewRequestWithContext(context.Background(), tc.method, "/value", nil)
+			req := httptest.NewRequestWithContext(t.Context(), tc.method, "/value", nil)
 			rr := httptest.NewRecorder()
 
 			chiCtx := chi.NewRouteContext()
@@ -400,16 +393,16 @@ func TestPreviewMetricsHandler(t *testing.T) {
 					domain.NewGaugeMetric("B", 3.14),
 				}
 
-				useCase.On("Execute").Return(metrics, nil).Once()
+				useCaseCall := useCase.On(
+					"Execute",
+					mock.MatchContext(),
+				).Return(metrics, nil).Once()
 				metricsPresenter.On(
 					"Render",
-					m.MatchedBy(func(arg any) bool {
-						_, ok := arg.(http.ResponseWriter)
-						return ok
-					}),
+					mock.MatchedBy(mock.IsImplements(new(http.ResponseWriter))),
 					metrics,
 					http.StatusOK,
-				)
+				).NotBefore(useCaseCall).Once()
 			},
 		},
 		{
@@ -423,16 +416,16 @@ func TestPreviewMetricsHandler(t *testing.T) {
 			) {
 				err := errors.New("test error")
 
-				useCase.On("Execute").Return(nil, err).Once()
+				useCaseCall := useCase.On(
+					"Execute",
+					mock.MatchContext(),
+				).Return(nil, err).Once()
 				errorPresenter.On(
 					"Render",
-					m.MatchedBy(func(arg any) bool {
-						_, ok := arg.(http.ResponseWriter)
-						return ok
-					}),
+					mock.MatchedBy(mock.IsImplements(new(http.ResponseWriter))),
 					err,
 					http.StatusInternalServerError,
-				)
+				).NotBefore(useCaseCall).Once()
 			},
 		},
 	}
@@ -453,7 +446,7 @@ func TestPreviewMetricsHandler(t *testing.T) {
 				metricsPresenter,
 			)
 
-			req := httptest.NewRequestWithContext(context.Background(), tc.method, "/", nil)
+			req := httptest.NewRequestWithContext(t.Context(), tc.method, "/", nil)
 			rr := httptest.NewRecorder()
 
 			handler.ServeHTTP(rr, req)

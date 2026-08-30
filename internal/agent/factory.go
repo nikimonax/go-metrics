@@ -138,8 +138,8 @@ func registerCollectMetricsTask(
 ) error {
 	task, err := work.NewTask(
 		"collect metrics",
-		func(_ context.Context) error {
-			return useCase.Execute()
+		func(ctx context.Context) error {
+			return useCase.Execute(ctx)
 		},
 	)
 
@@ -157,8 +157,8 @@ func registerSendMetricsTask(
 ) error {
 	task, err := work.NewTask(
 		"send metrics",
-		func(_ context.Context) error {
-			return useCase.Execute()
+		func(ctx context.Context) error {
+			return useCase.Execute(ctx)
 		},
 	)
 

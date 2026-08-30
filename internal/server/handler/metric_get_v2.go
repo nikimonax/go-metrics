@@ -42,7 +42,11 @@ func (h *GetMetricV2Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metric, err := h.useCase.Execute(payload.Type, payload.Name)
+	metric, err := h.useCase.Execute(
+		r.Context(),
+		payload.Type,
+		payload.Name,
+	)
 
 	if err != nil {
 		status := http.StatusInternalServerError

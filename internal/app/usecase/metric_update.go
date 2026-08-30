@@ -13,13 +13,16 @@ type UpdateMetricUseCase struct {
 	eventPublisher   interfaces.EventPublisher
 }
 
-func (useCase *UpdateMetricUseCase) Execute(metric domain.Metric) error {
-	if err := useCase.metricRepository.Update(metric); err != nil {
+func (useCase *UpdateMetricUseCase) Execute(
+	ctx context.Context,
+	metric domain.Metric,
+) error {
+	if err := useCase.metricRepository.Update(ctx, metric); err != nil {
 		return err
 	}
 
 	e := event.NewMetricsUpdatedEvent(metric)
-	useCase.eventPublisher.Publish(context.TODO(), e)
+	useCase.eventPublisher.Publish(ctx, e)
 
 	return nil
 }

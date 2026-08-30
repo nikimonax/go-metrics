@@ -57,7 +57,11 @@ func chooseUpdateStmtByType(metricType domain.MetricType) (string, error) {
 func updateMetric(
 	ctx context.Context,
 	executor interface {
-		ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+		ExecContext(
+			ctx context.Context,
+			query string,
+			args ...any,
+		) (sql.Result, error)
 	},
 	metric domain.Metric,
 ) error {
@@ -96,7 +100,11 @@ func scanMetric(
 func readMetric(
 	ctx context.Context,
 	querier interface {
-		QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+		QueryRowContext(
+			ctx context.Context,
+			query string,
+			args ...any,
+		) *sql.Row
 	},
 	metricName domain.MetricName,
 	metricType domain.MetricType,
@@ -119,7 +127,11 @@ func readMetric(
 func readAllMetrics(
 	ctx context.Context,
 	querier interface {
-		QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+		QueryContext(
+			ctx context.Context,
+			query string,
+			args ...any,
+		) (*sql.Rows, error)
 	},
 ) (metrics []domain.Metric, err error) {
 	rows, err := querier.QueryContext(ctx, stmtGetAll)
@@ -150,7 +162,11 @@ func readAllMetrics(
 func deleteAllMetrics(
 	ctx context.Context,
 	executor interface {
-		ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+		ExecContext(
+			ctx context.Context,
+			query string,
+			args ...any,
+		) (sql.Result, error)
 	},
 ) error {
 	_, err := executor.ExecContext(ctx, stmtClear)
@@ -162,14 +178,18 @@ type PostgresMetricRepository struct {
 }
 
 // Update implements [interfaces.MetricRepository].
-func (repo *PostgresMetricRepository) Update(metric domain.Metric) error {
-	return updateMetric(context.Background(), repo.db, metric)
+func (repo *PostgresMetricRepository) Update(
+	ctx context.Context,
+	metric domain.Metric,
+) error {
+	return updateMetric(ctx, repo.db, metric)
 }
 
 // UpdateBatch implements [interfaces.MetricRepository].
-func (repo *PostgresMetricRepository) UpdateBatch(metrics []domain.Metric) (err error) {
-	ctx := context.Background()
-
+func (repo *PostgresMetricRepository) UpdateBatch(
+	ctx context.Context,
+	metrics []domain.Metric,
+) (err error) {
 	switch len(metrics) {
 	case 0:
 		return nil
@@ -204,22 +224,24 @@ func (repo *PostgresMetricRepository) UpdateBatch(metrics []domain.Metric) (err 
 
 // Get implements [interfaces.MetricRepository].
 func (repo *PostgresMetricRepository) Get(
+	ctx context.Context,
 	metricType domain.MetricType,
 	metricName domain.MetricName,
 ) (domain.Metric, error) {
-	ctx := context.Background()
 	return readMetric(ctx, repo.db, metricName, metricType)
 }
 
 // GetAll implements [interfaces.MetricRepository].
-func (repo *PostgresMetricRepository) GetAll() ([]domain.Metric, error) {
-	ctx := context.Background()
+func (repo *PostgresMetricRepository) GetAll(
+	ctx context.Context,
+) ([]domain.Metric, error) {
 	return readAllMetrics(ctx, repo.db)
 }
 
 // PopAll implements [interfaces.MetricRepository].
-func (repo *PostgresMetricRepository) PopAll() (metrics []domain.Metric, err error) {
-	ctx := context.Background()
+func (repo *PostgresMetricRepository) PopAll(
+	ctx context.Context,
+) (metrics []domain.Metric, err error) {
 	tx, err := repo.db.BeginTx(ctx, nil)
 
 	if err != nil {
@@ -258,8 +280,7 @@ func (repo *PostgresMetricRepository) PopAll() (metrics []domain.Metric, err err
 }
 
 // Clear implements [interfaces.MetricRepository].
-func (repo *PostgresMetricRepository) Clear() error {
-	ctx := context.Background()
+func (repo *PostgresMetricRepository) Clear(ctx context.Context) error {
 	return deleteAllMetrics(ctx, repo.db)
 }
 

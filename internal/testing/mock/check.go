@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/stretchr/testify/mock"
@@ -20,4 +21,8 @@ func IsImplements(i any) func(any) bool {
 		objType := reflect.TypeOf(obj)
 		return objType.Implements(interfaceType)
 	}
+}
+
+func MatchContext() any {
+	return mock.MatchedBy(IsImplements(new(context.Context)))
 }

@@ -12,8 +12,8 @@ type PreviewMetricsHandler struct {
 	metricsPresenter presenter.MetricsPresenter
 }
 
-func (h *PreviewMetricsHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
-	metrics, err := h.useCase.Execute()
+func (h *PreviewMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	metrics, err := h.useCase.Execute(r.Context())
 
 	if err != nil {
 		h.errorPresenter.Render(w, err, http.StatusInternalServerError)

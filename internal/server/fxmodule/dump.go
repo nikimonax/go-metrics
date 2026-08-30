@@ -69,9 +69,8 @@ func provideSaveMetricsTask(
 ) (work.Task, error) {
 	return work.NewTask(
 		"dump metrics",
-		func(_ context.Context) error {
-			// TODO: pass context
-			return useCase.Execute()
+		func(ctx context.Context) error {
+			return useCase.Execute(ctx)
 		},
 	)
 }

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/caarlos0/env/v6"
+	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
@@ -100,57 +101,57 @@ func scenario(t *testing.T, repo interfaces.MetricRepository) {
 	metricsAB := []domain.Metric{metricA, metricB}
 
 	// 1. initial empty repo
-	metrics, err := repo.GetAll()
+	metrics, err := repo.GetAll(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, metrics)
 
 	//  2. update two metrics
-	err = repo.UpdateBatch(metricsAB)
+	err = repo.UpdateBatch(t.Context(), metricsAB)
 	require.NoError(t, err)
 
 	// 3. check match
-	metrics, err = repo.GetAll()
+	metrics, err = repo.GetAll(t.Context())
 	require.NoError(t, err)
 	require.ElementsMatch(t, metrics, metricsAB)
 
 	// 4. check not existing metric
-	_, err = repo.Get(domain.Counter, "C")
+	_, err = repo.Get(t.Context(), domain.Counter, "C")
 	require.ErrorIs(t, err, app.ErrMetricNotFound)
 
 	// 5. update existing metric
-	err = repo.Update(domain.NewCounterMetric("A", 1))
+	err = repo.Update(t.Context(), domain.NewCounterMetric("A", 1))
 	require.NoError(t, err)
 
 	// 6. check existing metric updated
-	metric, err := repo.Get(metricA.Type(), metricA.Name())
+	metric, err := repo.Get(t.Context(), metricA.Type(), metricA.Name())
 	require.NoError(t, err)
 	require.Equal(t, "43", metric.Value().String())
 
 	// 7. pop all metrics
-	metrics, err = repo.PopAll()
+	metrics, err = repo.PopAll(t.Context())
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 
 	// 8. check metrics popped
-	metricsLeft, err := repo.GetAll()
+	metricsLeft, err := repo.GetAll(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, metricsLeft)
 
 	// 9. again write back
-	err = repo.UpdateBatch(metrics)
+	err = repo.UpdateBatch(t.Context(), metrics)
 	require.NoError(t, err)
 
 	// 10. check written
-	metrics, err = repo.GetAll()
+	metrics, err = repo.GetAll(t.Context())
 	require.NoError(t, err)
 	require.Len(t, metrics, 2)
 
 	// 11. clear
-	err = repo.Clear()
+	err = repo.Clear(t.Context())
 	require.NoError(t, err)
 
 	// 12. check clear
-	metrics, err = repo.GetAll()
+	metrics, err = repo.GetAll(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, metrics)
 }
@@ -201,11 +202,17 @@ func TestMetricRepository(t *testing.T) {
 			t.Skipf("database not available: %s", err)
 		}
 
-		migrate, err := repository.PostgresMigrate(db)
+		m, err := repository.PostgresMigrate(db)
 		require.NoError(t, err)
-		require.NoError(t, migrate.Up())
 
-		t.Cleanup(func() { assert.NoError(t, migrate.Down()) })
+		err = m.Up()
+
+		if errors.Is(err, migrate.ErrNoChange) {
+			err = nil
+		}
+		require.NoError(t, err)
+
+		t.Cleanup(func() { assert.NoError(t, m.Down()) })
 
 		repo := repository.NewPostgresMetricRepository(db)
 		scenario(t, repo)

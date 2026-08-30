@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"maps"
 	"slices"
 	"sync"
@@ -66,7 +67,10 @@ func (repo *InMemoryMetricRepository) updateUnlocked(metric domain.Metric) error
 }
 
 // Update implements [interfaces.MetricRepository].
-func (repo *InMemoryMetricRepository) Update(metric domain.Metric) error {
+func (repo *InMemoryMetricRepository) Update(
+	_ context.Context,
+	metric domain.Metric,
+) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
@@ -74,7 +78,10 @@ func (repo *InMemoryMetricRepository) Update(metric domain.Metric) error {
 }
 
 // UpdateBatch implements [interfaces.MetricRepository].
-func (repo *InMemoryMetricRepository) UpdateBatch(metrics []domain.Metric) error {
+func (repo *InMemoryMetricRepository) UpdateBatch(
+	_ context.Context,
+	metrics []domain.Metric,
+) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
@@ -88,6 +95,7 @@ func (repo *InMemoryMetricRepository) UpdateBatch(metrics []domain.Metric) error
 
 // Get implements [interfaces.MetricRepository].
 func (repo *InMemoryMetricRepository) Get(
+	_ context.Context,
 	metricType domain.MetricType,
 	metricName domain.MetricName,
 ) (domain.Metric, error) {
@@ -104,7 +112,7 @@ func (repo *InMemoryMetricRepository) Get(
 }
 
 // GetAll implements [interfaces.MetricRepository].
-func (repo *InMemoryMetricRepository) GetAll() ([]domain.Metric, error) {
+func (repo *InMemoryMetricRepository) GetAll(context.Context) ([]domain.Metric, error) {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
@@ -118,7 +126,7 @@ func (repo *InMemoryMetricRepository) GetAll() ([]domain.Metric, error) {
 }
 
 // PopAll implements [interfaces.MetricRepository].
-func (repo *InMemoryMetricRepository) PopAll() ([]domain.Metric, error) {
+func (repo *InMemoryMetricRepository) PopAll(context.Context) ([]domain.Metric, error) {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 
@@ -135,7 +143,7 @@ func (repo *InMemoryMetricRepository) PopAll() ([]domain.Metric, error) {
 	return metrics, nil
 }
 
-func (repo *InMemoryMetricRepository) Clear() error {
+func (repo *InMemoryMetricRepository) Clear(context.Context) error {
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 

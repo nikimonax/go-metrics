@@ -44,7 +44,7 @@ func (h *UpdateMetricV2Handler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 	metric := payload.ToDomain()
 
-	if err := h.useCase.Execute(metric); err != nil {
+	if err := h.useCase.Execute(r.Context(), metric); err != nil {
 		h.errorPresenter.Render(w, err, http.StatusInternalServerError)
 		return
 	}

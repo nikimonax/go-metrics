@@ -1,14 +1,20 @@
 package usecase
 
-import "github.com/nikimonax/go-metrics/internal/app/interfaces"
+import (
+	"context"
+
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
+)
 
 type SendMetricsUseCase struct {
 	gateway    interfaces.MetricGateway
 	repository interfaces.MetricRepository
 }
 
-func (useCase *SendMetricsUseCase) Execute() error {
-	metrics, err := useCase.repository.PopAll()
+func (useCase *SendMetricsUseCase) Execute(
+	ctx context.Context,
+) error {
+	metrics, err := useCase.repository.PopAll(ctx)
 
 	if err != nil {
 		return err
@@ -18,7 +24,7 @@ func (useCase *SendMetricsUseCase) Execute() error {
 		return nil
 	}
 
-	return useCase.gateway.SendBatch(metrics)
+	return useCase.gateway.SendBatch(ctx, metrics)
 }
 
 func NewSendMetricsUseCase(
