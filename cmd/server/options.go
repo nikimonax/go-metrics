@@ -27,7 +27,7 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 	}
 
 	if opts.DatabaseDSN != "" {
-		cfg.DatabaseDSN = opts.DatabaseDSN
+		cfg.Database.DSN = opts.DatabaseDSN
 	}
 
 	if opts.DumpFile != "" {

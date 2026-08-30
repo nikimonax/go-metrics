@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
@@ -13,13 +14,40 @@ import (
 )
 
 const (
-	DefaultListen       = "localhost:8080"
-	DefaultDatabaseDsn  = ""
-	DefaultDumpFile     = "metrics.json"
-	DefaultDumpInterval = 300 * time.Second
-	DefaultDumpRestore  = false
-	DefaultStopTimeout  = 5 * time.Second
+	DefaultListen          = "localhost:8080"
+	DefaultDatabaseDsn     = ""
+	DefaultDatabaseMigrate = true
+	DefaultDumpFile        = "metrics.json"
+	DefaultDumpInterval    = 300 * time.Second
+	DefaultDumpRestore     = false
+	DefaultStopTimeout     = 5 * time.Second
 )
+
+type DatabaseConfig struct {
+	DSN     string
+	Migrate bool
+	Backoff config.BackoffConfig
+}
+
+func (cfg DatabaseConfig) Validate() error {
+	if cfg.DSN == "" {
+		return nil
+	}
+
+	dsnURL, err := url.Parse(cfg.DSN)
+
+	if err != nil {
+		msg := fmt.Sprintf("invalid database dsn: %s", err)
+		return config.NewErrInvalidConfig(msg)
+	}
+
+	if dsnURL.Scheme != "" && dsnURL.Scheme != "postgres" {
+		msg := fmt.Sprintf("unsupported database: %s", dsnURL.Scheme)
+		return config.NewErrInvalidConfig(msg)
+	}
+
+	return nil
+}
 
 type LogConfig struct {
 	Env   zapextra.LogEnv
@@ -33,64 +61,69 @@ type DumpConfig struct {
 }
 
 func (cfg DumpConfig) Validate() error {
+	var errs error
+
 	if cfg.File == "" {
-		return config.NewErrInvalidConfig("required 'File'")
+		err := config.NewErrInvalidConfig("required 'File'")
+		errs = errors.Join(err, errs)
 	}
 
 	if cfg.Interval < 0 {
-		return config.NewErrInvalidConfig("required non negative 'Interval'")
+		err := config.NewErrInvalidConfig("required non negative 'Interval'")
+		errs = errors.Join(err, errs)
 	}
 
-	return nil
+	return errs
 }
 
 type ServerConfig struct {
-	Listen      string
-	DatabaseDSN string
-	Log         LogConfig
-	Dump        DumpConfig
-	Pool        work.PoolConfig
-	Scheduler   work.SchedulerConfig
+	Listen    string
+	Database  DatabaseConfig
+	Log       LogConfig
+	Dump      DumpConfig
+	Pool      work.PoolConfig
+	Scheduler work.SchedulerConfig
 }
 
 func (cfg ServerConfig) Validate() error {
+	var errs error
+
 	if cfg.Listen == "" {
-		return config.NewErrInvalidConfig("required 'Listen'")
+		err := config.NewErrInvalidConfig("required 'Listen'")
+		errs = errors.Join(err, errs)
 	}
 
-	if cfg.DatabaseDSN != "" {
-		dsnURL, err := url.Parse(cfg.DatabaseDSN)
-
-		if err != nil {
-			msg := fmt.Sprintf("invalid database dsn: %s", err)
-			return config.NewErrInvalidConfig(msg)
-		}
-
-		if dsnURL.Scheme != "" && dsnURL.Scheme != "postgres" {
-			msg := fmt.Sprintf("unsupported database: %s", dsnURL.Scheme)
-			return config.NewErrInvalidConfig(msg)
-		}
+	if err := cfg.Database.Validate(); err != nil {
+		errs = errors.Join(err, errs)
 	}
 
 	if err := cfg.Dump.Validate(); err != nil {
-		return err
+		errs = errors.Join(err, errs)
 	}
 
 	if err := cfg.Pool.Validate(); err != nil {
-		return err
+		errs = errors.Join(err, errs)
 	}
 
 	if err := cfg.Scheduler.Validate(); err != nil {
-		return err
+		errs = errors.Join(err, errs)
 	}
 
-	return nil
+	return errs
 }
 
 func NewDefaultConfig() ServerConfig {
 	return ServerConfig{
-		Listen:      DefaultListen,
-		DatabaseDSN: DefaultDatabaseDsn,
+		Listen: DefaultListen,
+		Database: DatabaseConfig{
+			DSN:     DefaultDatabaseDsn,
+			Migrate: DefaultDatabaseMigrate,
+			Backoff: config.BackoffConfig{
+				Retry: 3,
+				Seed:  1 * time.Second,
+				Add:   2 * time.Second,
+			},
+		},
 		Log: LogConfig{
 			Env:   zapextra.EnvDev,
 			Level: zapcore.InfoLevel,

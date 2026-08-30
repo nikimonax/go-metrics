@@ -215,7 +215,7 @@ func registerStartupLog(
 		sugar.Infow(
 			"starting server",
 			"listen", cfg.Listen,
-			"database", cfg.DatabaseDSN,
+			"database", cfg.Database.DSN,
 			"dump_file", cfg.Dump.File,
 			"dump_interval", cfg.Dump.Interval,
 			"dump_restore", cfg.Dump.Restore,

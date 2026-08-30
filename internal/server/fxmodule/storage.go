@@ -11,13 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/fx"
 
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 )
 
 func StorageModule(cfg *config.ServerConfig) fx.Option {
-	if cfg.DatabaseDSN == "" {
+	if cfg.Database.DSN == "" {
 		return fx.Module(
 			"storage",
 			fx.Provide(repository.NewInMemoryMetricRepository),
@@ -29,7 +30,7 @@ func StorageModule(cfg *config.ServerConfig) fx.Option {
 		fx.Provide(
 			provideDatabaseConfig,
 			provideDatabase,
-			repository.NewPostgresMetricRepository,
+			providePostgresMetricRepository,
 			fx.Annotate(
 				handler.NewPingDatabaseHandler,
 				fx.ResultTags(`name:"handler_database_ping"`),
@@ -51,11 +52,29 @@ func StorageModule(cfg *config.ServerConfig) fx.Option {
 }
 
 func provideDatabaseConfig(cfg *config.ServerConfig) (*pgx.ConnConfig, error) {
-	return pgx.ParseConfig(cfg.DatabaseDSN)
+	return pgx.ParseConfig(cfg.Database.DSN)
 }
 
 func provideDatabase(connCfg *pgx.ConnConfig) *sql.DB {
 	return stdlib.OpenDB(*connCfg)
+}
+
+func providePostgresMetricRepository(
+	cfg *config.ServerConfig,
+	db *sql.DB,
+) interfaces.MetricRepository {
+	repo := repository.NewPostgresMetricRepository(db)
+
+	if cfg.Database.Backoff.Retry == 0 {
+		// without backoff
+		return repo
+	}
+
+	return repository.NewRetryRepository(
+		repo,
+		cfg.Database.Backoff.Build,
+		func(_ error) bool { return true },
+	)
 }
 
 func registerDatabaseClose(
@@ -67,8 +86,13 @@ func registerDatabaseClose(
 
 func registerDatabaseMigrate(
 	lc fx.Lifecycle,
+	cfg *config.ServerConfig,
 	db *sql.DB,
 ) error {
+	if !cfg.Database.Migrate {
+		return nil
+	}
+
 	m, err := repository.PostgresMigrate(db)
 
 	if err != nil {
