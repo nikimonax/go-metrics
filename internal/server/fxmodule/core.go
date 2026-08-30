@@ -14,7 +14,6 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/publisher"
-	"github.com/nikimonax/go-metrics/internal/impl/repository"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
@@ -34,7 +33,6 @@ func CoreModule() fx.Option {
 			work.NewScheduler,
 		),
 		fx.Provide(
-			repository.NewInMemoryMetricRepository,
 			usecase.NewUpdateMetricUseCase,
 			usecase.NewGetMetricUseCase,
 			usecase.NewGetAllMetricsUseCase,
