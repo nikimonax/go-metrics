@@ -4,12 +4,13 @@ set -euo pipefail
 
 BIN_DIR=bin
 
-DATABASE_USER=postgres
-DATABASE_PASSWORD=postgres
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_NAME=praktikum
-
+if [ -f .env ]; then
+    set -o allexport
+    source .env
+    set +o allexport
+else
+    echo "[WARN] .env file not exists"
+fi
 
 if [ -z "${1:-}" ]; then
     START=1

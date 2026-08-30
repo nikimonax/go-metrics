@@ -11,9 +11,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
     environment:
       - TZ
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=praktikum
+      - POSTGRES_USER=${DATABASE_USER:?}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD:?}
+      - POSTGRES_DB=${DATABASE_NAME:?}
       - PGDATA=/var/lib/postgresql/data
 
 volumes:
