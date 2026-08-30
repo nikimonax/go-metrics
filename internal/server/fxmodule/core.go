@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
@@ -18,30 +20,67 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
+	"github.com/nikimonax/go-metrics/internal/server/presenter"
 )
 
 func CoreModule() fx.Option {
 	return fx.Module(
 		"core",
+		// logging
 		fx.Provide(
 			provideLogger,
 			provideSugaredLogger,
+		),
+		// utility
+		fx.Provide(
+			provideValidator,
+			provideTranslator,
+		),
+		// background processing
+		fx.Provide(
 			providePoolConfig,
 			providePoolSubmitter,
 			providerSchedulerConfig,
 			work.NewPool,
 			work.NewScheduler,
 		),
+		// application level stuff
 		fx.Provide(
-			usecase.NewUpdateMetricUseCase,
-			usecase.NewGetMetricUseCase,
-			usecase.NewGetAllMetricsUseCase,
 			provideEventDispatcher,
 			provideEventPublisher,
+			usecase.NewUpdateMetricUseCase,
+			usecase.NewUpdateMetricsUseCase,
+			usecase.NewGetMetricUseCase,
+			usecase.NewGetAllMetricsUseCase,
 			provideHandlerUpdateMetricUseCase,
+			provideHandlerUpdateMetricsUseCase,
 			provideHandlerGetMetricUseCase,
 			provideHandlerGetAllMetricsUseCase,
 		),
+		// presenters
+		fx.Provide(
+			fx.Annotate(
+				presenter.NewPlainTextErrorPresenter,
+				fx.ResultTags(`name:"presenter_error_text"`),
+			),
+			fx.Annotate(
+				presenter.NewPlainTextMetricPresenter,
+				fx.ResultTags(`name:"presenter_metric_text"`),
+			),
+			fx.Annotate(
+				presenter.NewHTMLTableMetricsPresenter,
+				fx.ResultTags(`name:"presenter_metrics_html"`),
+			),
+			fx.Annotate(
+				presenter.NewJSONErrorPresenter,
+				fx.ResultTags(`name:"presenter_error_json"`),
+			),
+			fx.Annotate(
+				presenter.NewJSONMetricPresenter,
+				fx.ResultTags(`name:"presenter_metric_json"`),
+			),
+		),
+		// http routes, handlers, middleware
 		fx.Provide(
 			fx.Annotate(
 				zapextra.NewZapSugarLoggingMiddleware,
@@ -74,6 +113,14 @@ func provideLogger(cfg *config.ServerConfig) *zap.Logger {
 
 func provideSugaredLogger(logger *zap.Logger) *zap.SugaredLogger {
 	return logger.Sugar()
+}
+
+func provideValidator() *validator.Validate {
+	return validator.New(validator.WithRequiredStructEnabled())
+}
+
+func provideTranslator() ut.Translator {
+	return presenter.NewTranslator()
 }
 
 func providePoolConfig(
@@ -130,11 +177,19 @@ func provideHandlerUpdateMetricUseCase(
 ) handler.UpdateMetricUseCase {
 	return usecase
 }
+
+func provideHandlerUpdateMetricsUseCase(
+	usecase *usecase.UpdateMetricsUseCase,
+) handler.UpdateMetricsUseCase {
+	return usecase
+}
+
 func provideHandlerGetMetricUseCase(
 	usecase *usecase.GetMetricUseCase,
 ) handler.GetMetricUseCase {
 	return usecase
 }
+
 func provideHandlerGetAllMetricsUseCase(
 	usecase *usecase.GetAllMetricsUseCase,
 ) handler.GetAllMetricsUseCase {

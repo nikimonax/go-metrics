@@ -7,26 +7,11 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/nikimonax/go-metrics/internal/server/handler"
-	"github.com/nikimonax/go-metrics/internal/server/presenter"
 )
 
 func APIV1Module() fx.Option {
 	return fx.Module(
 		"api_v1",
-		fx.Provide(
-			fx.Annotate(
-				presenter.NewPlainTextErrorPresenter,
-				fx.ResultTags(`name:"presenter_error_text"`),
-			),
-			fx.Annotate(
-				presenter.NewPlainTextMetricPresenter,
-				fx.ResultTags(`name:"presenter_metric_text"`),
-			),
-			fx.Annotate(
-				presenter.NewHTMLTableMetricsPresenter,
-				fx.ResultTags(`name:"presenter_metrics_html"`),
-			),
-		),
 		fx.Provide(
 			fx.Annotate(
 				handler.NewPreviewMetricsHandler,

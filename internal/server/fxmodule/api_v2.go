@@ -4,34 +4,14 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	ut "github.com/go-playground/universal-translator"
-	"github.com/go-playground/validator/v10"
 	"go.uber.org/fx"
 
-	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
-	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
-	"github.com/nikimonax/go-metrics/internal/server/presenter"
 )
 
 func APIV2Module() fx.Option {
 	return fx.Module(
 		"api_v2",
-		fx.Provide(
-			provideValidator,
-			provideTranslator,
-		),
-		fx.Provide(
-			fx.Annotate(
-				presenter.NewJSONErrorPresenter,
-				fx.ResultTags(`name:"presenter_error_json"`),
-			),
-			fx.Annotate(
-				presenter.NewJSONMetricPresenter,
-				fx.ResultTags(`name:"presenter_metric_json"`),
-			),
-		),
 		fx.Provide(
 			fx.Annotate(
 				handler.NewUpdateMetricV2Handler,
@@ -49,7 +29,7 @@ func APIV2Module() fx.Option {
 				fx.ResultTags(`name:"handler_metric_get_v2"`),
 			),
 			fx.Annotate(
-				provideRouterV2,
+				provideJSONRouter,
 				fx.ParamTags(
 					`name:"router_base"`,
 					`name:"middleware_logger"`,
@@ -68,28 +48,6 @@ func APIV2Module() fx.Option {
 				),
 			),
 		),
-	)
-}
-
-func provideValidator() *validator.Validate {
-	return validator.New(validator.WithRequiredStructEnabled())
-}
-
-func provideTranslator() ut.Translator {
-	return presenter.NewTranslator()
-}
-
-func provideRouterV2(
-	baseRouter chi.Router,
-	logger Middleware,
-	compress Middleware,
-) chi.Router {
-	return baseRouter.With(
-		middleware.AllowContentType(httpextra.MIMEJSON),
-		middleware.AllowContentEncoding(httpextra.ENCGzip),
-		mymiddleware.Decompress(),
-		compress,
-		logger,
 	)
 }
 
