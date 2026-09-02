@@ -70,11 +70,7 @@ func (gateway *HTTPMetricGateway) Send(
 			}
 		}
 
-		return fmt.Errorf(
-			"failed send metric (%d): %s",
-			resp.StatusCode,
-			reason,
-		)
+		return NewErrHTTPStatus(resp.StatusCode, reason)
 	}
 
 	return nil

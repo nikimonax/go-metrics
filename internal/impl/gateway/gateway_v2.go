@@ -68,7 +68,7 @@ func (gateway *HTTPMetricV2Gateway) makeRequest(
 			}
 		}
 
-		return NewErrAPI(reason)
+		return NewErrHTTPStatus(resp.StatusCode, reason)
 	}
 
 	return nil
