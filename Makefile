@@ -5,8 +5,6 @@ BIN_DIR := ./bin
 COV_FILE := coverage.out
 COV_FILE_HTML := coverage.html
 
-AUTOTEST_CMD := metricstest_v2
-
 POSTGRES_DSN := "postgres://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/$(DATABASE_NAME)?sslmode=disable"
 MIGRATIONS_DIR := internal/impl/repository/migrations
 
@@ -49,8 +47,12 @@ cover-html: $(COV_FILE)
 	go tool cover -html=$(COV_FILE) -o $(COV_FILE_HTML)
 
 .PHONY: autotest
-autotest: $(BIN_DIR)/metricstest $(BIN_DIR)/server $(BIN_DIR)/agent
+autotest: $(BIN_DIR)/metricstest_v2 $(BIN_DIR)/server $(BIN_DIR)/agent
 	./tools/autotest.sh $(EXTRA_ARGS)
+
+.PHONY: statictest
+statictest: $(BIN_DIR)/statictest
+	go vet -vettool=$< ./...
 
 .PHONY: clean
 clean:
@@ -69,8 +71,11 @@ migrate: _check_migrate_cmd
 $(COV_FILE): EXTRA_ARGS += -coverprofile=$(COV_FILE)
 $(COV_FILE): test
 
-$(BIN_DIR)/metricstest: .FORCE
-	cd tools/go-autotests && go test -c -o ../../$@ ./cmd/$(AUTOTEST_CMD)
+$(BIN_DIR)/metricstest_v2: .FORCE
+	cd tools/go-autotests && go test -c -o ../../$@ ./cmd/$(@F)
+
+$(BIN_DIR)/statictest: .FORCE
+	cd tools/go-autotests && go build -o ../../$@ ./cmd/$(@F)
 
 $(BIN_DIR)/server $(BIN_DIR)/agent: $(BIN_DIR)/%: cmd/% .FORCE
 	go build -o $@ ./$<

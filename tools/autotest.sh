@@ -47,7 +47,7 @@ for ((i=START; i<=ITER; i++)); do
         export API=2
     fi
 
-    "$BIN_DIR/metricstest" \
+    "$BIN_DIR/metricstest_v2" \
         -test.run="^TestIteration$i[AB]*$" \
         -binary-path="$BIN_DIR/server" \
         -agent-binary-path="$BIN_DIR/agent" \
