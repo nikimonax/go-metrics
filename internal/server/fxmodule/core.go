@@ -16,6 +16,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/publisher"
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
@@ -196,7 +197,7 @@ func provideHandlerGetAllMetricsUseCase(
 	return usecase
 }
 
-func providerMiddlewareCompress() func(http.Handler) http.Handler {
+func providerMiddlewareCompress() httpextra.Middleware {
 	return middleware.Compress(5)
 }
 
