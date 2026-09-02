@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/nikimonax/go-metrics/internal/impl/gateway"
 	"github.com/nikimonax/go-metrics/internal/shared/config"
 )
 
@@ -20,6 +21,7 @@ type AgentConfig struct {
 	APIVersion     uint
 	PollInterval   time.Duration
 	ReportInterval time.Duration
+	Backoff        config.BackoffConfig
 }
 
 func (cfg AgentConfig) Validate() error {
@@ -27,8 +29,9 @@ func (cfg AgentConfig) Validate() error {
 		return config.NewErrInvalidConfig("required non-nil 'BaseURL'")
 	}
 
-	if cfg.APIVersion == 0 && cfg.APIVersion > 3 {
-		return config.NewErrInvalidConfig("required 'APIVersion' equals 1-3")
+	maxAPIVersion := gateway.GetMaxAPIVersion()
+	if cfg.APIVersion == 0 || cfg.APIVersion > maxAPIVersion {
+		return config.NewErrInvalidConfig("required 'APIVersion' equals 1-" + fmt.Sprint(maxAPIVersion))
 	}
 
 	if cfg.PollInterval <= 0 {
@@ -58,5 +61,10 @@ func NewDefaultConfig() AgentConfig {
 		APIVersion:     DefaultAPIVersion,
 		PollInterval:   DefaultPollInterval,
 		ReportInterval: DefaultReportInterval,
+		Backoff: config.BackoffConfig{
+			Retry: 3,
+			Seed:  1 * time.Second,
+			Add:   2 * time.Second,
+		},
 	}
 }

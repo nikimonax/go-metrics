@@ -112,17 +112,25 @@ func provideMetricCollector() interfaces.MetricCollector {
 }
 
 func provideMetricGateway(cfg *config.AgentConfig) (interfaces.MetricGateway, error) {
-	switch cfg.APIVersion {
-	case 1:
-		return gateway.NewHTTPMetricGateway(cfg.BaseURL), nil
-	case 2:
-		return gateway.NewHTTPMetricV2Gateway(cfg.BaseURL), nil
-	case 3:
-		return gateway.NewHTTPMetricV3Gateway(cfg.BaseURL), nil
-	default:
-		err := fmt.Errorf("unknown metrics server api version: %d", cfg.APIVersion)
+	gwFactory, err := gateway.GetGatewayFactory(cfg.APIVersion)
+
+	if err != nil {
 		return nil, err
 	}
+
+	gw := gwFactory(cfg.BaseURL)
+
+	if cfg.Backoff.Retry == 0 {
+		// without backoff
+		return gw, nil
+	}
+
+	return gateway.NewRetryGateway(
+		gw,
+		cfg.Backoff.Build,
+		gateway.HTTPErrorIsRetryable,
+	), nil
+
 }
 
 func registerCollectMetricsTask(
