@@ -67,12 +67,14 @@ func provideMetricDumper(
 func provideSaveMetricsTask(
 	useCase *usecase.SaveMetricsUseCase,
 ) (work.Task, error) {
-	return work.NewTask(
+	task, err := work.NewTask(
 		"dump metrics",
 		func(ctx context.Context) error {
 			return useCase.Execute(ctx)
 		},
 	)
+	task.SkipIfFullChan = true
+	return task, err
 }
 
 func registerRestore(

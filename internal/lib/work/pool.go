@@ -45,6 +45,15 @@ func (pool *WorkerPool) Submit(ctx context.Context, task Task) error {
 	runCtx := pool.runCtx
 	pool.mu.Unlock()
 
+	if task.SkipIfFullChan {
+		select {
+		case queue <- task:
+		default:
+		}
+
+		return nil
+	}
+
 	// NOTE: здесь не гарантируется, что при конкурентном
 	// 		 Stop и Submit задача будет выполнена
 	select {

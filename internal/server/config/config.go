@@ -138,7 +138,7 @@ func NewDefaultConfig() ServerConfig {
 				StopTimeout: DefaultStopTimeout,
 			},
 			WorkerCount: 1,
-			QueueSize:   20,
+			QueueSize:   1,
 		},
 		Scheduler: work.SchedulerConfig{
 			LifecycleConfig: work.LifecycleConfig{

@@ -6,8 +6,9 @@ import (
 )
 
 type Task struct {
-	Name     string
-	Callback func(context.Context) error
+	Name           string
+	Callback       func(context.Context) error
+	SkipIfFullChan bool
 }
 
 func NewTask(name string, callback func(context.Context) error) (Task, error) {
