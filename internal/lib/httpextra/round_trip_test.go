@@ -66,7 +66,11 @@ func TestCompressRoundTripper(t *testing.T) {
 		})
 		req := shared.NewRequest(t, http.MethodGet, nil)
 
-		_, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip).RoundTrip(req) //nolint:bodyclose
+		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip).RoundTrip(req)
+
+		if err != nil && resp != nil {
+			defer func() { assert.NoError(t, resp.Body.Close()) }()
+		}
 
 		assert.Error(t, err)
 		assert.Same(t, req, got)
@@ -80,7 +84,11 @@ func TestCompressRoundTripper(t *testing.T) {
 		req := shared.NewRequest(t, http.MethodPost, errorReader{})
 		req.ContentLength = -1
 
-		_, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip).RoundTrip(req) //nolint:bodyclose
+		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip).RoundTrip(req)
+
+		if err != nil && resp != nil {
+			defer func() { assert.NoError(t, resp.Body.Close()) }()
+		}
 
 		assert.EqualError(t, err, "read error")
 	})
