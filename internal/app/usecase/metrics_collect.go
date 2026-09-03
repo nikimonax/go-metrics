@@ -1,13 +1,19 @@
 package usecase
 
-import "github.com/nikimonax/go-metrics/internal/app/interfaces"
+import (
+	"context"
+
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
+)
 
 type CollectMetricsUseCase struct {
 	collector  interfaces.MetricCollector
 	repository interfaces.MetricRepository
 }
 
-func (useCase *CollectMetricsUseCase) Execute() error {
+func (useCase *CollectMetricsUseCase) Execute(
+	ctx context.Context,
+) error {
 	metrics, err := useCase.collector.Collect()
 
 	if err != nil {
@@ -18,7 +24,7 @@ func (useCase *CollectMetricsUseCase) Execute() error {
 		return nil
 	}
 
-	return useCase.repository.UpdateBatch(metrics)
+	return useCase.repository.UpdateBatch(ctx, metrics)
 }
 
 func NewCollectMetricsUseCase(

@@ -3,22 +3,32 @@ package ioextra
 import (
 	"errors"
 	"io"
+	"sync"
 )
 
-func NewMultiCloser(closers ...io.Closer) io.Closer {
-	return CloserFunc(func() error {
-		errs := make([]error, 0)
+type MultiCloser struct {
+	mu      sync.Mutex
+	closers []io.Closer
+}
 
-		for _, closer := range closers {
-			if err := closer.Close(); err != nil {
-				errs = append(errs, err)
-			}
-		}
+func (m *MultiCloser) Append(closer io.Closer) {
+	if closer == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.closers = append(m.closers, closer)
+}
 
-		if len(errs) == 0 {
-			return nil
-		}
+func (m *MultiCloser) Close() (err error) {
+	for _, closer := range m.closers {
+		err = errors.Join(err, closer.Close())
+	}
+	return err
+}
 
-		return errors.Join(errs...)
-	})
+var _ io.Closer = (*MultiCloser)(nil)
+
+func NewMultiCloser(closers ...io.Closer) *MultiCloser {
+	return &MultiCloser{closers: closers}
 }

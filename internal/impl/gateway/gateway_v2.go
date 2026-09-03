@@ -23,20 +23,11 @@ type HTTPMetricV2Gateway struct {
 	timeout  time.Duration
 }
 
-// Send implements [interfaces.MetricGateway].
-func (gateway *HTTPMetricV2Gateway) Send(metric domain.Metric) (err error) {
-	payload := model.NewMetricFromDomain(metric)
-
-	content, err := json.Marshal(payload)
-
-	if err != nil {
-		return fmt.Errorf("failed serialize metric: %w", err)
-	}
-
-	ctx, cancel := context.WithTimeout(
-		context.Background(),
-		gateway.timeout,
-	)
+func (gateway *HTTPMetricV2Gateway) makeRequest(
+	ctx context.Context,
+	content []byte,
+) (err error) {
+	ctx, cancel := context.WithTimeout(ctx, gateway.timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(
@@ -55,7 +46,7 @@ func (gateway *HTTPMetricV2Gateway) Send(metric domain.Metric) (err error) {
 	resp, err := gateway.client.Do(req)
 
 	if err != nil {
-		return fmt.Errorf("failed send metric: %w", err)
+		return fmt.Errorf("request failed: %w", err)
 	}
 
 	defer func() {
@@ -71,26 +62,45 @@ func (gateway *HTTPMetricV2Gateway) Send(metric domain.Metric) (err error) {
 	if resp.StatusCode >= 400 {
 		reason := "unknown"
 
-		if resp.Header.Get(httpextra.HDRContentType) == httpextra.MIMEText {
+		if resp.ContentLength > 0 {
 			if body, err := io.ReadAll(resp.Body); err == nil {
 				reason = string(body)
 			}
 		}
 
-		return fmt.Errorf(
-			"failed send metric (%d): %s",
-			resp.StatusCode,
-			reason,
-		)
+		return NewErrHTTPStatus(resp.StatusCode, reason)
+	}
+
+	return nil
+}
+
+// Send implements [interfaces.MetricGateway].
+func (gateway *HTTPMetricV2Gateway) Send(
+	ctx context.Context,
+	metric domain.Metric,
+) error {
+	payload := model.NewMetricFromDomain(metric)
+
+	content, err := json.Marshal(payload)
+
+	if err != nil {
+		return fmt.Errorf("failed serialize metric: %w", err)
+	}
+
+	if err := gateway.makeRequest(ctx, content); err != nil {
+		return fmt.Errorf("failed send metric: %w", err)
 	}
 
 	return nil
 }
 
 // SendBatch implements [interfaces.MetricGateway].
-func (gateway *HTTPMetricV2Gateway) SendBatch(metrics []domain.Metric) error {
+func (gateway *HTTPMetricV2Gateway) SendBatch(
+	ctx context.Context,
+	metrics []domain.Metric,
+) error {
 	for _, metric := range metrics {
-		if err := gateway.Send(metric); err != nil {
+		if err := gateway.Send(ctx, metric); err != nil {
 			return err
 		}
 	}

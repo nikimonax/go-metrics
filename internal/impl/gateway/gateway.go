@@ -23,7 +23,10 @@ type HTTPMetricGateway struct {
 }
 
 // Send implements [interfaces.MetricGateway].
-func (gateway *HTTPMetricGateway) Send(metric domain.Metric) (err error) {
+func (gateway *HTTPMetricGateway) Send(
+	ctx context.Context,
+	metric domain.Metric,
+) (err error) {
 	url := gateway.baseURL.JoinPath(
 		"update",
 		string(metric.Type()),
@@ -31,10 +34,7 @@ func (gateway *HTTPMetricGateway) Send(metric domain.Metric) (err error) {
 		metric.Value().String(),
 	).String()
 
-	ctx, cancel := context.WithTimeout(
-		context.Background(),
-		gateway.timeout,
-	)
+	ctx, cancel := context.WithTimeout(ctx, gateway.timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
@@ -70,20 +70,19 @@ func (gateway *HTTPMetricGateway) Send(metric domain.Metric) (err error) {
 			}
 		}
 
-		return fmt.Errorf(
-			"failed send metric (%d): %s",
-			resp.StatusCode,
-			reason,
-		)
+		return NewErrHTTPStatus(resp.StatusCode, reason)
 	}
 
 	return nil
 }
 
 // SendBatch implements [interfaces.MetricGateway].
-func (gateway *HTTPMetricGateway) SendBatch(metrics []domain.Metric) error {
+func (gateway *HTTPMetricGateway) SendBatch(
+	ctx context.Context,
+	metrics []domain.Metric,
+) error {
 	for _, metric := range metrics {
-		if err := gateway.Send(metric); err != nil {
+		if err := gateway.Send(ctx, metric); err != nil {
 			return err
 		}
 	}

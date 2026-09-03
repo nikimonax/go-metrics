@@ -1,15 +1,20 @@
 package usecase
 
-import "github.com/nikimonax/go-metrics/internal/app/interfaces"
+import (
+	"context"
+
+	"github.com/nikimonax/go-metrics/internal/app/interfaces"
+)
 
 type SendMetricsUseCase struct {
 	gateway    interfaces.MetricGateway
 	repository interfaces.MetricRepository
 }
 
-func (useCase *SendMetricsUseCase) Execute() error {
-	// TODO: заменить на атомарный GetAllAndClear
-	metrics, err := useCase.repository.GetAll()
+func (useCase *SendMetricsUseCase) Execute(
+	ctx context.Context,
+) error {
+	metrics, err := useCase.repository.PopAll(ctx)
 
 	if err != nil {
 		return err
@@ -19,13 +24,7 @@ func (useCase *SendMetricsUseCase) Execute() error {
 		return nil
 	}
 
-	err = useCase.repository.Clear()
-
-	if err != nil {
-		return err
-	}
-
-	return useCase.gateway.SendBatch(metrics)
+	return useCase.gateway.SendBatch(ctx, metrics)
 }
 
 func NewSendMetricsUseCase(

@@ -1,6 +1,8 @@
 package mock
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/mock"
 
 	"github.com/nikimonax/go-metrics/internal/domain"
@@ -14,8 +16,11 @@ type UpdateMetricUseCase struct {
 }
 
 // Execute implements [server.UpdateMetricUseCase].
-func (useCase *UpdateMetricUseCase) Execute(metric domain.Metric) error {
-	return useCase.Called(metric).Error(0)
+func (useCase *UpdateMetricUseCase) Execute(
+	ctx context.Context,
+	metric domain.Metric,
+) error {
+	return useCase.Called(ctx, metric).Error(0)
 }
 
 var _ handler.UpdateMetricUseCase = (*UpdateMetricUseCase)(nil)
@@ -28,10 +33,11 @@ type GetMetricUseCase struct {
 
 // Execute implements [server.GetMetricUseCase].
 func (useCase *GetMetricUseCase) Execute(
+	ctx context.Context,
 	metricType domain.MetricType,
 	metricName domain.MetricName,
 ) (domain.Metric, error) {
-	args := useCase.Called(metricType, metricName)
+	args := useCase.Called(ctx, metricType, metricName)
 	var metric domain.Metric
 
 	if raw := args.Get(0); raw != nil {
@@ -50,8 +56,10 @@ type GetAllMetricsUseCase struct {
 }
 
 // Execute implements [server.GetAllMetricsUseCase].
-func (useCase *GetAllMetricsUseCase) Execute() ([]domain.Metric, error) {
-	args := useCase.Called()
+func (useCase *GetAllMetricsUseCase) Execute(
+	ctx context.Context,
+) ([]domain.Metric, error) {
+	args := useCase.Called(ctx)
 
 	metrics := make([]domain.Metric, 0)
 

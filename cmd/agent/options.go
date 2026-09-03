@@ -1,22 +1,16 @@
 package main
 
 import (
-	"flag"
-	"log"
+	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v6"
 
-	"github.com/nikimonax/go-metrics/internal/agent"
-)
-
-const (
-	defaultBaseURL            = "http://localhost:8080"
-	defaultAPIVersion         = 1
-	defaultPollIntervalSecs   = 2
-	defaultReportIntervalSecs = 10
+	"github.com/nikimonax/go-metrics/internal/agent/config"
+	"github.com/nikimonax/go-metrics/internal/lib/flagextra"
 )
 
 type Options struct {
@@ -26,32 +20,45 @@ type Options struct {
 	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL"`
 }
 
-func (opts *Options) ToAgentConfig() *agent.AgentConfig {
-	rawURL := opts.BaseURL
+func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
+	cfg := config.NewDefaultConfig()
 
-	hasScheme := false
-	hasScheme = hasScheme || strings.HasPrefix(rawURL, "http://")
-	hasScheme = hasScheme || strings.HasPrefix(rawURL, "https://")
+	if opts.BaseURL != "" {
+		rawURL := opts.BaseURL
 
-	if !hasScheme {
-		rawURL = "http://" + rawURL
+		hasScheme := false
+		hasScheme = hasScheme || strings.HasPrefix(rawURL, "http://")
+		hasScheme = hasScheme || strings.HasPrefix(rawURL, "https://")
+
+		if !hasScheme {
+			rawURL = "http://" + rawURL
+		}
+
+		baseURL, err := url.Parse(rawURL)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed parse url '%s': %w", rawURL, err)
+		}
+
+		cfg.BaseURL = baseURL
 	}
 
-	baseURL, err := url.Parse(rawURL)
-
-	if err != nil {
-		log.Fatalf("failed parse url '%s': %s", rawURL, err)
+	if opts.APIVersion > 0 {
+		cfg.APIVersion = opts.APIVersion
 	}
 
-	return &agent.AgentConfig{
-		BaseURL:        baseURL,
-		APIVersion:     opts.APIVersion,
-		PollInterval:   time.Duration(opts.PollIntervalSecs) * time.Second,
-		ReportInterval: time.Duration(opts.ReportIntervalSecs) * time.Second,
+	if opts.PollIntervalSecs > 0 {
+		cfg.PollInterval = time.Duration(opts.PollIntervalSecs) * time.Second
 	}
+
+	if opts.ReportIntervalSecs > 0 {
+		cfg.ReportInterval = time.Duration(opts.ReportIntervalSecs) * time.Second
+	}
+
+	return &cfg, nil
 }
 
-func (opts *Options) Merge(other Options) {
+func (opts *Options) Merge(other *Options) {
 	if other.BaseURL != "" {
 		opts.BaseURL = other.BaseURL
 	}
@@ -69,41 +76,67 @@ func (opts *Options) Merge(other Options) {
 	}
 }
 
-func ReadOptions() *Options {
-	var optionsFromEnv, optionsFromCli Options
+func ReadEnvOptions() (*Options, error) {
+	var opts Options
 
-	if err := env.Parse(&optionsFromEnv); err != nil {
-		log.Fatalf("failed read env vars: %s", err)
+	if err := env.Parse(&opts); err != nil {
+		return nil, err
 	}
 
-	flag.StringVar(
-		&optionsFromCli.BaseURL,
+	return &opts, nil
+}
+
+func ReadCliOptions() (*Options, error) {
+	var opts Options
+
+	cmd := flagextra.NewFlagSet()
+	cmd.StringVar(
+		&opts.BaseURL,
 		"a",
-		defaultBaseURL,
+		"",
 		"metrics server base url",
 	)
-	flag.UintVar(
-		&optionsFromCli.APIVersion,
+	cmd.UintVar(
+		&opts.APIVersion,
 		"v",
-		defaultAPIVersion,
+		0,
 		"metrics server api version",
 	)
-	flag.Uint64Var(
-		&optionsFromCli.PollIntervalSecs,
+	cmd.Uint64Var(
+		&opts.PollIntervalSecs,
 		"p",
-		defaultPollIntervalSecs,
+		0,
 		"collect metrics interval",
 	)
-	flag.Uint64Var(
-		&optionsFromCli.ReportIntervalSecs,
+	cmd.Uint64Var(
+		&opts.ReportIntervalSecs,
 		"r",
-		defaultReportIntervalSecs,
+		0,
 		"send metrics interval",
 	)
-	flag.Parse()
+
+	if err := cmd.Parse(os.Args[1:]); err != nil {
+		return nil, err
+	}
+
+	return &opts, nil
+}
+
+func ReadOptions() (*Options, error) {
+	optionsFromEnv, err := ReadEnvOptions()
+
+	if err != nil {
+		return nil, err
+	}
+
+	optionsFromCli, err := ReadCliOptions()
+
+	if err != nil {
+		return nil, err
+	}
 
 	// приоритет: env -> cli -> default
 	optionsFromCli.Merge(optionsFromEnv)
 
-	return &optionsFromCli
+	return optionsFromCli, nil
 }

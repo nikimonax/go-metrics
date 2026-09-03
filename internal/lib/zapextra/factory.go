@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type LogEnv = int
@@ -18,7 +19,7 @@ var (
 	ErrUnknownEnv = errors.New("unknown env")
 )
 
-func NewZapLogger(env LogEnv) *zap.Logger {
+func NewZapLogger(env LogEnv, level zapcore.Level) *zap.Logger {
 	var config zap.Config
 
 	switch env {
@@ -31,6 +32,7 @@ func NewZapLogger(env LogEnv) *zap.Logger {
 	}
 
 	config.DisableCaller = true
+	config.Level.SetLevel(level)
 
 	logger, err := config.Build()
 

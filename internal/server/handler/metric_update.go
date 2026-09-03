@@ -21,7 +21,7 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = h.useCase.Execute(metric)
+	err = h.useCase.Execute(r.Context(), metric)
 
 	if err != nil {
 		h.errorPresenter.Render(w, err, http.StatusInternalServerError)

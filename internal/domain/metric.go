@@ -27,6 +27,7 @@ func (m MetricType) IsValid() bool {
 
 type MetricValue interface {
 	fmt.Stringer
+	Get() any
 }
 
 type MetricUpdater interface {
@@ -49,6 +50,11 @@ type CounterMetricValue int64
 // String implements [fmt.Stringer].
 func (v CounterMetricValue) String() string {
 	return strconv.FormatInt(int64(v), 10)
+}
+
+// Get implements [MetricValue].
+func (v CounterMetricValue) Get() any {
+	return int64(v)
 }
 
 type CounterMetric struct {
@@ -108,6 +114,11 @@ type GaugeMetricValue float64
 // String implements [fmt.Stringer].
 func (v GaugeMetricValue) String() string {
 	return strconv.FormatFloat(float64(v), 'f', -1, 64)
+}
+
+// Get implements [MetricValue].
+func (v GaugeMetricValue) Get() any {
+	return float64(v)
 }
 
 type GaugeMetric struct {
