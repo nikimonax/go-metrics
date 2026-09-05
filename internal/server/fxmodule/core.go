@@ -16,6 +16,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/publisher"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
+	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
@@ -206,19 +207,15 @@ func providerBaseRouter(cfg *config.ServerConfig) chi.Router {
 	baseRouter.Use(middleware.CleanPath)
 
 	if cfg.Security.HashingKey != "" {
+		hasher := httpsec.NewHasher(
+			cfg.Security.Header,
+			cfg.Security.HashingFunc,
+			[]byte(cfg.Security.HashingKey),
+		)
+
 		baseRouter.Use(
-			// for incoming requests
-			middleware.VerifyHash(
-				cfg.Security.Header,
-				cfg.Security.HashingFunc,
-				cfg.Security.HashingKey,
-			),
-			// for response content
-			middleware.CalculateHash(
-				cfg.Security.Header,
-				cfg.Security.HashingFunc,
-				cfg.Security.HashingKey,
-			),
+			hasher.VerifyMiddleware(),    // for incoming requests
+			hasher.CalculateMiddleware(), // for response content
 		)
 	}
 
