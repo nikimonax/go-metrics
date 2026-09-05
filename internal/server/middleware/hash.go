@@ -51,12 +51,12 @@ func (v *HashVerifier) Handler(next http.Handler) http.Handler {
 
 		h := v.hashing()
 
-		if _, err := h.Write(content); err != nil {
-			http.Error(w, "failed calculate hash", http.StatusInternalServerError)
-			return
-		}
+		_, err = io.Copy(h, io.MultiReader(
+			bytes.NewReader([]byte(v.key)),
+			bytes.NewReader(content),
+		))
 
-		if _, err := h.Write([]byte(v.key)); err != nil {
+		if err != nil {
 			http.Error(w, "failed calculate hash", http.StatusInternalServerError)
 			return
 		}
@@ -83,5 +83,93 @@ func NewHashVerifier(
 		header:  header,
 		hashing: hashing,
 		key:     key,
+	}
+}
+
+func CalculateHash(
+	header string,
+	hashing func() hash.Hash,
+	key string,
+) httpextra.Middleware {
+	return NewHashCalculator(header, hashing, key).Handler
+}
+
+type HashCalculator struct {
+	header  string
+	hashing func() hash.Hash
+	key     string
+}
+
+func (calc *HashCalculator) Handler(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		hash := calc.hashing()
+		_, err := hash.Write([]byte(calc.key))
+
+		if err != nil {
+			code := http.StatusInternalServerError
+			http.Error(w, http.StatusText(code), code)
+			return
+		}
+
+		ww := NewResponseWriterWithHashHeader(w, hash, calc.header)
+		next.ServeHTTP(ww, r)
+		_ = ww.finalize() // ignore errors
+	}
+	return http.HandlerFunc(fn)
+}
+
+func NewHashCalculator(
+	header string,
+	hashing func() hash.Hash,
+	key string,
+) *HashCalculator {
+	return &HashCalculator{
+		header:  header,
+		hashing: hashing,
+		key:     key,
+	}
+}
+
+type ResponseWriterWithHashHeader struct {
+	wrapped http.ResponseWriter
+	header  string
+	hash    hash.Hash
+	body    bytes.Buffer
+	code    int
+}
+
+// Header implements [http.ResponseWriter].
+func (writer *ResponseWriterWithHashHeader) Header() http.Header {
+	return writer.wrapped.Header()
+}
+
+// Write implements [http.ResponseWriter].
+func (writer *ResponseWriterWithHashHeader) Write(data []byte) (int, error) {
+	return io.MultiWriter(writer.hash, &writer.body).Write(data)
+}
+
+// WriteHeader implements [http.ResponseWriter].
+func (writer *ResponseWriterWithHashHeader) WriteHeader(statusCode int) {
+	writer.code = statusCode
+}
+
+func (writer *ResponseWriterWithHashHeader) finalize() error {
+	hashString := hex.EncodeToString(writer.hash.Sum(nil))
+	writer.wrapped.Header().Set(writer.header, hashString)
+	writer.wrapped.WriteHeader(writer.code)
+	_, err := writer.wrapped.Write(writer.body.Bytes())
+	return err
+}
+
+func NewResponseWriterWithHashHeader(
+	wrapped http.ResponseWriter,
+	hash hash.Hash,
+	header string,
+) *ResponseWriterWithHashHeader {
+	return &ResponseWriterWithHashHeader{
+		wrapped: wrapped,
+		hash:    hash,
+		header:  header,
+		code:    http.StatusOK,
 	}
 }

@@ -24,9 +24,11 @@ func TestVerifyHash(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		hashing := sha256.New
 		h := hashing()
-		_, err := h.Write([]byte(reqContent))
-		require.NoError(t, err)
-		_, err = h.Write([]byte(key))
+
+		_, err := io.Copy(h, io.MultiReader(
+			bytes.NewReader([]byte(key)),
+			bytes.NewReader([]byte(reqContent)),
+		))
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
@@ -118,4 +120,44 @@ func TestVerifyHash(t *testing.T) {
 		assert.False(t, called)
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
+}
+
+func TestCalculateHash(t *testing.T) {
+	header := "HashSHA256"
+	respContent := "response"
+	key := "secret"
+
+	t.Run("success", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodGet,
+			"/test",
+			nil,
+		)
+
+		nextHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(respContent))
+			assert.NoError(t, err)
+		})
+
+		handler := middleware.CalculateHash(header, sha256.New, key)(nextHandler)
+		handler.ServeHTTP(w, r)
+
+		resp := w.Result()
+		defer func() { assert.NoError(t, resp.Body.Close()) }()
+
+		actualHashString := resp.Header.Get(header)
+		require.NotEmpty(t, actualHashString)
+
+		h := sha256.New()
+		_, err := h.Write([]byte(key + respContent))
+		require.NoError(t, err)
+
+		expectedHashString := hex.EncodeToString(h.Sum(nil))
+
+		assert.Equal(t, expectedHashString, actualHashString)
+	})
+
 }
