@@ -1,8 +1,10 @@
 package config
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"hash"
 	"net/url"
 	"time"
 
@@ -49,6 +51,12 @@ func (cfg DatabaseConfig) Validate() error {
 	return nil
 }
 
+type SecurityConfig struct {
+	Header      string
+	HashingKey  string
+	HashingFunc func() hash.Hash
+}
+
 type LogConfig struct {
 	Env   zapextra.LogEnv
 	Level zapcore.Level
@@ -79,6 +87,7 @@ func (cfg DumpConfig) Validate() error {
 type ServerConfig struct {
 	Listen    string
 	Database  DatabaseConfig
+	Security  SecurityConfig
 	Log       LogConfig
 	Dump      DumpConfig
 	Pool      work.PoolConfig
@@ -123,6 +132,10 @@ func NewDefaultConfig() ServerConfig {
 				Seed:  1 * time.Second,
 				Add:   2 * time.Second,
 			},
+		},
+		Security: SecurityConfig{
+			Header:      "HashSHA256",
+			HashingFunc: sha256.New,
 		},
 		Log: LogConfig{
 			Env:   zapextra.EnvDev,

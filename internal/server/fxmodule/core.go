@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/fx"
@@ -21,6 +20,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
+	"github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 )
 
@@ -201,9 +201,27 @@ func providerMiddlewareCompress() httpextra.Middleware {
 	return middleware.Compress(5)
 }
 
-func providerBaseRouter() chi.Router {
+func providerBaseRouter(cfg *config.ServerConfig) chi.Router {
 	baseRouter := chi.NewRouter()
 	baseRouter.Use(middleware.CleanPath)
+
+	if cfg.Security.HashingKey != "" {
+		baseRouter.Use(
+			// for incoming requests
+			middleware.VerifyHash(
+				cfg.Security.Header,
+				cfg.Security.HashingFunc,
+				cfg.Security.HashingKey,
+			),
+			// for response content
+			middleware.CalculateHash(
+				cfg.Security.Header,
+				cfg.Security.HashingFunc,
+				cfg.Security.HashingKey,
+			),
+		)
+	}
+
 	return baseRouter
 }
 
@@ -212,11 +230,17 @@ func registerStartupLog(
 	sugar *zap.SugaredLogger,
 	cfg *config.ServerConfig,
 ) {
+	var hasSecretKey bool
+	if cfg.Security.HashingKey != "" {
+		hasSecretKey = true
+	}
+
 	lc.Append(fx.StartHook(func() {
 		sugar.Infow(
 			"starting server",
 			"listen", cfg.Listen,
 			"database", cfg.Database.DSN,
+			"has_secret", hasSecretKey,
 			"dump_file", cfg.Dump.File,
 			"dump_interval", cfg.Dump.Interval,
 			"dump_restore", cfg.Dump.Restore,
