@@ -119,10 +119,6 @@ func provideMetricCollector() interfaces.MetricCollector {
 func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
 	transport := http.DefaultTransport
 
-	if cfg.APIVersion > 1 {
-		transport = httpextra.NewCompressRoundTripper(transport, "gzip")
-	}
-
 	if cfg.APIVersion > 1 && cfg.Security.HashingKey != "" {
 		hasher := httpsec.NewHasher(
 			cfg.Security.Header,
@@ -131,6 +127,10 @@ func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
 		)
 
 		transport = hasher.RoundTripper(transport)
+	}
+
+	if cfg.APIVersion > 1 {
+		transport = httpextra.NewCompressRoundTripper(transport, "gzip")
 	}
 
 	return transport
