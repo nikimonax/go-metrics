@@ -110,7 +110,9 @@ func provideSchedulerConfig(sugar *zap.SugaredLogger) work.SchedulerConfig {
 
 func provideMetricCollector() interfaces.MetricCollector {
 	return collector.NewCollectorsGroup(
+		collector.NewRuntimeStatsCollector(),
 		collector.NewMemStatsCollector(),
+		collector.NewCPUStatsCollector(),
 		collector.NewRandomGaugeCollector("RandomValue"),
 		collector.NewCounterCollector("PollCount", 1),
 	)

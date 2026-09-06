@@ -2,10 +2,12 @@ package collector_test
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"runtime"
 	"testing"
 
+	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -79,8 +81,8 @@ func TestCollectorsGroup(t *testing.T) {
 	}
 }
 
-func TestCollectMemStats(t *testing.T) {
-	metrics, err := collector.NewMemStatsCollector().Collect()
+func TestCollectRuntimeStats(t *testing.T) {
+	metrics, err := collector.NewRuntimeStatsCollector().Collect()
 
 	require.NoError(t, err)
 	require.NotEmpty(t, metrics)
@@ -92,6 +94,36 @@ func TestCollectMemStats(t *testing.T) {
 		assert.Equal(t, metric.Type(), domain.Gauge)
 		_, ok := statsType.FieldByName(string(metric.Name()))
 		assert.True(t, ok)
+	}
+}
+
+func TestCollectMemStats(t *testing.T) {
+	metrics, err := collector.NewMemStatsCollector().Collect()
+
+	require.NoError(t, err)
+	require.Len(t, metrics, 2)
+
+	names := []domain.MetricName{"TotalMemory", "FreeMemory"}
+
+	for _, metric := range metrics {
+		assert.Equal(t, domain.Gauge, metric.Type())
+		assert.Contains(t, names, metric.Name())
+	}
+}
+
+func TestCollectCPUStats(t *testing.T) {
+	metrics, err := collector.NewCPUStatsCollector().Collect()
+	require.NoError(t, err)
+
+	cpuNum, err := cpu.Counts(true)
+	require.NoError(t, err)
+
+	assert.Len(t, metrics, cpuNum)
+
+	for i, metric := range metrics {
+		expectedName := domain.MetricName(fmt.Sprintf("CPUutilization%d", i+1))
+		assert.Equal(t, domain.Gauge, metric.Type())
+		assert.Equal(t, expectedName, metric.Name())
 	}
 }
 

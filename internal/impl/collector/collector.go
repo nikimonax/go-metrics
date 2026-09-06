@@ -2,11 +2,15 @@ package collector
 
 import (
 	"errors"
+	"fmt"
 	"math/rand/v2"
 	"runtime"
 
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
+
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 type CollectorFunc func() ([]domain.Metric, error)
@@ -41,7 +45,7 @@ func NewCollectorsGroup(collectors ...interfaces.MetricCollector) interfaces.Met
 	return &CollectorsGroup{collectors: collectors}
 }
 
-func NewMemStatsCollector() interfaces.MetricCollector {
+func NewRuntimeStatsCollector() interfaces.MetricCollector {
 	fn := func() ([]domain.Metric, error) {
 		var stats runtime.MemStats
 		runtime.ReadMemStats(&stats)
@@ -75,6 +79,44 @@ func NewMemStatsCollector() interfaces.MetricCollector {
 			domain.NewGaugeMetric("Sys", float64(stats.Sys)),
 			domain.NewGaugeMetric("TotalAlloc", float64(stats.TotalAlloc)),
 		}, nil
+	}
+	return CollectorFunc(fn)
+}
+
+func NewMemStatsCollector() interfaces.MetricCollector {
+	fn := func() ([]domain.Metric, error) {
+		vMem, err := mem.VirtualMemory()
+
+		if err != nil {
+			return nil, err
+		}
+
+		return []domain.Metric{
+			domain.NewGaugeMetric("TotalMemory", float64(vMem.Total)),
+			domain.NewGaugeMetric("FreeMemory", float64(vMem.Free)),
+		}, nil
+
+	}
+	return CollectorFunc(fn)
+}
+
+func NewCPUStatsCollector() interfaces.MetricCollector {
+	fn := func() ([]domain.Metric, error) {
+		usage, err := cpu.Percent(0, true)
+
+		if err != nil {
+			return nil, err
+		}
+
+		metrics := make([]domain.Metric, 0, len(usage))
+
+		for i, u := range usage {
+			name := fmt.Sprintf("CPUutilization%d", i+1)
+			metric := domain.NewGaugeMetric(domain.MetricName(name), u)
+			metrics = append(metrics, metric)
+		}
+
+		return metrics, nil
 	}
 	return CollectorFunc(fn)
 }
