@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"net/url"
 	"time"
@@ -22,6 +23,7 @@ type AgentConfig struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	Backoff        config.BackoffConfig
+	Security       config.SecurityConfig
 }
 
 func (cfg AgentConfig) Validate() error {
@@ -65,6 +67,10 @@ func NewDefaultConfig() AgentConfig {
 			Retry: 3,
 			Seed:  1 * time.Second,
 			Add:   2 * time.Second,
+		},
+		Security: config.SecurityConfig{
+			Header:      config.DefaultHashHeaderKey,
+			HashingFunc: sha256.New,
 		},
 	}
 }

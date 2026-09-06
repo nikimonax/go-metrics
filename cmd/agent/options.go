@@ -18,6 +18,7 @@ type Options struct {
 	APIVersion         uint   `env:"API"`
 	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"`
 	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL"`
+	HashingKey         string `env:"KEY"`
 }
 
 func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
@@ -55,6 +56,10 @@ func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
 		cfg.ReportInterval = time.Duration(opts.ReportIntervalSecs) * time.Second
 	}
 
+	if opts.HashingKey != "" {
+		cfg.Security.HashingKey = opts.HashingKey
+	}
+
 	return &cfg, nil
 }
 
@@ -73,6 +78,10 @@ func (opts *Options) Merge(other *Options) {
 
 	if other.ReportIntervalSecs > 0 {
 		opts.ReportIntervalSecs = other.ReportIntervalSecs
+	}
+
+	if other.HashingKey != "" {
+		opts.HashingKey = other.HashingKey
 	}
 }
 
@@ -113,6 +122,12 @@ func ReadCliOptions() (*Options, error) {
 		"r",
 		0,
 		"send metrics interval",
+	)
+	cmd.StringVar(
+		&opts.HashingKey,
+		"k",
+		"",
+		"secret key to sign content",
 	)
 
 	if err := cmd.Parse(os.Args[1:]); err != nil {
