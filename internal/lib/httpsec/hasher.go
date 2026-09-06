@@ -99,6 +99,28 @@ func (hasher *Hasher) CalculateMiddleware() httpextra.Middleware {
 	return hasher.CalculateHandler
 }
 
+func (hasher *Hasher) RoundTripper(next http.RoundTripper) http.RoundTripper {
+	fn := func(req *http.Request) (*http.Response, error) {
+		content, err := httpextra.PeekContent(req)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if len(content) == 0 {
+			return next.RoundTrip(req)
+		}
+
+		sig := hasher.Sign(content)
+
+		newReq := req.Clone(req.Context())
+		newReq.Header.Set(hasher.header, sig)
+
+		return next.RoundTrip(newReq)
+	}
+	return httpextra.RoundTripperFunc(fn)
+}
+
 func NewHasher(
 	header string,
 	hashing func() hash.Hash,

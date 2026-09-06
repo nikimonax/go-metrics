@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 )
 
 type RoundTripperFunc func(*http.Request) (*http.Response, error)
@@ -74,4 +75,13 @@ func NewCompressRoundTripper(next http.RoundTripper, encoder string) http.RoundT
 		encoderName: encoder,
 		encoderFunc: encoderFunc,
 	}
+}
+
+func NewRoundTripperFromHandler(handler http.Handler) http.RoundTripper {
+	fn := func(r *http.Request) (*http.Response, error) {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w.Result(), nil
+	}
+	return RoundTripperFunc(fn)
 }

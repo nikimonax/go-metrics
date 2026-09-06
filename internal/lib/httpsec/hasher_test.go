@@ -2,7 +2,9 @@ package httpsec_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/testing/mock"
 )
@@ -279,4 +282,120 @@ func TestHasherCalculateHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHasherRoundTripper(t *testing.T) {
+	type TestCase struct {
+		name              string
+		method            string
+		content           []byte
+		expectedSignature string
+	}
+
+	tests := []TestCase{
+		{
+			name:              "empty body",
+			method:            http.MethodGet,
+			content:           []byte{},
+			expectedSignature: "",
+		},
+		{
+			name:              "not empty body",
+			method:            http.MethodGet,
+			content:           defaultContent,
+			expectedSignature: defaultSignature,
+		},
+	}
+
+	for _, tc := range tests {
+		name := fmt.Sprintf("multiple request usage + %s", tc.name)
+
+		t.Run(name, func(t *testing.T) {
+			expectedStatusCode := http.StatusOK
+			expectedRespContent := []byte(rand.Text())
+
+			var roundTripperCalls = 0
+			rt := hasher.RoundTripper(httpextra.RoundTripperFunc(
+				func(req *http.Request) (*http.Response, error) {
+					roundTripperCalls++
+
+					content, err := io.ReadAll(req.Body)
+					require.NoError(t, err)
+
+					assert.NoError(t, req.Body.Close())
+					assert.Equal(t, tc.content, content)
+					assert.Equal(t, tc.expectedSignature, req.Header.Get(headerKey))
+
+					return &http.Response{
+						StatusCode: expectedStatusCode,
+						Body:       io.NopCloser(bytes.NewReader(expectedRespContent)),
+						Header:     make(http.Header),
+					}, nil
+
+				},
+			))
+
+			req := httptest.NewRequestWithContext(
+				t.Context(),
+				http.MethodPost,
+				endpoint,
+				nil,
+			)
+
+			for i := range 2 {
+				body := mock.NewMockCloser(bytes.NewReader(tc.content))
+
+				req.Body = body
+				req.ContentLength = int64(len(tc.content))
+
+				resp, err := rt.RoundTrip(req)
+				require.NoError(t, err)
+
+				respContent, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+
+				assert.NoError(t, resp.Body.Close())
+				assert.Equal(t, expectedRespContent, respContent)
+				assert.Equal(t, expectedStatusCode, resp.StatusCode)
+				assert.True(t, body.Closed())
+				assert.Equal(t, roundTripperCalls, i+1)
+			}
+		})
+	}
+
+	t.Run("verify middleware compatibility", func(t *testing.T) {
+		content := []byte(rand.Text())
+
+		var handlerCalled = false
+		handler := hasher.VerifyHandler(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				handlerCalled = true
+
+				actualContent, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+
+				assert.NoError(t, r.Body.Close())
+				assert.Equal(t, content, actualContent)
+
+				w.WriteHeader(http.StatusOK)
+			}),
+		)
+
+		rt := hasher.RoundTripper(httpextra.NewRoundTripperFromHandler(handler))
+
+		body := mock.NewMockCloser(bytes.NewReader(content))
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodPost,
+			endpoint,
+			body,
+		)
+
+		resp, err := rt.RoundTrip(req)
+		require.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+		assert.True(t, body.Closed())
+		assert.True(t, handlerCalled)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
 }
