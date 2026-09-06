@@ -15,22 +15,20 @@ linters:
     - bodyclose
     - noctx
     - sqlclosecheck
-  exclusions:
-    rules:
-      - text: 'string `(success|error)` has [0-9]+ occurrences'
-        linters:
-          - goconst
-      - text: '^(package-comments|exported):'
-        linters:
-          - revive
   settings:
     gocyclo:
       min-complexity: 15
     goconst:
-      min-len: 3
-      min-occurrences: 3
+      ignore-tests: true
     dupl:
       threshold: 100
+    revive:
+      enable-default-rules: true
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
 
 formatters:
   enable:
