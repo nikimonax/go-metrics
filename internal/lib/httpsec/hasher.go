@@ -40,49 +40,58 @@ func (hasher *Hasher) Verify(content []byte, sig string) bool {
 	return hmac.Equal(macExpected, macActual)
 }
 
-func (hasher *Hasher) VerifyHandler(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		hashHeader := r.Header.Get(hasher.header)
-		hasHashHeader := hashHeader != ""
+func (hasher *Hasher) VerifyMiddleware(opts ...VerifyOption) httpextra.Middleware {
+	var cfg VerifyConfig
 
-		content, err := httpextra.PeekContent(r)
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 
-		if err != nil {
-			code := http.StatusInternalServerError
-			http.Error(w, http.StatusText(code), code)
-			return
-		}
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			hashHeader := r.Header.Get(hasher.header)
+			hasHashHeader := hashHeader != ""
 
-		if len(content) == 0 {
-			if !hasHashHeader {
+			if !hasHashHeader && !cfg.RequireHeader {
 				next.ServeHTTP(w, r)
-			} else {
-				// if hash was provided without body -> error
-				http.Error(w, ErrVerify.Error(), http.StatusBadRequest)
+				return
 			}
 
-			return
-		}
+			content, err := httpextra.PeekContent(r)
 
-		if !hasHashHeader {
-			msg := fmt.Sprintf("required '%s' header", hasher.header)
-			http.Error(w, msg, http.StatusBadRequest)
-			return
-		}
+			if err != nil {
+				code := http.StatusInternalServerError
+				http.Error(w, http.StatusText(code), code)
+				return
+			}
 
-		if !hasher.Verify(content, hashHeader) {
-			http.Error(w, ErrVerify.Error(), http.StatusBadRequest)
-			return
-		}
+			if len(content) == 0 {
+				if !hasHashHeader {
+					next.ServeHTTP(w, r)
+				} else {
+					// if hash was provided without body -> error
+					http.Error(w, ErrVerify.Error(), http.StatusBadRequest)
+				}
 
-		r.Body = io.NopCloser(bytes.NewReader(content))
-		next.ServeHTTP(w, r)
+				return
+			}
+
+			if !hasHashHeader {
+				msg := fmt.Sprintf("required '%s' header", hasher.header)
+				http.Error(w, msg, http.StatusBadRequest)
+				return
+			}
+
+			if !hasher.Verify(content, hashHeader) {
+				http.Error(w, ErrVerify.Error(), http.StatusBadRequest)
+				return
+			}
+
+			r.Body = io.NopCloser(bytes.NewReader(content))
+			next.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
 	}
-	return http.HandlerFunc(fn)
-}
-
-func (hasher *Hasher) VerifyMiddleware() httpextra.Middleware {
-	return hasher.VerifyHandler
 }
 
 func (hasher *Hasher) CalculateHandler(next http.Handler) http.Handler {

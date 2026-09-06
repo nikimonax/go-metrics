@@ -58,10 +58,6 @@ func TestHasher(t *testing.T) {
 		assert.False(t, hasher.Verify(content, badSignature))
 	})
 
-	t.Run("verify middleware returns handler", func(t *testing.T) {
-		assertFuncsSame(t, hasher.VerifyHandler, hasher.VerifyMiddleware())
-	})
-
 	t.Run("calculate middleware returns handler", func(t *testing.T) {
 		assertFuncsSame(t, hasher.CalculateHandler, hasher.CalculateMiddleware())
 	})
@@ -73,6 +69,7 @@ func TestHasherVerifyHandler(t *testing.T) {
 		method              string
 		content             []byte
 		signature           string
+		requireHeader       bool
 		expectHandlerCalled bool
 		expectStatusCode    int
 	}
@@ -83,6 +80,7 @@ func TestHasherVerifyHandler(t *testing.T) {
 			method:              http.MethodGet,
 			content:             []byte{},
 			signature:           "",
+			requireHeader:       true,
 			expectHandlerCalled: true,
 			expectStatusCode:    http.StatusOK,
 		},
@@ -91,6 +89,7 @@ func TestHasherVerifyHandler(t *testing.T) {
 			method:              http.MethodPost,
 			content:             defaultContent,
 			signature:           defaultSignature,
+			requireHeader:       true,
 			expectHandlerCalled: true,
 			expectStatusCode:    http.StatusOK,
 		},
@@ -99,6 +98,7 @@ func TestHasherVerifyHandler(t *testing.T) {
 			method:              http.MethodGet,
 			content:             []byte{},
 			signature:           defaultSignature,
+			requireHeader:       true,
 			expectHandlerCalled: false,
 			expectStatusCode:    http.StatusBadRequest,
 		},
@@ -107,6 +107,7 @@ func TestHasherVerifyHandler(t *testing.T) {
 			method:              http.MethodPost,
 			content:             defaultContent,
 			signature:           "",
+			requireHeader:       true,
 			expectHandlerCalled: false,
 			expectStatusCode:    http.StatusBadRequest,
 		},
@@ -115,6 +116,7 @@ func TestHasherVerifyHandler(t *testing.T) {
 			method:              http.MethodPost,
 			content:             defaultContent,
 			signature:           "wrong",
+			requireHeader:       true,
 			expectHandlerCalled: false,
 			expectStatusCode:    http.StatusBadRequest,
 		},
@@ -123,8 +125,18 @@ func TestHasherVerifyHandler(t *testing.T) {
 			method:              http.MethodPost,
 			content:             defaultContent,
 			signature:           "a" + defaultSignature[1:],
+			requireHeader:       true,
 			expectHandlerCalled: false,
 			expectStatusCode:    http.StatusBadRequest,
+		},
+		{
+			name:                "body without require header",
+			method:              http.MethodPost,
+			content:             defaultContent,
+			signature:           "",
+			requireHeader:       false,
+			expectHandlerCalled: false,
+			expectStatusCode:    http.StatusOK,
 		},
 	}
 
@@ -132,8 +144,14 @@ func TestHasherVerifyHandler(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			respContent := []byte("response content")
 
+			opts := make([]httpsec.VerifyOption, 0)
+
+			if tc.requireHeader {
+				opts = append(opts, httpsec.RequireHeader())
+			}
+
 			var handlerCalled = false
-			handler := hasher.VerifyHandler(
+			handler := hasher.VerifyMiddleware(opts...)(
 				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					handlerCalled = true
 
@@ -367,7 +385,7 @@ func TestHasherRoundTripper(t *testing.T) {
 		content := []byte(rand.Text())
 
 		var handlerCalled = false
-		handler := hasher.VerifyHandler(
+		handler := hasher.VerifyMiddleware(httpsec.RequireHeader())(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				handlerCalled = true
 
