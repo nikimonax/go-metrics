@@ -107,14 +107,13 @@ func (gateway *HTTPMetricV2Gateway) SendBatch(
 	return nil
 }
 
-func NewHTTPMetricV2Gateway(baseURL *url.URL) interfaces.MetricGateway {
+func NewHTTPMetricV2Gateway(
+	client *http.Client,
+	baseURL *url.URL,
+) interfaces.MetricGateway {
 	return &HTTPMetricV2Gateway{
 		endpoint: baseURL.JoinPath("update").String() + "/",
-		client: &http.Client{
-			Transport: httpextra.NewCompressRoundTripper(
-				http.DefaultTransport, "gzip",
-			),
-		},
-		timeout: defaultRequestTimeout,
+		client:   client,
+		timeout:  defaultRequestTimeout,
 	}
 }

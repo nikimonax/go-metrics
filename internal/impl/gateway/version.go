@@ -1,12 +1,18 @@
 package gateway
 
 import (
+	"net/http"
 	"net/url"
 
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 )
 
-var gatewayFactoryByVersion = []func(baseURL *url.URL) interfaces.MetricGateway{
+type GatewayFactory = func(
+	client *http.Client,
+	baseURL *url.URL,
+) interfaces.MetricGateway
+
+var gatewayFactoryByVersion = []GatewayFactory{
 	NewHTTPMetricGateway,
 	NewHTTPMetricV2Gateway,
 	NewHTTPMetricV3Gateway,
@@ -18,7 +24,7 @@ func GetMaxAPIVersion() uint {
 
 func GetGatewayFactory(
 	apiVersion uint,
-) (func(*url.URL) interfaces.MetricGateway, error) {
+) (GatewayFactory, error) {
 	if apiVersion > GetMaxAPIVersion() {
 		err := NewErrUnknownAPIVersion(apiVersion)
 		return nil, err

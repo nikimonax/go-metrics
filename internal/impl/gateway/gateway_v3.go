@@ -10,7 +10,6 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/domain"
-	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/model"
 )
 
@@ -50,16 +49,15 @@ func (gateway *HTTPMetricV3Gateway) SendBatch(
 	return nil
 }
 
-func NewHTTPMetricV3Gateway(baseURL *url.URL) interfaces.MetricGateway {
+func NewHTTPMetricV3Gateway(
+	client *http.Client,
+	baseURL *url.URL,
+) interfaces.MetricGateway {
 	return &HTTPMetricV3Gateway{
 		HTTPMetricV2Gateway: HTTPMetricV2Gateway{
 			endpoint: baseURL.JoinPath("updates").String() + "/",
-			client: &http.Client{
-				Transport: httpextra.NewCompressRoundTripper(
-					http.DefaultTransport, "gzip",
-				),
-			},
-			timeout: defaultRequestTimeout,
+			client:   client,
+			timeout:  defaultRequestTimeout,
 		},
 	}
 }

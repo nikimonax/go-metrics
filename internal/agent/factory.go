@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/nikimonax/go-metrics/internal/agent/config"
@@ -11,6 +12,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/impl/collector"
 	"github.com/nikimonax/go-metrics/internal/impl/gateway"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 
@@ -39,6 +41,8 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			providePoolConfig,
 			providePoolSubmitter,
 			provideSchedulerConfig,
+			provideRoundTripper,
+			provideHTTPClient,
 			provideMetricCollector,
 			provideMetricGateway,
 			repository.NewInMemoryMetricRepository,
@@ -111,14 +115,31 @@ func provideMetricCollector() interfaces.MetricCollector {
 	)
 }
 
-func provideMetricGateway(cfg *config.AgentConfig) (interfaces.MetricGateway, error) {
+func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
+	transport := http.DefaultTransport
+
+	if cfg.APIVersion > 1 {
+		transport = httpextra.NewCompressRoundTripper(transport, "gzip")
+	}
+
+	return transport
+}
+
+func provideHTTPClient(transport http.RoundTripper) *http.Client {
+	return &http.Client{Transport: transport}
+}
+
+func provideMetricGateway(
+	cfg *config.AgentConfig,
+	client *http.Client,
+) (interfaces.MetricGateway, error) {
 	gwFactory, err := gateway.GetGatewayFactory(cfg.APIVersion)
 
 	if err != nil {
 		return nil, err
 	}
 
-	gw := gwFactory(cfg.BaseURL)
+	gw := gwFactory(client, cfg.BaseURL)
 
 	if cfg.Backoff.Retry == 0 {
 		// without backoff
