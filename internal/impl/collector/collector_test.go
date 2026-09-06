@@ -80,7 +80,7 @@ func TestCollectorsGroup(t *testing.T) {
 }
 
 func TestCollectMemStats(t *testing.T) {
-	metrics, err := collector.CollectMemStats()
+	metrics, err := collector.NewMemStatsCollector().Collect()
 
 	require.NoError(t, err)
 	require.NotEmpty(t, metrics)
@@ -96,27 +96,38 @@ func TestCollectMemStats(t *testing.T) {
 }
 
 func TestCollectRandomValue(t *testing.T) {
-	metrics, err := collector.CollectRandomValue()
+	name := "RandomValue"
+
+	metrics, err := collector.NewRandomGaugeCollector(name).Collect()
 
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 
 	metric := metrics[0]
 
-	require.Equal(t, metric.Type(), domain.Gauge)
-	require.Equal(t, metric.Name(), domain.MetricName("RandomValue"))
+	assert.Equal(t, metric.Type(), domain.Gauge)
+	assert.Equal(t, metric.Name(), domain.MetricName(name))
+
+	assert.IsType(t, domain.GaugeMetricValue(0), metric.Value())
+
+	_, ok := metric.Value().Get().(float64)
+	assert.True(t, ok)
 }
 
-func TestCollectIncrOne(t *testing.T) {
-	metrics, err := collector.CollectIncrOne()
+func TestCounterCollector(t *testing.T) {
+	name := "PollCount"
+	inc := int64(1)
+
+	metrics, err := collector.NewCounterCollector(name, inc).Collect()
 
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 
 	metric := metrics[0]
 
-	require.Equal(t, metric.Type(), domain.Counter)
-	require.Equal(t, metric.Name(), domain.MetricName("PollCount"))
-	require.IsType(t, domain.CounterMetricValue(0), metric.Value())
-	require.Equal(t, int64(metric.Value().(domain.CounterMetricValue)), int64(1))
+	assert.Equal(t, metric.Type(), domain.Counter)
+	assert.Equal(t, metric.Name(), domain.MetricName(name))
+
+	assert.IsType(t, domain.CounterMetricValue(0), metric.Value())
+	assert.Equal(t, metric.Value().Get().(int64), inc)
 }
