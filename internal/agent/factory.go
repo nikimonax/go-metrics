@@ -135,6 +135,10 @@ func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
 		transport = httpextra.NewCompressRoundTripper(transport, "gzip")
 	}
 
+	if cfg.RateLimit > 0 {
+		transport = httpextra.NewRateLimitRoundTripper(transport, cfg.RateLimit)
+	}
+
 	return transport
 }
 
@@ -223,6 +227,7 @@ func registerLifecycleHooks(
 				"starting agent",
 				"server", cfg.BaseURL,
 				"api", "v"+fmt.Sprint(cfg.APIVersion),
+				"rate_limit", cfg.RateLimit,
 				"poll interval", cfg.PollInterval,
 				"send interval", cfg.ReportInterval,
 				"has_secret", hasSecretKey,

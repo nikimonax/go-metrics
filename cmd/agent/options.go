@@ -16,6 +16,7 @@ import (
 type Options struct {
 	BaseURL            string `env:"ADDRESS"`
 	APIVersion         uint   `env:"API"`
+	RateLimit          uint64 `env:"RATE_LIMIT"`
 	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"`
 	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL"`
 	HashingKey         string `env:"KEY"`
@@ -48,6 +49,10 @@ func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
 		cfg.APIVersion = opts.APIVersion
 	}
 
+	if opts.RateLimit > 0 {
+		cfg.RateLimit = int64(opts.RateLimit)
+	}
+
 	if opts.PollIntervalSecs > 0 {
 		cfg.PollInterval = time.Duration(opts.PollIntervalSecs) * time.Second
 	}
@@ -70,6 +75,10 @@ func (opts *Options) Merge(other *Options) {
 
 	if other.APIVersion > 0 {
 		opts.APIVersion = other.APIVersion
+	}
+
+	if other.RateLimit > 0 {
+		opts.RateLimit = other.RateLimit
 	}
 
 	if other.PollIntervalSecs > 0 {
@@ -110,6 +119,12 @@ func ReadCliOptions() (*Options, error) {
 		"v",
 		0,
 		"metrics server api version",
+	)
+	cmd.Uint64Var(
+		&opts.RateLimit,
+		"l",
+		0,
+		"requests rate limit",
 	)
 	cmd.Uint64Var(
 		&opts.PollIntervalSecs,

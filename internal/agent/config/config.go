@@ -20,6 +20,7 @@ const (
 type AgentConfig struct {
 	BaseURL        *url.URL
 	APIVersion     uint
+	RateLimit      int64
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	Backoff        config.BackoffConfig
@@ -34,6 +35,10 @@ func (cfg AgentConfig) Validate() error {
 	maxAPIVersion := gateway.GetMaxAPIVersion()
 	if cfg.APIVersion == 0 || cfg.APIVersion > maxAPIVersion {
 		return config.NewErrInvalidConfig("required 'APIVersion' equals 1-" + fmt.Sprint(maxAPIVersion))
+	}
+
+	if cfg.RateLimit < 0 {
+		return config.NewErrInvalidConfig("required 'RateLimit' greater or equals 0")
 	}
 
 	if cfg.PollInterval <= 0 {
