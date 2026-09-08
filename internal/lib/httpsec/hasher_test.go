@@ -282,6 +282,7 @@ func TestHasherCalculateHandler(t *testing.T) {
 			resp := w.Result()
 			respContent, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
+			assert.NoError(t, resp.Body.Close())
 
 			actualSignature := resp.Header.Get(headerKey)
 

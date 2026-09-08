@@ -235,8 +235,13 @@ func TestRateLimitRoundTripper(t *testing.T) {
 
 		go func() {
 			defer wg.Done()
-			_, err := rt.RoundTrip(reqSecond)
-			assert.ErrorIs(t, err, context.Canceled)
+			resp, err := rt.RoundTrip(reqSecond)
+
+			if err == nil {
+				assert.NoError(t, resp.Body.Close())
+			}
+
+			require.ErrorIs(t, err, context.Canceled)
 		}()
 
 		done := make(chan struct{})

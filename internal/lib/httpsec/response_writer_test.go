@@ -50,9 +50,9 @@ func TestResponseWriterWithHashHeader(t *testing.T) {
 			require.NoError(t, ww.Finalize())
 
 			resp := w.Result()
-
 			content, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
+			assert.NoError(t, resp.Body.Close())
 
 			assert.Equal(t, http.StatusTeapot, resp.StatusCode)
 			assert.Equal(t, xValue, resp.Header.Get(xHeader))
