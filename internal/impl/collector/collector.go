@@ -101,6 +101,8 @@ func NewMemStatsCollector() interfaces.MetricCollector {
 }
 
 func NewCPUStatsCollector() interfaces.MetricCollector {
+	_, _ = cpu.Percent(0, true)
+
 	fn := func() ([]domain.Metric, error) {
 		usage, err := cpu.Percent(0, true)
 
