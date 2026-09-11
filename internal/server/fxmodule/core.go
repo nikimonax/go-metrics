@@ -37,6 +37,7 @@ func CoreModule() fx.Option {
 		fx.Provide(
 			provideValidator,
 			provideTranslator,
+			provideHasher,
 		),
 		// background processing
 		fx.Provide(
@@ -125,6 +126,18 @@ func provideTranslator() ut.Translator {
 	return presenter.NewTranslator()
 }
 
+func provideHasher(cfg *config.ServerConfig) *httpsec.Hasher {
+	if cfg.Security.HashingKey == "" {
+		return nil
+	}
+
+	return httpsec.NewHasher(
+		cfg.Security.Header,
+		cfg.Security.HashingFunc,
+		[]byte(cfg.Security.HashingKey),
+	)
+}
+
 func providePoolConfig(
 	cfg *config.ServerConfig,
 	sugar *zap.SugaredLogger,
@@ -202,21 +215,12 @@ func providerMiddlewareCompress() httpextra.Middleware {
 	return middleware.Compress(5)
 }
 
-func providerBaseRouter(cfg *config.ServerConfig) chi.Router {
+func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {
 	baseRouter := chi.NewRouter()
 	baseRouter.Use(middleware.CleanPath)
 
-	if cfg.Security.HashingKey != "" {
-		hasher := httpsec.NewHasher(
-			cfg.Security.Header,
-			cfg.Security.HashingFunc,
-			[]byte(cfg.Security.HashingKey),
-		)
-
-		baseRouter.Use(
-			hasher.VerifyMiddleware(),    // for incoming requests
-			hasher.CalculateMiddleware(), // for response content
-		)
+	if hasher != nil {
+		baseRouter.Use(hasher.CalculateMiddleware())
 	}
 
 	return baseRouter
