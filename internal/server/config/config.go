@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net/url"
@@ -79,6 +80,7 @@ func (cfg DumpConfig) Validate() error {
 type ServerConfig struct {
 	Listen    string
 	Database  DatabaseConfig
+	Security  config.SecurityConfig
 	Log       LogConfig
 	Dump      DumpConfig
 	Pool      work.PoolConfig
@@ -123,6 +125,10 @@ func NewDefaultConfig() ServerConfig {
 				Seed:  1 * time.Second,
 				Add:   2 * time.Second,
 			},
+		},
+		Security: config.SecurityConfig{
+			Header:      config.DefaultHashHeaderKey,
+			HashingFunc: sha256.New,
 		},
 		Log: LogConfig{
 			Env:   zapextra.EnvDev,

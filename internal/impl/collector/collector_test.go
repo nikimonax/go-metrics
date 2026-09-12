@@ -2,10 +2,12 @@ package collector_test
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"runtime"
 	"testing"
 
+	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -79,8 +81,8 @@ func TestCollectorsGroup(t *testing.T) {
 	}
 }
 
-func TestCollectMemStats(t *testing.T) {
-	metrics, err := collector.CollectMemStats()
+func TestCollectRuntimeStats(t *testing.T) {
+	metrics, err := collector.NewRuntimeStatsCollector().Collect()
 
 	require.NoError(t, err)
 	require.NotEmpty(t, metrics)
@@ -95,28 +97,69 @@ func TestCollectMemStats(t *testing.T) {
 	}
 }
 
-func TestCollectRandomValue(t *testing.T) {
-	metrics, err := collector.CollectRandomValue()
+func TestCollectMemStats(t *testing.T) {
+	metrics, err := collector.NewMemStatsCollector().Collect()
 
 	require.NoError(t, err)
-	require.Len(t, metrics, 1)
+	require.Len(t, metrics, 2)
 
-	metric := metrics[0]
+	names := []domain.MetricName{"TotalMemory", "FreeMemory"}
 
-	require.Equal(t, metric.Type(), domain.Gauge)
-	require.Equal(t, metric.Name(), domain.MetricName("RandomValue"))
+	for _, metric := range metrics {
+		assert.Equal(t, domain.Gauge, metric.Type())
+		assert.Contains(t, names, metric.Name())
+	}
 }
 
-func TestCollectIncrOne(t *testing.T) {
-	metrics, err := collector.CollectIncrOne()
+func TestCollectCPUStats(t *testing.T) {
+	metrics, err := collector.NewCPUStatsCollector().Collect()
+	require.NoError(t, err)
+
+	cpuNum, err := cpu.Counts(true)
+	require.NoError(t, err)
+
+	assert.Len(t, metrics, cpuNum)
+
+	for i, metric := range metrics {
+		expectedName := domain.MetricName(fmt.Sprintf("CPUutilization%d", i+1))
+		assert.Equal(t, domain.Gauge, metric.Type())
+		assert.Equal(t, expectedName, metric.Name())
+	}
+}
+
+func TestCollectRandomValue(t *testing.T) {
+	name := "RandomValue"
+
+	metrics, err := collector.NewRandomGaugeCollector(name).Collect()
 
 	require.NoError(t, err)
 	require.Len(t, metrics, 1)
 
 	metric := metrics[0]
 
-	require.Equal(t, metric.Type(), domain.Counter)
-	require.Equal(t, metric.Name(), domain.MetricName("PollCount"))
-	require.IsType(t, domain.CounterMetricValue(0), metric.Value())
-	require.Equal(t, int64(metric.Value().(domain.CounterMetricValue)), int64(1))
+	assert.Equal(t, metric.Type(), domain.Gauge)
+	assert.Equal(t, metric.Name(), domain.MetricName(name))
+
+	assert.IsType(t, domain.GaugeMetricValue(0), metric.Value())
+
+	_, ok := metric.Value().Get().(float64)
+	assert.True(t, ok)
+}
+
+func TestCounterCollector(t *testing.T) {
+	name := "PollCount"
+	inc := int64(1)
+
+	metrics, err := collector.NewCounterCollector(name, inc).Collect()
+
+	require.NoError(t, err)
+	require.Len(t, metrics, 1)
+
+	metric := metrics[0]
+
+	assert.Equal(t, metric.Type(), domain.Counter)
+	assert.Equal(t, metric.Name(), domain.MetricName(name))
+
+	assert.IsType(t, domain.CounterMetricValue(0), metric.Value())
+	assert.Equal(t, metric.Value().Get().(int64), inc)
 }

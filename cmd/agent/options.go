@@ -16,8 +16,10 @@ import (
 type Options struct {
 	BaseURL            string `env:"ADDRESS"`
 	APIVersion         uint   `env:"API"`
+	RateLimit          uint64 `env:"RATE_LIMIT"`
 	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"`
 	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL"`
+	HashingKey         string `env:"KEY"`
 }
 
 func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
@@ -47,12 +49,20 @@ func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
 		cfg.APIVersion = opts.APIVersion
 	}
 
+	if opts.RateLimit > 0 {
+		cfg.RateLimit = int64(opts.RateLimit)
+	}
+
 	if opts.PollIntervalSecs > 0 {
 		cfg.PollInterval = time.Duration(opts.PollIntervalSecs) * time.Second
 	}
 
 	if opts.ReportIntervalSecs > 0 {
 		cfg.ReportInterval = time.Duration(opts.ReportIntervalSecs) * time.Second
+	}
+
+	if opts.HashingKey != "" {
+		cfg.Security.HashingKey = opts.HashingKey
 	}
 
 	return &cfg, nil
@@ -67,12 +77,20 @@ func (opts *Options) Merge(other *Options) {
 		opts.APIVersion = other.APIVersion
 	}
 
+	if other.RateLimit > 0 {
+		opts.RateLimit = other.RateLimit
+	}
+
 	if other.PollIntervalSecs > 0 {
 		opts.PollIntervalSecs = other.PollIntervalSecs
 	}
 
 	if other.ReportIntervalSecs > 0 {
 		opts.ReportIntervalSecs = other.ReportIntervalSecs
+	}
+
+	if other.HashingKey != "" {
+		opts.HashingKey = other.HashingKey
 	}
 }
 
@@ -103,6 +121,12 @@ func ReadCliOptions() (*Options, error) {
 		"metrics server api version",
 	)
 	cmd.Uint64Var(
+		&opts.RateLimit,
+		"l",
+		0,
+		"requests rate limit",
+	)
+	cmd.Uint64Var(
 		&opts.PollIntervalSecs,
 		"p",
 		0,
@@ -113,6 +137,12 @@ func ReadCliOptions() (*Options, error) {
 		"r",
 		0,
 		"send metrics interval",
+	)
+	cmd.StringVar(
+		&opts.HashingKey,
+		"k",
+		"",
+		"secret key to sign content",
 	)
 
 	if err := cmd.Parse(os.Args[1:]); err != nil {

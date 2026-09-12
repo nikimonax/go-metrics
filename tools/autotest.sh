@@ -40,11 +40,21 @@ DATABASE_DSN="postgres://$DATABASE_USER:$DATABASE_PASSWORD@$DATABASE_HOST:$DATAB
 for ((i=START; i<=ITER; i++)); do
     echo -n "Iteration $i: "
 
-    # начиная с 7 инкремента используем api с json
     if (( i < 7 )); then
         export API=1
-    else
+    elif (( i < 12 )); then
+        # начиная с 7 инкремента используем api с json
         export API=2
+    else
+        # начиная с 12 инкремента используем batch api с json
+        export API=3 
+    fi
+
+    if (( i >= 14 )); then
+        # начиная с 14 инкремента используем подпись содержимого
+        export TESTKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 16)
+    else
+        export TESTKEY=""
     fi
 
     "$BIN_DIR/metricstest_v2" \
@@ -54,5 +64,6 @@ for ((i=START; i<=ITER; i++)); do
         -server-port="$(( 8000 + RANDOM % 1000 ))" \
         -source-path="." \
         -file-storage-path=$(mktemp) \
-        -database-dsn="$DATABASE_DSN"
+        -database-dsn="$DATABASE_DSN" \
+        -key="$TESTKEY"
 done

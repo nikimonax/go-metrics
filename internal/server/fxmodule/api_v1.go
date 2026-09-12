@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
 
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 )
 
@@ -62,8 +63,8 @@ func APIV1Module() fx.Option {
 
 func provideRouterV1(
 	baseRouter chi.Router,
-	logger Middleware,
-	compress Middleware,
+	logger httpextra.Middleware,
+	compress httpextra.Middleware,
 ) chi.Router {
 	return baseRouter.With(compress, logger)
 }

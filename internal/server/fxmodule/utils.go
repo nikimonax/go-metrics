@@ -1,26 +1,21 @@
 package fxmodule
 
 import (
-	"net/http"
-
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
-	mymiddleware "github.com/nikimonax/go-metrics/internal/server/middleware"
+	"github.com/nikimonax/go-metrics/internal/server/middleware"
 )
-
-type Middleware = func(http.Handler) http.Handler
 
 func provideJSONRouter(
 	baseRouter chi.Router,
-	logger Middleware,
-	compress Middleware,
+	logger httpextra.Middleware,
+	compress httpextra.Middleware,
 ) chi.Router {
 	return baseRouter.With(
 		middleware.AllowContentType(httpextra.MIMEJSON),
 		middleware.AllowContentEncoding(httpextra.ENCGzip),
-		mymiddleware.Decompress(),
+		middleware.Decompress(),
 		compress,
 		logger,
 	)

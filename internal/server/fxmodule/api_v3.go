@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
 
+	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 )
 
@@ -34,6 +35,7 @@ func APIV3Module() fx.Option {
 				fx.ParamTags(
 					`name:"router_v3"`,
 					`name:"handler_metrics_update_v3"`,
+					"",
 				),
 			),
 		),
@@ -43,7 +45,13 @@ func APIV3Module() fx.Option {
 func registerHandlersV3(
 	router chi.Router,
 	updateMetricsHandler http.Handler,
+	hasher *httpsec.Hasher,
 ) {
+	if hasher != nil {
+		verify := hasher.VerifyMiddleware(httpsec.RequireHeader())
+		router = router.With(verify)
+	}
+
 	router.Post(
 		"/updates",
 		updateMetricsHandler.ServeHTTP,

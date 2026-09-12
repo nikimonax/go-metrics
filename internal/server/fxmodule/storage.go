@@ -13,6 +13,7 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 )
@@ -111,7 +112,7 @@ func registerDatabaseMigrate(
 
 func registerDatabasePingHandler(
 	router chi.Router,
-	logger Middleware,
+	logger httpextra.Middleware,
 	pingHandler http.Handler,
 ) {
 	router.With(logger).Get("/ping", pingHandler.ServeHTTP)

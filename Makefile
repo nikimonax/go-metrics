@@ -21,7 +21,7 @@ all: build
 
 .PHONY: run-server run-agent
 run-server run-agent: run-%: $(BIN_DIR)/%
-	./$<
+	./$< $(EXTRA_ARGS)
 
 .PHONY: build
 build: $(BIN_DIR)/server $(BIN_DIR)/agent
@@ -40,6 +40,7 @@ test:
 
 .PHONY: cover
 cover: $(COV_FILE)
+	sed -i '/internal\/testing/d' $(COV_FILE) && \
 	go tool cover -func=$(COV_FILE)
 
 .PHONY: cover-html
@@ -68,7 +69,7 @@ up down logs:
 migrate: _check_migrate_cmd
 	migrate -database $(POSTGRES_DSN) -path $(MIGRATIONS_DIR) up
 
-$(COV_FILE): EXTRA_ARGS += -coverprofile=$(COV_FILE)
+$(COV_FILE): EXTRA_ARGS += -coverpkg=./... -coverprofile=$(COV_FILE)
 $(COV_FILE): test
 
 $(BIN_DIR)/metricstest_v2: .FORCE

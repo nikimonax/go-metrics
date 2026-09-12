@@ -14,6 +14,7 @@ import (
 type Options struct {
 	Listen       string `env:"ADDRESS"`
 	DatabaseDSN  string `env:"DATABASE_DSN"`
+	HashingKey   string `env:"KEY"`
 	DumpFile     string `env:"FILE_STORAGE_PATH"`
 	DumpInterval int64  `env:"STORE_INTERVAL" envDefault:"-1"`
 	DumpRestore  *bool  `env:"RESTORE"`
@@ -28,6 +29,10 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 
 	if opts.DatabaseDSN != "" {
 		cfg.Database.DSN = opts.DatabaseDSN
+	}
+
+	if opts.HashingKey != "" {
+		cfg.Security.HashingKey = opts.HashingKey
 	}
 
 	if opts.DumpFile != "" {
@@ -52,6 +57,10 @@ func (opts *Options) Merge(other *Options) {
 
 	if other.DatabaseDSN != "" {
 		opts.DatabaseDSN = other.DatabaseDSN
+	}
+
+	if other.HashingKey != "" {
+		opts.HashingKey = other.HashingKey
 	}
 
 	if other.DumpFile != "" {
@@ -96,6 +105,12 @@ func ReadCliOptions() (*Options, error) {
 		"d",
 		"",
 		"database dsn for connection",
+	)
+	cmd.StringVar(
+		&opts.HashingKey,
+		"k",
+		"",
+		"secret key to verify requests and calculate response hash",
 	)
 	cmd.StringVar(
 		&opts.DumpFile,

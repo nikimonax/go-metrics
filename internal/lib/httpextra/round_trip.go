@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
+
+	"golang.org/x/sync/semaphore"
 )
 
 type RoundTripperFunc func(*http.Request) (*http.Response, error)
@@ -73,5 +76,39 @@ func NewCompressRoundTripper(next http.RoundTripper, encoder string) http.RoundT
 		next:        next,
 		encoderName: encoder,
 		encoderFunc: encoderFunc,
+	}
+}
+
+func NewRoundTripperFromHandler(handler http.Handler) http.RoundTripper {
+	fn := func(r *http.Request) (*http.Response, error) {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w.Result(), nil
+	}
+	return RoundTripperFunc(fn)
+}
+
+type RateLimitRoundTripper struct {
+	next http.RoundTripper
+	sem  *semaphore.Weighted
+}
+
+// RoundTrip implements [http.RoundTripper].
+func (rt *RateLimitRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if err := rt.sem.Acquire(req.Context(), 1); err != nil {
+		return nil, err
+	}
+	defer rt.sem.Release(1)
+
+	return rt.next.RoundTrip(req)
+}
+
+func NewRateLimitRoundTripper(
+	next http.RoundTripper,
+	limit int64,
+) http.RoundTripper {
+	return &RateLimitRoundTripper{
+		next: next,
+		sem:  semaphore.NewWeighted(limit),
 	}
 }

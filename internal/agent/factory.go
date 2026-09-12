@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/nikimonax/go-metrics/internal/agent/config"
@@ -11,6 +12,8 @@ import (
 	"github.com/nikimonax/go-metrics/internal/impl/collector"
 	"github.com/nikimonax/go-metrics/internal/impl/gateway"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
+	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 
@@ -39,6 +42,8 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			providePoolConfig,
 			providePoolSubmitter,
 			provideSchedulerConfig,
+			provideRoundTripper,
+			provideHTTPClient,
 			provideMetricCollector,
 			provideMetricGateway,
 			repository.NewInMemoryMetricRepository,
@@ -105,20 +110,53 @@ func provideSchedulerConfig(sugar *zap.SugaredLogger) work.SchedulerConfig {
 
 func provideMetricCollector() interfaces.MetricCollector {
 	return collector.NewCollectorsGroup(
-		collector.CollectorFunc(collector.CollectMemStats),
-		collector.CollectorFunc(collector.CollectRandomValue),
-		collector.CollectorFunc(collector.CollectIncrOne),
+		collector.NewRuntimeStatsCollector(),
+		collector.NewMemStatsCollector(),
+		collector.NewCPUStatsCollector(),
+		collector.NewRandomGaugeCollector("RandomValue"),
+		collector.NewCounterCollector("PollCount", 1),
 	)
 }
 
-func provideMetricGateway(cfg *config.AgentConfig) (interfaces.MetricGateway, error) {
+func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
+	transport := http.DefaultTransport
+
+	if cfg.APIVersion > 1 {
+		transport = httpextra.NewCompressRoundTripper(transport, "gzip")
+	}
+
+	if cfg.APIVersion > 1 && cfg.Security.HashingKey != "" {
+		hasher := httpsec.NewHasher(
+			cfg.Security.Header,
+			cfg.Security.HashingFunc,
+			[]byte(cfg.Security.HashingKey),
+		)
+
+		transport = hasher.RoundTripper(transport)
+	}
+
+	if cfg.RateLimit > 0 {
+		transport = httpextra.NewRateLimitRoundTripper(transport, cfg.RateLimit)
+	}
+
+	return transport
+}
+
+func provideHTTPClient(transport http.RoundTripper) *http.Client {
+	return &http.Client{Transport: transport}
+}
+
+func provideMetricGateway(
+	cfg *config.AgentConfig,
+	client *http.Client,
+) (interfaces.MetricGateway, error) {
 	gwFactory, err := gateway.GetGatewayFactory(cfg.APIVersion)
 
 	if err != nil {
 		return nil, err
 	}
 
-	gw := gwFactory(cfg.BaseURL)
+	gw := gwFactory(client, cfg.BaseURL)
 
 	if cfg.Backoff.Retry == 0 {
 		// without backoff
@@ -178,14 +216,21 @@ func registerLifecycleHooks(
 	pool *work.WorkerPool,
 	scheduler *work.Scheduler,
 ) {
+	var hasSecretKey bool
+	if cfg.Security.HashingKey != "" {
+		hasSecretKey = true
+	}
+
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
 			sugar.Infow(
 				"starting agent",
 				"server", cfg.BaseURL,
 				"api", "v"+fmt.Sprint(cfg.APIVersion),
+				"rate_limit", cfg.RateLimit,
 				"poll interval", cfg.PollInterval,
 				"send interval", cfg.ReportInterval,
+				"has_secret", hasSecretKey,
 			)
 			return nil
 		},

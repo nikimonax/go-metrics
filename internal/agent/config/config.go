@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"net/url"
 	"time"
@@ -19,9 +20,11 @@ const (
 type AgentConfig struct {
 	BaseURL        *url.URL
 	APIVersion     uint
+	RateLimit      int64
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	Backoff        config.BackoffConfig
+	Security       config.SecurityConfig
 }
 
 func (cfg AgentConfig) Validate() error {
@@ -32,6 +35,10 @@ func (cfg AgentConfig) Validate() error {
 	maxAPIVersion := gateway.GetMaxAPIVersion()
 	if cfg.APIVersion == 0 || cfg.APIVersion > maxAPIVersion {
 		return config.NewErrInvalidConfig("required 'APIVersion' equals 1-" + fmt.Sprint(maxAPIVersion))
+	}
+
+	if cfg.RateLimit < 0 {
+		return config.NewErrInvalidConfig("required 'RateLimit' greater or equals 0")
 	}
 
 	if cfg.PollInterval <= 0 {
@@ -65,6 +72,10 @@ func NewDefaultConfig() AgentConfig {
 			Retry: 3,
 			Seed:  1 * time.Second,
 			Add:   2 * time.Second,
+		},
+		Security: config.SecurityConfig{
+			Header:      config.DefaultHashHeaderKey,
+			HashingFunc: sha256.New,
 		},
 	}
 }
