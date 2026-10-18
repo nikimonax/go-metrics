@@ -15,7 +15,6 @@ import (
 
 const (
 	DefaultListen          = "localhost:8080"
-	DefaultDatabaseDsn     = ""
 	DefaultDatabaseMigrate = true
 	DefaultDumpFile        = "metrics.json"
 	DefaultDumpInterval    = 300 * time.Second
@@ -82,38 +81,59 @@ func (cfg DumpConfig) Validate() error {
 	return errs
 }
 
+type AuditConfig struct {
+	File string
+	URL  string
+}
+
+func (cfg AuditConfig) Validate() error {
+	if cfg.URL == "" {
+		return nil
+	}
+
+	url, err := url.Parse(cfg.URL)
+
+	if err != nil {
+		msg := fmt.Sprintf("invalid audit url: %s", err)
+		return config.NewErrInvalidConfig(msg)
+	}
+
+	if url.Scheme != "http" && url.Scheme != "https" {
+		msg := fmt.Sprintf("unsupported audit url scheme: %s", url.Scheme)
+		return config.NewErrInvalidConfig(msg)
+	}
+
+	return nil
+}
+
 type ServerConfig struct {
 	Listen   string
 	Database DatabaseConfig
 	Security config.SecurityConfig
 	Log      LogConfig
 	Dump     DumpConfig
+	Audit    AuditConfig
 }
 
 func (cfg ServerConfig) Validate() error {
 	var errs error
 
 	if cfg.Listen == "" {
-		err := config.NewErrInvalidConfig("required 'Listen'")
-		errs = errors.Join(err, errs)
+		errs = config.NewErrInvalidConfig("required 'Listen'")
 	}
 
-	if err := cfg.Database.Validate(); err != nil {
-		errs = errors.Join(err, errs)
-	}
-
-	if err := cfg.Dump.Validate(); err != nil {
-		errs = errors.Join(err, errs)
-	}
-
-	return errs
+	return errors.Join(
+		errs,
+		cfg.Database.Validate(),
+		cfg.Dump.Validate(),
+		cfg.Audit.Validate(),
+	)
 }
 
 func NewDefaultConfig() ServerConfig {
 	return ServerConfig{
 		Listen: DefaultListen,
 		Database: DatabaseConfig{
-			DSN:     DefaultDatabaseDsn,
 			Migrate: DefaultDatabaseMigrate,
 			Backoff: config.BackoffConfig{
 				Retry: 3,
