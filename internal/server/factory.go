@@ -29,6 +29,7 @@ func New(cfg *config.ServerConfig) (*Server, error) {
 		fxmodule.APIV2Module(),
 		fxmodule.APIV3Module(),
 		fxmodule.DumpModule(),
+		fxmodule.AuditModule(cfg),
 		fx.WithLogger(zapextra.NewFxLogger),
 	)
 

@@ -172,7 +172,11 @@ func providerMiddlewareCompress() httpextra.Middleware {
 
 func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {
 	baseRouter := chi.NewRouter()
-	baseRouter.Use(middleware.CleanPath)
+
+	baseRouter.Use(
+		middleware.CleanPath,
+		middleware.ClientIPFromRemoteAddr,
+	)
 
 	if hasher != nil {
 		baseRouter.Use(hasher.CalculateMiddleware())
@@ -200,6 +204,8 @@ func registerStartupLog(
 			"dump_file", cfg.Dump.File,
 			"dump_interval", cfg.Dump.Interval,
 			"dump_restore", cfg.Dump.Restore,
+			"audit_file", cfg.Audit.File,
+			"audit_url", cfg.Audit.URL,
 		)
 	}))
 }
