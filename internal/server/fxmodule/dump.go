@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/nikimonax/go-metrics/internal/app/event"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
@@ -18,26 +19,58 @@ import (
 func DumpModule() fx.Option {
 	return fx.Module(
 		"dump",
+		// usecases
 		fx.Provide(
 			serializer.NewJSONMetricSerializer,
 			provideMetricDumper,
-		),
-		fx.Provide(
 			usecase.NewRestoreMetricsUseCase,
 			usecase.NewSaveMetricsUseCase,
+			fx.Private,
 		),
+		// background processing
 		fx.Provide(
+			fx.Annotate(
+				provideDumpPoolConfig,
+				fx.ResultTags(`name:"pool_config_dump"`),
+			),
+			fx.Annotate(
+				config.NewSchedulerConfig,
+				fx.ResultTags(`name:"scheduler_config_dump"`),
+			),
+			fx.Annotate(
+				work.NewPool,
+				fx.ParamTags(`name:"pool_config_dump"`),
+				fx.ResultTags(`name:"pool_dump"`),
+			),
+			fx.Annotate(
+				work.NewScheduler,
+				fx.ParamTags(`name:"submitter_dump"`, `name:"scheduler_config_dump"`),
+				fx.ResultTags(`name:"scheduler_dump"`),
+			),
+			fx.Annotate(
+				work.PoolAsSubmitter,
+				fx.ParamTags(`name:"pool_dump"`),
+				fx.ResultTags(`name:"submitter_dump"`),
+			),
 			fx.Annotate(
 				provideSaveMetricsTask,
 				fx.ResultTags(`name:"task_metrics_save"`),
 			),
 			fx.Annotate(
 				publisher.NewSubmitTaskOnEventHandler,
-				fx.ParamTags(`name:"task_metrics_save"`, ""),
+				fx.ParamTags(`name:"task_metrics_save"`, `name:"submitter_dump"`),
 				fx.ResultTags(`name:"event_handler_submit_task_metrics_save"`),
 			),
 		),
 		fx.Invoke(
+			fx.Annotate(
+				registerPoolLifecycle,
+				fx.ParamTags("", `name:"pool_dump"`),
+			),
+			fx.Annotate(
+				registerSchedulerLifecycle,
+				fx.ParamTags("", `name:"scheduler_dump"`),
+			),
 			registerRestore,
 			fx.Annotate(
 				registerSyncDumps,
@@ -49,7 +82,8 @@ func DumpModule() fx.Option {
 			fx.Annotate(
 				registerPeriodicDumps,
 				fx.ParamTags(
-					"", "",
+					"",
+					`name:"scheduler_dump"`,
 					`name:"task_metrics_save"`,
 				),
 			),
@@ -62,6 +96,17 @@ func provideMetricDumper(
 	serializer serializer.MetricSerializer,
 ) interfaces.MetricDumper {
 	return dumper.NewFileMetricDumper(cfg.Dump.File, serializer)
+}
+
+func provideDumpPoolConfig(
+	sugar *zap.SugaredLogger,
+) work.PoolConfig {
+	return work.PoolConfig{
+		WorkerConfig:    config.NewWorkerConfig(sugar),
+		LifecycleConfig: config.NewLifecycleConfig(),
+		WorkerCount:     1,
+		QueueSize:       1,
+	}
 }
 
 func provideSaveMetricsTask(

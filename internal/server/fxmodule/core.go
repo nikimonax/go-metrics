@@ -39,14 +39,6 @@ func CoreModule() fx.Option {
 			provideTranslator,
 			provideHasher,
 		),
-		// background processing
-		fx.Provide(
-			providePoolConfig,
-			providerSchedulerConfig,
-			work.NewPool,
-			work.NewScheduler,
-			work.PoolAsSubmitter,
-		),
 		// application level stuff
 		fx.Provide(
 			provideEventDispatcher,
@@ -100,8 +92,6 @@ func CoreModule() fx.Option {
 		),
 		fx.Invoke(
 			registerStartupLog,
-			registerPoolLifecycle,
-			registerSchedulerLifecycle,
 			fx.Annotate(
 				registerHTTPServerLifecycle,
 				fx.ParamTags("", "", `name:"router_base"`),
@@ -136,37 +126,6 @@ func provideHasher(cfg *config.ServerConfig) *httpsec.Hasher {
 		cfg.Security.HashingFunc,
 		[]byte(cfg.Security.HashingKey),
 	)
-}
-
-func providePoolConfig(
-	cfg *config.ServerConfig,
-	sugar *zap.SugaredLogger,
-) work.PoolConfig {
-	return work.PoolConfig{
-		WorkerConfig: work.WorkerConfig{
-			OnError: func(name string, err error) {
-				sugar.Errorw("task failed", "task", name, "err", err)
-			},
-			OnPanic: func(name string, v any) {
-				sugar.Errorw("task panic", "task", name, "value", v)
-			},
-		},
-		LifecycleConfig: cfg.Pool.LifecycleConfig,
-		WorkerCount:     cfg.Pool.WorkerCount,
-		QueueSize:       cfg.Pool.QueueSize,
-	}
-}
-
-func providerSchedulerConfig(
-	cfg *config.ServerConfig,
-	sugar *zap.SugaredLogger,
-) work.SchedulerConfig {
-	return work.SchedulerConfig{
-		LifecycleConfig: cfg.Scheduler.LifecycleConfig,
-		OnError: func(name string, err error) {
-			sugar.Errorw("failed submit task", "task", name, "err", err)
-		},
-	}
 }
 
 func provideEventDispatcher(

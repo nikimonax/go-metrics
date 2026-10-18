@@ -9,7 +9,6 @@ import (
 
 	"go.uber.org/zap/zapcore"
 
-	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/shared/config"
 )
@@ -21,7 +20,13 @@ const (
 	DefaultDumpFile        = "metrics.json"
 	DefaultDumpInterval    = 300 * time.Second
 	DefaultDumpRestore     = false
-	DefaultStopTimeout     = 5 * time.Second
+)
+
+// some shared config re-exports
+var (
+	NewWorkerConfig    = config.NewDefaultWorkerConfig
+	NewLifecycleConfig = config.NewDefaultLifecycleConfig
+	NewSchedulerConfig = config.NewDefaultSchedulerConfig
 )
 
 type DatabaseConfig struct {
@@ -78,13 +83,11 @@ func (cfg DumpConfig) Validate() error {
 }
 
 type ServerConfig struct {
-	Listen    string
-	Database  DatabaseConfig
-	Security  config.SecurityConfig
-	Log       LogConfig
-	Dump      DumpConfig
-	Pool      work.PoolConfig
-	Scheduler work.SchedulerConfig
+	Listen   string
+	Database DatabaseConfig
+	Security config.SecurityConfig
+	Log      LogConfig
+	Dump     DumpConfig
 }
 
 func (cfg ServerConfig) Validate() error {
@@ -100,14 +103,6 @@ func (cfg ServerConfig) Validate() error {
 	}
 
 	if err := cfg.Dump.Validate(); err != nil {
-		errs = errors.Join(err, errs)
-	}
-
-	if err := cfg.Pool.Validate(); err != nil {
-		errs = errors.Join(err, errs)
-	}
-
-	if err := cfg.Scheduler.Validate(); err != nil {
 		errs = errors.Join(err, errs)
 	}
 
@@ -138,18 +133,6 @@ func NewDefaultConfig() ServerConfig {
 			File:     DefaultDumpFile,
 			Interval: DefaultDumpInterval,
 			Restore:  DefaultDumpRestore,
-		},
-		Pool: work.PoolConfig{
-			LifecycleConfig: work.LifecycleConfig{
-				StopTimeout: DefaultStopTimeout,
-			},
-			WorkerCount: 1,
-			QueueSize:   1,
-		},
-		Scheduler: work.SchedulerConfig{
-			LifecycleConfig: work.LifecycleConfig{
-				StopTimeout: DefaultStopTimeout,
-			},
 		},
 	}
 }
