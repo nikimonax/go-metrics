@@ -33,6 +33,7 @@ func (pool *WorkerPool) onStop() error {
 	return nil
 }
 
+// Submit implements [Submitter].
 func (pool *WorkerPool) Submit(ctx context.Context, task Task) error {
 	pool.mu.Lock()
 

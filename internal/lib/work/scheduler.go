@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-type Submitter interface {
-	Submit(context.Context, Task) error
-}
-
 type Scheduler struct {
 	lifecycle
 

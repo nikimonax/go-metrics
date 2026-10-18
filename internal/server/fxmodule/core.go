@@ -42,10 +42,10 @@ func CoreModule() fx.Option {
 		// background processing
 		fx.Provide(
 			providePoolConfig,
-			providePoolSubmitter,
 			providerSchedulerConfig,
 			work.NewPool,
 			work.NewScheduler,
+			work.PoolAsSubmitter,
 		),
 		// application level stuff
 		fx.Provide(
@@ -177,10 +177,6 @@ func provideEventDispatcher(
 		sugar.Errorw("failed handle event", "event", e, "err", err)
 	}
 	return dp
-}
-
-func providePoolSubmitter(pool *work.WorkerPool) work.Submitter {
-	return pool
 }
 
 func provideEventPublisher(dp *publisher.EventDispatcher) interfaces.EventPublisher {

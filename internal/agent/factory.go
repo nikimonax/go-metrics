@@ -40,7 +40,6 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			provideLogger,
 			provideSugaredLogger,
 			providePoolConfig,
-			providePoolSubmitter,
 			provideSchedulerConfig,
 			provideRoundTripper,
 			provideHTTPClient,
@@ -51,6 +50,7 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			usecase.NewSendMetricsUseCase,
 			work.NewPool,
 			work.NewScheduler,
+			work.PoolAsSubmitter,
 		),
 		fx.Invoke(
 			registerCollectMetricsTask,
@@ -91,10 +91,6 @@ func providePoolConfig(sugar *zap.SugaredLogger) work.PoolConfig {
 		WorkerCount: 2,
 		QueueSize:   2,
 	}
-}
-
-func providePoolSubmitter(pool *work.WorkerPool) work.Submitter {
-	return pool
 }
 
 func provideSchedulerConfig(sugar *zap.SugaredLogger) work.SchedulerConfig {
