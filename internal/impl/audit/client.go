@@ -1,0 +1,158 @@
+package audit
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"sync"
+	"time"
+
+	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
+)
+
+type Client interface {
+	Send(ctx context.Context, record Record) error
+}
+
+type FileClient struct {
+	mu      sync.Mutex
+	file    *os.File
+	encoder *json.Encoder
+}
+
+// Send implements [Client].
+func (client *FileClient) Send(_ context.Context, record Record) error {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+
+	if client.file == nil {
+		return errors.New("file closed")
+	}
+
+	return client.encoder.Encode(record)
+}
+
+func (client *FileClient) Close() error {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+
+	if err := client.file.Close(); err != nil {
+		return err
+	}
+
+	client.file = nil
+	client.encoder = nil
+	return nil
+}
+
+var _ Client = (*FileClient)(nil)
+
+func NewFileClient(filePath string) (*FileClient, error) {
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+
+	if err != nil {
+		return nil, err
+	}
+
+	encoder := json.NewEncoder(file)
+
+	return &FileClient{
+		file:    file,
+		encoder: encoder,
+	}, nil
+}
+
+const defaultRequestTimeout = time.Second
+
+type HTTPClient struct {
+	http     *http.Client
+	endpoint string
+	timeout  time.Duration
+}
+
+// Send implements [Client].
+func (client *HTTPClient) Send(ctx context.Context, record Record) error {
+	content := new(bytes.Buffer)
+
+	if err := json.NewEncoder(content).Encode(record); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, client.timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, client.endpoint, content)
+
+	if err != nil {
+		return fmt.Errorf("failed create request: %w", err)
+	}
+
+	req.Header.Set(httpextra.HDRContentType, httpextra.MIMEJSON)
+
+	resp, err := client.http.Do(req)
+
+	if err != nil {
+		return fmt.Errorf("failed send audit record: network error: %w", err)
+	}
+
+	defer func() {
+		if _, deferErr := io.Copy(io.Discard, resp.Body); deferErr != nil {
+			err = errors.Join(err, deferErr)
+		}
+
+		if deferErr := resp.Body.Close(); deferErr != nil {
+			err = errors.Join(err, deferErr)
+		}
+	}()
+
+	if resp.StatusCode >= 400 {
+		reason := "unknown"
+
+		if body, err := io.ReadAll(resp.Body); err == nil && len(body) > 0 {
+			reason = string(body)
+		}
+
+		return fmt.Errorf("failed send audit record: server error: %s", reason)
+	}
+
+	return nil
+}
+
+func NewHTTPClient(endpoint string) Client {
+	return &HTTPClient{
+		http:     &http.Client{},
+		endpoint: endpoint,
+		timeout:  defaultRequestTimeout,
+	}
+}
+
+type ClientGroup struct {
+	clients []Client
+}
+
+// Send implements [Client].
+func (group *ClientGroup) Send(ctx context.Context, record Record) error {
+	errChan := make(chan error, len(group.clients))
+
+	for _, client := range group.clients {
+		go func() {
+			errChan <- client.Send(ctx, record)
+		}()
+	}
+
+	var errs error
+	for range len(group.clients) {
+		errs = errors.Join(errs, <-errChan)
+	}
+
+	return errs
+}
+
+func NewClientGroup(clients []Client) Client {
+	return &ClientGroup{clients: clients}
+}
