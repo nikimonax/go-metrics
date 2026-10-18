@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/nikimonax/go-metrics/internal/agent/config"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
@@ -36,11 +35,21 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 
 	app := fx.New(
 		fx.Supply(cfg),
+		// logging
 		fx.Provide(
 			provideLogger,
 			provideSugaredLogger,
-			providePoolConfig,
-			provideSchedulerConfig,
+		),
+		// background processing
+		fx.Provide(
+			config.NewPoolConfig,
+			config.NewSchedulerConfig,
+			work.NewPool,
+			work.NewScheduler,
+			work.PoolAsSubmitter,
+		),
+		// usecases
+		fx.Provide(
 			provideRoundTripper,
 			provideHTTPClient,
 			provideMetricCollector,
@@ -48,9 +57,6 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			repository.NewInMemoryMetricRepository,
 			usecase.NewCollectMetricsUseCase,
 			usecase.NewSendMetricsUseCase,
-			work.NewPool,
-			work.NewScheduler,
-			work.PoolAsSubmitter,
 		),
 		fx.Invoke(
 			registerCollectMetricsTask,
@@ -73,35 +79,6 @@ func provideLogger() *zap.Logger {
 
 func provideSugaredLogger(logger *zap.Logger) *zap.SugaredLogger {
 	return logger.Sugar()
-}
-
-func providePoolConfig(sugar *zap.SugaredLogger) work.PoolConfig {
-	return work.PoolConfig{
-		WorkerConfig: work.WorkerConfig{
-			OnError: func(name string, err error) {
-				sugar.Errorw("task failed", "task", name, "err", err)
-			},
-			OnPanic: func(name string, v any) {
-				sugar.Errorw("task panic", "task", name, "value", v)
-			},
-		},
-		LifecycleConfig: work.LifecycleConfig{
-			StopTimeout: time.Second * 5,
-		},
-		WorkerCount: 2,
-		QueueSize:   2,
-	}
-}
-
-func provideSchedulerConfig(sugar *zap.SugaredLogger) work.SchedulerConfig {
-	return work.SchedulerConfig{
-		LifecycleConfig: work.LifecycleConfig{
-			StopTimeout: time.Second * 5,
-		},
-		OnError: func(name string, err error) {
-			sugar.Errorw("failed submit task", "task", name, "err", err)
-		},
-	}
 }
 
 func provideMetricCollector() interfaces.MetricCollector {
