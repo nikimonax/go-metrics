@@ -13,6 +13,7 @@ import (
 
 type Options struct {
 	Listen       string `env:"ADDRESS"`
+	Profile      *bool  `env:"PROFILE"`
 	DatabaseDSN  string `env:"DATABASE_DSN"`
 	HashingKey   string `env:"KEY"`
 	DumpFile     string `env:"FILE_STORAGE_PATH"`
@@ -27,6 +28,10 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 
 	if opts.Listen != "" {
 		cfg.Listen = opts.Listen
+	}
+
+	if opts.Profile != nil && *opts.Profile {
+		cfg.Profile = true
 	}
 
 	if opts.DatabaseDSN != "" {
@@ -63,6 +68,10 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 func (opts *Options) Merge(other *Options) {
 	if other.Listen != "" {
 		opts.Listen = other.Listen
+	}
+
+	if other.Profile != nil {
+		opts.Profile = other.Profile
 	}
 
 	if other.DatabaseDSN != "" {
@@ -109,6 +118,7 @@ func ReadCliOptions() (*Options, error) {
 		opts Options
 
 		dumpRestore bool
+		profile     bool
 	)
 
 	cmd := flagextra.NewFlagSet()
@@ -160,14 +170,23 @@ func ReadCliOptions() (*Options, error) {
 		"",
 		"http endpoint to send metrics there",
 	)
+	cmd.BoolVar(
+		&profile,
+		"pprof",
+		false,
+		"enable profiling",
+	)
 
 	if err := cmd.Parse(os.Args[1:]); err != nil {
 		return nil, err
 	}
 
 	cmd.Visit(func(f *flag.Flag) {
-		if f.Name == "r" {
+		switch f.Name {
+		case "r":
 			opts.DumpRestore = &dumpRestore
+		case "pprof":
+			opts.Profile = &profile
 		}
 	})
 

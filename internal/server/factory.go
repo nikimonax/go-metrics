@@ -25,6 +25,7 @@ func New(cfg *config.ServerConfig) (*Server, error) {
 		fx.Supply(cfg),
 		fxmodule.StorageModule(cfg),
 		fxmodule.CoreModule(),
+		fxmodule.ProfileModule(cfg),
 		fxmodule.APIV1Module(),
 		fxmodule.APIV2Module(),
 		fxmodule.APIV3Module(),

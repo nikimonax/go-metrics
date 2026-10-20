@@ -108,6 +108,7 @@ func (cfg AuditConfig) Validate() error {
 
 type ServerConfig struct {
 	Listen   string
+	Profile  bool
 	Database DatabaseConfig
 	Security config.SecurityConfig
 	Log      LogConfig

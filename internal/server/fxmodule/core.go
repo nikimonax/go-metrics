@@ -199,6 +199,7 @@ func registerStartupLog(
 		sugar.Infow(
 			"starting server",
 			"listen", cfg.Listen,
+			"profile", cfg.Profile,
 			"database", cfg.Database.DSN,
 			"has_secret", hasSecretKey,
 			"dump_file", cfg.Dump.File,
