@@ -141,7 +141,6 @@ func provideMetricGateway(
 		cfg.Backoff.Build,
 		gateway.HTTPErrorIsRetryable,
 	), nil
-
 }
 
 func registerCollectMetricsTask(
