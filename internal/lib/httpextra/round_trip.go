@@ -2,7 +2,6 @@ package httpextra
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,7 +10,11 @@ import (
 	"golang.org/x/sync/semaphore"
 
 	"github.com/nikimonax/go-metrics/internal/lib/compress"
+	"github.com/nikimonax/go-metrics/internal/lib/ioextra"
+	"github.com/nikimonax/go-metrics/internal/lib/syncpool"
 )
+
+const maxPooledBufCap = 1 << 20
 
 type RoundTripperFunc func(*http.Request) (*http.Response, error)
 
@@ -24,11 +27,29 @@ var encoders = map[string]encoderFunc{
 	"deflate": compress.EncoderDeflate,
 }
 
+type pooledBody struct {
+	io.Reader
+	buf *bytes.Buffer
+	rt  *CompressRoundTripper
+}
+
+func newPooledBody(buf *bytes.Buffer, rt *CompressRoundTripper) io.ReadCloser {
+	return &pooledBody{Reader: buf, buf: buf, rt: rt}
+}
+
+func (b *pooledBody) Close() error {
+	b.rt.putBuffer(b.buf)
+	return nil
+}
+
 type CompressRoundTripper struct {
 	next        http.RoundTripper
 	encoderName string
 	encoderFunc encoderFunc
 	level       int
+
+	writers syncpool.Pool[io.WriteCloser]
+	buffers syncpool.Pool[*bytes.Buffer]
 }
 
 func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -43,27 +64,50 @@ func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (*http.Response, er
 	}
 
 	newReq := req.Clone(req.Context())
-	newReq.Body = io.NopCloser(buf)
+	newReq.Body = newPooledBody(buf, rt)
 	newReq.ContentLength = int64(buf.Len())
 	newReq.Header.Set(HDRContentEncoding, rt.encoderName)
 
 	return rt.next.RoundTrip(newReq)
 }
 
-func (rt *CompressRoundTripper) compress(r io.Reader) (buf *bytes.Buffer, err error) {
-	buf = new(bytes.Buffer)
+func (rt *CompressRoundTripper) compress(r io.Reader) (*bytes.Buffer, error) {
+	buf := rt.buffers.Get()
+	buf.Reset()
 
-	w := rt.encoderFunc(buf, rt.level)
+	w := rt.writers.Get()
 
-	if closer, ok := w.(io.Closer); ok {
-		defer func() { err = errors.Join(err, closer.Close()) }()
-	}
-
-	if _, err = io.Copy(w, r); err != nil {
+	if err := compress.ResetEncoder(w, buf); err != nil {
 		return nil, err
 	}
 
+	if _, err := io.Copy(w, r); err != nil {
+		rt.putWriter(w)
+		rt.putBuffer(buf)
+		return nil, err
+	}
+
+	if err := w.Close(); err != nil {
+		rt.putWriter(w)
+		rt.putBuffer(buf)
+		return nil, err
+	}
+
+	rt.putWriter(w)
+
 	return buf, nil
+}
+
+func (rt *CompressRoundTripper) putWriter(w io.WriteCloser) {
+	rt.writers.Put(w)
+}
+
+func (rt *CompressRoundTripper) putBuffer(buf *bytes.Buffer) {
+	if buf.Cap() > maxPooledBufCap {
+		return
+	}
+
+	rt.buffers.Put(buf)
 }
 
 func NewCompressRoundTripper(next http.RoundTripper, encoder string, level int) http.RoundTripper {
@@ -79,6 +123,26 @@ func NewCompressRoundTripper(next http.RoundTripper, encoder string, level int) 
 		encoderName: encoder,
 		encoderFunc: encoderFunc,
 		level:       level,
+
+		writers: syncpool.New(func() io.WriteCloser {
+			w := encoderFunc(io.Discard, level)
+
+			if w == nil {
+				panic(fmt.Sprintf("invalid compress level %d", level))
+			}
+
+			wc, ok := w.(io.WriteCloser)
+
+			if ok {
+				return wc
+			}
+
+			return ioextra.NopWriteCloser(w)
+		}),
+
+		buffers: syncpool.New(func() *bytes.Buffer {
+			return new(bytes.Buffer)
+		}),
 	}
 }
 

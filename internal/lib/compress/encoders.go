@@ -1,6 +1,7 @@
 package compress
 
 import (
+	"errors"
 	"io"
 
 	"github.com/klauspost/compress/flate"
@@ -21,4 +22,16 @@ func EncoderDeflate(w io.Writer, level int) io.Writer {
 		return nil
 	}
 	return dw
+}
+
+func ResetEncoder(encoder io.Writer, w io.Writer) error {
+	resetter, ok := encoder.(interface{ Reset(io.Writer) })
+
+	if !ok {
+		return errors.New("encoder does not support reset")
+	}
+
+	resetter.Reset(w)
+
+	return nil
 }
