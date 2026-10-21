@@ -2,7 +2,6 @@ package httpextra
 
 import (
 	"bytes"
-	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -10,26 +9,26 @@ import (
 	"net/http/httptest"
 
 	"golang.org/x/sync/semaphore"
+
+	"github.com/nikimonax/go-metrics/internal/lib/compress"
 )
 
 type RoundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f RoundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
-type encoderFunc func(io.Writer) io.WriteCloser
-
-func encoderGzip(w io.Writer) io.WriteCloser {
-	return gzip.NewWriter(w)
-}
+type encoderFunc func(w io.Writer, level int) io.Writer
 
 var encoders = map[string]encoderFunc{
-	"gzip": encoderGzip,
+	"gzip":    compress.EncoderGzip,
+	"deflate": compress.EncoderDeflate,
 }
 
 type CompressRoundTripper struct {
 	next        http.RoundTripper
 	encoderName string
 	encoderFunc encoderFunc
+	level       int
 }
 
 func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -54,8 +53,11 @@ func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (*http.Response, er
 func (rt *CompressRoundTripper) compress(r io.Reader) (buf *bytes.Buffer, err error) {
 	buf = new(bytes.Buffer)
 
-	w := rt.encoderFunc(buf)
-	defer func() { err = errors.Join(err, w.Close()) }()
+	w := rt.encoderFunc(buf, rt.level)
+
+	if closer, ok := w.(io.Closer); ok {
+		defer func() { err = errors.Join(err, closer.Close()) }()
+	}
 
 	if _, err = io.Copy(w, r); err != nil {
 		return nil, err
@@ -64,7 +66,7 @@ func (rt *CompressRoundTripper) compress(r io.Reader) (buf *bytes.Buffer, err er
 	return buf, nil
 }
 
-func NewCompressRoundTripper(next http.RoundTripper, encoder string) http.RoundTripper {
+func NewCompressRoundTripper(next http.RoundTripper, encoder string, level int) http.RoundTripper {
 	encoderFunc, ok := encoders[encoder]
 
 	if !ok {
@@ -76,6 +78,7 @@ func NewCompressRoundTripper(next http.RoundTripper, encoder string) http.RoundT
 		next:        next,
 		encoderName: encoder,
 		encoderFunc: encoderFunc,
+		level:       level,
 	}
 }
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
 	"net/url"
@@ -18,6 +19,8 @@ const (
 	DefaultAPIVersion     = 1
 	DefaultPollInterval   = 2 * time.Second
 	DefaultReportInterval = 10 * time.Second
+
+	CompressLevel = gzip.BestSpeed
 )
 
 // some shared config re-exports

@@ -1,6 +1,7 @@
 package fxmodule
 
 import (
+	"compress/gzip"
 	"context"
 	"errors"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/publisher"
+	"github.com/nikimonax/go-metrics/internal/lib/compress"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
@@ -167,7 +169,10 @@ func provideHandlerGetAllMetricsUseCase(
 }
 
 func providerMiddlewareCompress() httpextra.Middleware {
-	return middleware.Compress(5)
+	compressor := middleware.NewCompressor(gzip.BestSpeed)
+	compressor.SetEncoder("deflate", compress.EncoderDeflate)
+	compressor.SetEncoder("gzip", compress.EncoderGzip)
+	return compressor.Handler
 }
 
 func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {

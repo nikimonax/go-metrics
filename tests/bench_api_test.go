@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
 	"net/http"
@@ -75,7 +76,7 @@ func newTestGateway(tb testing.TB, version uint, baseURL *url.URL) interfaces.Me
 	transport := http.DefaultTransport
 
 	if version > 1 {
-		transport = httpextra.NewCompressRoundTripper(transport, "gzip")
+		transport = httpextra.NewCompressRoundTripper(transport, "gzip", gzip.BestSpeed)
 	}
 
 	factory, err := gateway.GetGatewayFactory(version)
