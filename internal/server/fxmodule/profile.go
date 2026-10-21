@@ -7,6 +7,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
+	"github.com/nikimonax/go-metrics/internal/server/middleware"
 )
 
 func ProfileModule(cfg *config.ServerConfig) fx.Option {
@@ -18,7 +19,7 @@ func ProfileModule(cfg *config.ServerConfig) fx.Option {
 		"profile",
 		fx.Invoke(
 			fx.Annotate(
-				registerProfiler,
+				registerProfiling,
 				fx.ParamTags(
 					`name:"router_base"`,
 					`name:"middleware_logger"`,
@@ -28,9 +29,10 @@ func ProfileModule(cfg *config.ServerConfig) fx.Option {
 	)
 }
 
-func registerProfiler(
+func registerProfiling(
 	baseRouter chi.Router,
 	logger httpextra.Middleware,
 ) {
+	baseRouter.Use(middleware.PprofLabels(baseRouter))
 	baseRouter.With(logger).Mount("/debug", handler.Profiler())
 }
