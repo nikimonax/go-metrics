@@ -15,6 +15,7 @@ linters:
     - bodyclose
     - noctx
     - sqlclosecheck
+    - depguard
   settings:
     gocyclo:
       min-complexity: 15
@@ -29,6 +30,33 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+    depguard:
+      rules:
+        domain-layer:
+          files:
+            - "**/internal/domain/**"
+            - "!$test"
+          allow:
+            - $gostd
+        application-layer:
+          files:
+            - "**/internal/app/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/nikimonax/go-metrics/internal/app
+            - github.com/nikimonax/go-metrics/internal/domain
+        infrastructure-layer:
+          files:
+            - "**/internal/impl/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/nikimonax/go-metrics/internal/server
+              desc: impl must not depend on server
+            - pkg: github.com/nikimonax/go-metrics/internal/testing
+              desc: impl must not depend on testing helpers
+            - pkg: github.com/nikimonax/go-metrics/cmd
+              desc: impl must not depend on cmd
 
 formatters:
   enable:
