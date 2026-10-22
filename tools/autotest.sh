@@ -37,6 +37,11 @@ fi
 
 DATABASE_DSN="postgres://$DATABASE_USER:$DATABASE_PASSWORD@$DATABASE_HOST:$DATABASE_PORT/$DATABASE_NAME"
 
+if (( ITER >= 15 )); then
+    # автотесты только до 14 инкремента включительно
+    ITER=14
+fi
+
 for ((i=START; i<=ITER; i++)); do
     echo -n "Iteration $i: "
 
