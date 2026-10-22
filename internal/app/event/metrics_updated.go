@@ -1,3 +1,6 @@
+// Пакет event содержит события application слоя,
+// публикуемые через EventPublisher.
+
 package event
 
 import (
@@ -5,13 +8,16 @@ import (
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
-var MetricsUpdatedEventName = "metrics.updated"
+const MetricsUpdatedEventName = "metrics.updated"
 
+// Cобытие, возникающее при обновлении метрик.
 type MetricsUpdatedEvent struct {
+	// Список обновлённых метрик.
 	Metrics []domain.Metric
 }
 
-func (e MetricsUpdatedEvent) Name() string {
+// Name implements [interfaces.Event].
+func (MetricsUpdatedEvent) Name() string {
 	return MetricsUpdatedEventName
 }
 

@@ -8,11 +8,14 @@ import (
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
+// Сценарий обновления одной метрики в хранилище.
 type UpdateMetricUseCase struct {
 	metricRepository interfaces.MetricRepository
 	eventPublisher   interfaces.EventPublisher
 }
 
+// Execute обновляет метрику в хранилище и после успешного обновления
+// публикует событие event.MetricsUpdatedEvent.
 func (useCase *UpdateMetricUseCase) Execute(
 	ctx context.Context,
 	metric domain.Metric,
@@ -27,6 +30,8 @@ func (useCase *UpdateMetricUseCase) Execute(
 	return nil
 }
 
+// NewUpdateMetricUseCase создаёт новый экземпляр UpdateMetricUseCase
+// с указанными хранилищем метрик и издателем событий.
 func NewUpdateMetricUseCase(
 	metricRepository interfaces.MetricRepository,
 	eventPublisher interfaces.EventPublisher,
