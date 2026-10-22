@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// Периодически отправляет зарегистрированные задачи в пул
+// через равные интервалы времени. Расписания можно добавлять только
+// до запуска. Управление жизненным циклом - через Start/Stop/Run.
 type Scheduler struct {
 	lifecycle
 
@@ -47,6 +50,9 @@ func (s *Scheduler) onStop() error {
 	return nil
 }
 
+// Добавляет задачу с указанным интервалом в расписание.
+// Допускается только до запуска планировщика, иначе возвращается
+// ошибка недопустимого состояния.
 func (s *Scheduler) Schedule(task Task, interval time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -65,6 +71,8 @@ func (s *Scheduler) Schedule(task Task, interval time.Duration) error {
 	return nil
 }
 
+// Создаёт планировщик, отправляющий задачи в pool.
+// Возвращает ошибку, если pool равен nil или конфигурация некорректна.
 func NewScheduler(pool Submitter, config SchedulerConfig) (*Scheduler, error) {
 	if pool == nil {
 		return nil, errors.New("required non-nil pool")

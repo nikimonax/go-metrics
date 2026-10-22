@@ -5,9 +5,16 @@ import (
 	"errors"
 )
 
+// Описывает единицу работы, выполняемую воркером.
 type Task struct {
-	Name           string
-	Callback       func(context.Context) error
+	// Имя задачи.
+	// Используется в колбэках OnError и OnPanic.
+	Name string
+
+	// Функция, выполняемая воркером с контекстом пула.
+	Callback func(context.Context) error
+
+	// Пропускать задачу, если очередь пула заполнена.
 	SkipIfFullChan bool
 }
 

@@ -10,12 +10,14 @@ import (
 type lifecycleState uint8
 
 const (
-	lifecycleStopped lifecycleState = iota
-	lifecycleStarting
-	lifecycleRunning
-	lifecycleStopping
+	lifecycleStopped  lifecycleState = iota // остановлен
+	lifecycleStarting                       // запускается
+	lifecycleRunning                        // работает
+	lifecycleStopping                       // останавливается
 )
 
+// Управляет запуском и остановкой компонента через
+// колбэки onStart и onStop с поддержкой таймаута остановки.
 type lifecycle struct {
 	mu          sync.Mutex
 	state       lifecycleState
@@ -28,6 +30,8 @@ type lifecycle struct {
 	stopErr     error
 }
 
+// Переводит компонент в состояние запуска.
+// Возвращает ошибку, если компонент уже запущен.
 func (l *lifecycle) Start(startCtx context.Context) error {
 	l.mu.Lock()
 
@@ -79,6 +83,10 @@ func (l *lifecycle) Start(startCtx context.Context) error {
 	return nil
 }
 
+// Останавливает компонент.
+// Идемпотентен, повторные вызовы дожидаются уже выполняющейся остановки.
+// Возвращает ошибку, если компонент сейчас запускается,
+// либо ошибку stopCtx при отмене ожидания.
 func (l *lifecycle) Stop(stopCtx context.Context) error {
 	l.mu.Lock()
 
@@ -135,6 +143,8 @@ func (l *lifecycle) waitForStop(stopCtx context.Context, done <-chan struct{}) e
 	}
 }
 
+// Запускает компонент и блокируется до отмены runCtx, после чего
+// выполняет остановку с таймаутом l.stopTimeout (если задан).
 func (l *lifecycle) Run(runCtx context.Context) error {
 	if err := l.Start(runCtx); err != nil {
 		return err
