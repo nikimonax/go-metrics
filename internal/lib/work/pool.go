@@ -5,6 +5,9 @@ import (
 	"sync"
 )
 
+// Пул воркеров с очередью задач фиксированной ёмкости.
+// Управление запуском и остановкой осуществляется
+// через встроенный жизненный цикл (Start/Stop/Run).
 type WorkerPool struct {
 	lifecycle
 
@@ -33,6 +36,11 @@ func (pool *WorkerPool) onStop() error {
 	return nil
 }
 
+// Submit implements [Submitter].
+//
+// Помещает задачу в очередь пула. Если задача помечена
+// SkipIfFullChan, при заполненной очереди она молча пропускается.
+// Иначе блокируется до записи в очередь, отмены ctx или остановки пула.
 func (pool *WorkerPool) Submit(ctx context.Context, task Task) error {
 	pool.mu.Lock()
 
@@ -66,6 +74,8 @@ func (pool *WorkerPool) Submit(ctx context.Context, task Task) error {
 	}
 }
 
+// Создаёт пул воркеров с указанной конфигурацией.
+// Возвращает ошибку, если конфигурация некорректна.
 func NewPool(config PoolConfig) (*WorkerPool, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err

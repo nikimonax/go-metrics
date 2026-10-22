@@ -9,19 +9,23 @@ import (
 
 	"go.uber.org/zap/zapcore"
 
-	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/shared/config"
 )
 
 const (
 	DefaultListen          = "localhost:8080"
-	DefaultDatabaseDsn     = ""
 	DefaultDatabaseMigrate = true
 	DefaultDumpFile        = "metrics.json"
 	DefaultDumpInterval    = 300 * time.Second
 	DefaultDumpRestore     = false
-	DefaultStopTimeout     = 5 * time.Second
+)
+
+// some shared config re-exports
+var (
+	NewWorkerConfig    = config.NewDefaultWorkerConfig
+	NewLifecycleConfig = config.NewDefaultLifecycleConfig
+	NewSchedulerConfig = config.NewDefaultSchedulerConfig
 )
 
 type DatabaseConfig struct {
@@ -77,48 +81,60 @@ func (cfg DumpConfig) Validate() error {
 	return errs
 }
 
+type AuditConfig struct {
+	File string
+	URL  string
+}
+
+func (cfg AuditConfig) Validate() error {
+	if cfg.URL == "" {
+		return nil
+	}
+
+	url, err := url.Parse(cfg.URL)
+
+	if err != nil {
+		msg := fmt.Sprintf("invalid audit url: %s", err)
+		return config.NewErrInvalidConfig(msg)
+	}
+
+	if url.Scheme != "http" && url.Scheme != "https" {
+		msg := fmt.Sprintf("unsupported audit url scheme: %s", url.Scheme)
+		return config.NewErrInvalidConfig(msg)
+	}
+
+	return nil
+}
+
 type ServerConfig struct {
-	Listen    string
-	Database  DatabaseConfig
-	Security  config.SecurityConfig
-	Log       LogConfig
-	Dump      DumpConfig
-	Pool      work.PoolConfig
-	Scheduler work.SchedulerConfig
+	Listen   string
+	Profile  bool
+	Database DatabaseConfig
+	Security config.SecurityConfig
+	Log      LogConfig
+	Dump     DumpConfig
+	Audit    AuditConfig
 }
 
 func (cfg ServerConfig) Validate() error {
 	var errs error
 
 	if cfg.Listen == "" {
-		err := config.NewErrInvalidConfig("required 'Listen'")
-		errs = errors.Join(err, errs)
+		errs = config.NewErrInvalidConfig("required 'Listen'")
 	}
 
-	if err := cfg.Database.Validate(); err != nil {
-		errs = errors.Join(err, errs)
-	}
-
-	if err := cfg.Dump.Validate(); err != nil {
-		errs = errors.Join(err, errs)
-	}
-
-	if err := cfg.Pool.Validate(); err != nil {
-		errs = errors.Join(err, errs)
-	}
-
-	if err := cfg.Scheduler.Validate(); err != nil {
-		errs = errors.Join(err, errs)
-	}
-
-	return errs
+	return errors.Join(
+		errs,
+		cfg.Database.Validate(),
+		cfg.Dump.Validate(),
+		cfg.Audit.Validate(),
+	)
 }
 
 func NewDefaultConfig() ServerConfig {
 	return ServerConfig{
 		Listen: DefaultListen,
 		Database: DatabaseConfig{
-			DSN:     DefaultDatabaseDsn,
 			Migrate: DefaultDatabaseMigrate,
 			Backoff: config.BackoffConfig{
 				Retry: 3,
@@ -138,18 +154,6 @@ func NewDefaultConfig() ServerConfig {
 			File:     DefaultDumpFile,
 			Interval: DefaultDumpInterval,
 			Restore:  DefaultDumpRestore,
-		},
-		Pool: work.PoolConfig{
-			LifecycleConfig: work.LifecycleConfig{
-				StopTimeout: DefaultStopTimeout,
-			},
-			WorkerCount: 1,
-			QueueSize:   1,
-		},
-		Scheduler: work.SchedulerConfig{
-			LifecycleConfig: work.LifecycleConfig{
-				StopTimeout: DefaultStopTimeout,
-			},
 		},
 	}
 }

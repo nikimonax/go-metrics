@@ -15,6 +15,22 @@ type GetMetricHandler struct {
 	metricPresenter presenter.MetricPresenter
 }
 
+// GetMetricHandler godoc
+//
+//	@ID				getMetricV1
+//	@Summary		Получение значения метрики (URL-параметры)
+//	@Description	Возвращает значение метрики в текстовом виде.
+//	@Tags			metrics
+//	@Produce		text/plain
+//	@Param			metricType	path		string	true	"Тип метрики: gauge | counter"	Enums(gauge, counter)
+//	@Param			metricName	path		string	true	"Имя метрики"
+//	@Success		200			{string}	string	"Значение метрики"
+//	@Failure		400			{object}	model.ErrorResponse
+//	@Failure		404			{object}	model.ErrorResponse
+//	@Failure		500			{object}	model.ErrorResponse
+//	@Router			/value/{metricType}/{metricName} [get]
+//
+// ServeHTTP implements [http.Handler].
 func (h *GetMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var (
 		metricType domain.MetricType

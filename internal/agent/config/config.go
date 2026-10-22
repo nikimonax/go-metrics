@@ -1,12 +1,16 @@
 package config
 
 import (
+	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
 	"net/url"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/nikimonax/go-metrics/internal/impl/gateway"
+	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/shared/config"
 )
 
@@ -15,6 +19,15 @@ const (
 	DefaultAPIVersion     = 1
 	DefaultPollInterval   = 2 * time.Second
 	DefaultReportInterval = 10 * time.Second
+
+	CompressLevel = gzip.BestSpeed
+)
+
+// some shared config re-exports
+var (
+	NewWorkerConfig    = config.NewDefaultWorkerConfig
+	NewLifecycleConfig = config.NewDefaultLifecycleConfig
+	NewSchedulerConfig = config.NewDefaultSchedulerConfig
 )
 
 type AgentConfig struct {
@@ -77,5 +90,15 @@ func NewDefaultConfig() AgentConfig {
 			Header:      config.DefaultHashHeaderKey,
 			HashingFunc: sha256.New,
 		},
+	}
+}
+
+func NewPoolConfig(sugar *zap.SugaredLogger) work.PoolConfig {
+	return work.PoolConfig{
+		WorkerConfig:    NewWorkerConfig(sugar),
+		LifecycleConfig: NewLifecycleConfig(),
+		// 2 workers and 2 queue size for collect and send tasks
+		WorkerCount: 2,
+		QueueSize:   2,
 	}
 }

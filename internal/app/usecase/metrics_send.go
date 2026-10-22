@@ -6,11 +6,14 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 )
 
+// Сценарий отправки накопленных метрик на сервер.
 type SendMetricsUseCase struct {
 	gateway    interfaces.MetricGateway
 	repository interfaces.MetricRepository
 }
 
+// Execute извлекает все накопленные метрики из хранилища и
+// отправляет их другой сервер. Если метрик нет, ничего не делает.
 func (useCase *SendMetricsUseCase) Execute(
 	ctx context.Context,
 ) error {
@@ -27,6 +30,8 @@ func (useCase *SendMetricsUseCase) Execute(
 	return useCase.gateway.SendBatch(ctx, metrics)
 }
 
+// NewSendMetricsUseCase создаёт новый экземпляр SendMetricsUseCase
+// с указанными клиентом отправки и хранилищем метрик.
 func NewSendMetricsUseCase(
 	gateway interfaces.MetricGateway,
 	repository interfaces.MetricRepository,

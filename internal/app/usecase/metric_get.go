@@ -7,10 +7,12 @@ import (
 	"github.com/nikimonax/go-metrics/internal/domain"
 )
 
+// Сценарий получения одной метрики из хранилища.
 type GetMetricUseCase struct {
 	metricRepository interfaces.MetricRepository
 }
 
+// Execute возвращает метрику из хранилища по её типу и имени.
 func (useCase *GetMetricUseCase) Execute(
 	ctx context.Context,
 	metricType domain.MetricType,
@@ -19,6 +21,8 @@ func (useCase *GetMetricUseCase) Execute(
 	return useCase.metricRepository.Get(ctx, metricType, metricName)
 }
 
+// NewGetMetricUseCase создаёт новый экземпляр GetMetricUseCase
+// с указанным хранилищем метрик.
 func NewGetMetricUseCase(metricRepository interfaces.MetricRepository) *GetMetricUseCase {
 	return &GetMetricUseCase{
 		metricRepository: metricRepository,

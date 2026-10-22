@@ -19,6 +19,22 @@ type GetMetricV2Handler struct {
 	validate        *validator.Validate
 }
 
+// GetMetricV2Handler godoc
+//
+//	@ID				getMetricV2
+//	@Summary		Получение значения метрики (JSON)
+//	@Description	Возвращает метрику в формате JSON.
+//	@Tags			metrics
+//	@Accept			json
+//	@Produce		json
+//	@Param			metricInfo	body		model.MetricInfo	true	"Идентификатор метрики"
+//	@Success		200			{object}	model.Metric
+//	@Failure		400			{object}	model.ErrorResponse
+//	@Failure		404			{object}	model.ErrorResponse
+//	@Failure		500			{object}	model.ErrorResponse
+//	@Router			/value [post]
+//
+// ServeHTTP implements [http.Handler].
 func (h *GetMetricV2Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var payload model.MetricInfo
 

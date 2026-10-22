@@ -1,6 +1,7 @@
 package fxmodule
 
 import (
+	"compress/gzip"
 	"context"
 	"errors"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/publisher"
+	"github.com/nikimonax/go-metrics/internal/lib/compress"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
@@ -38,14 +40,6 @@ func CoreModule() fx.Option {
 			provideValidator,
 			provideTranslator,
 			provideHasher,
-		),
-		// background processing
-		fx.Provide(
-			providePoolConfig,
-			providePoolSubmitter,
-			providerSchedulerConfig,
-			work.NewPool,
-			work.NewScheduler,
 		),
 		// application level stuff
 		fx.Provide(
@@ -100,8 +94,6 @@ func CoreModule() fx.Option {
 		),
 		fx.Invoke(
 			registerStartupLog,
-			registerPoolLifecycle,
-			registerSchedulerLifecycle,
 			fx.Annotate(
 				registerHTTPServerLifecycle,
 				fx.ParamTags("", "", `name:"router_base"`),
@@ -138,37 +130,6 @@ func provideHasher(cfg *config.ServerConfig) *httpsec.Hasher {
 	)
 }
 
-func providePoolConfig(
-	cfg *config.ServerConfig,
-	sugar *zap.SugaredLogger,
-) work.PoolConfig {
-	return work.PoolConfig{
-		WorkerConfig: work.WorkerConfig{
-			OnError: func(name string, err error) {
-				sugar.Errorw("task failed", "task", name, "err", err)
-			},
-			OnPanic: func(name string, v any) {
-				sugar.Errorw("task panic", "task", name, "value", v)
-			},
-		},
-		LifecycleConfig: cfg.Pool.LifecycleConfig,
-		WorkerCount:     cfg.Pool.WorkerCount,
-		QueueSize:       cfg.Pool.QueueSize,
-	}
-}
-
-func providerSchedulerConfig(
-	cfg *config.ServerConfig,
-	sugar *zap.SugaredLogger,
-) work.SchedulerConfig {
-	return work.SchedulerConfig{
-		LifecycleConfig: cfg.Scheduler.LifecycleConfig,
-		OnError: func(name string, err error) {
-			sugar.Errorw("failed submit task", "task", name, "err", err)
-		},
-	}
-}
-
 func provideEventDispatcher(
 	sugar *zap.SugaredLogger,
 ) *publisher.EventDispatcher {
@@ -177,10 +138,6 @@ func provideEventDispatcher(
 		sugar.Errorw("failed handle event", "event", e, "err", err)
 	}
 	return dp
-}
-
-func providePoolSubmitter(pool *work.WorkerPool) work.Submitter {
-	return pool
 }
 
 func provideEventPublisher(dp *publisher.EventDispatcher) interfaces.EventPublisher {
@@ -212,12 +169,19 @@ func provideHandlerGetAllMetricsUseCase(
 }
 
 func providerMiddlewareCompress() httpextra.Middleware {
-	return middleware.Compress(5)
+	compressor := middleware.NewCompressor(gzip.BestSpeed)
+	compressor.SetEncoder("deflate", compress.EncoderDeflate)
+	compressor.SetEncoder("gzip", compress.EncoderGzip)
+	return compressor.Handler
 }
 
 func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {
 	baseRouter := chi.NewRouter()
-	baseRouter.Use(middleware.CleanPath)
+
+	baseRouter.Use(
+		middleware.CleanPath,
+		middleware.ClientIPFromRemoteAddr,
+	)
 
 	if hasher != nil {
 		baseRouter.Use(hasher.CalculateMiddleware())
@@ -240,11 +204,14 @@ func registerStartupLog(
 		sugar.Infow(
 			"starting server",
 			"listen", cfg.Listen,
+			"profile", cfg.Profile,
 			"database", cfg.Database.DSN,
 			"has_secret", hasSecretKey,
 			"dump_file", cfg.Dump.File,
 			"dump_interval", cfg.Dump.Interval,
 			"dump_restore", cfg.Dump.Restore,
+			"audit_file", cfg.Audit.File,
+			"audit_url", cfg.Audit.URL,
 		)
 	}))
 }

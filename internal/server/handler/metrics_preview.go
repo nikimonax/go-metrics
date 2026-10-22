@@ -12,6 +12,18 @@ type PreviewMetricsHandler struct {
 	metricsPresenter presenter.MetricsPresenter
 }
 
+// PreviewMetricsHandler godoc
+//
+//	@ID				previewMetrics
+//	@Summary		Список всех метрик (HTML)
+//	@Description	Возвращает HTML-страницу со списком всех метрик.
+//	@Tags			metrics
+//	@Produce		text/html
+//	@Success		200	{string}	string	"HTML-страница со списком метрик"
+//	@Failure		500	{object}	model.ErrorResponse
+//	@Router			/ [get]
+//
+// ServeHTTP implements [http.Handler].
 func (h *PreviewMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	metrics, err := h.useCase.Execute(r.Context())
 

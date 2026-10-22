@@ -6,7 +6,11 @@ import (
 )
 
 var (
-	ErrInvalidState  = errors.New("invalid state")
+	// Возвращается при вызове операции в недопустимом
+	// состоянии (например, запуск уже запущенного объекта).
+	ErrInvalidState = errors.New("invalid state")
+
+	// Возвращается при некорректной конфигурации.
 	ErrInvalidConfig = errors.New("invalid config")
 )
 
