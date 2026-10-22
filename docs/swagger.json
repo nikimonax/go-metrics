@@ -1,0 +1,420 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API сервера метрик.",
+        "title": "GO Metrics API",
+        "contact": {},
+        "version": "1.0.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/": {
+            "get": {
+                "description": "Возвращает HTML-страницу со списком всех метрик.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Список всех метрик (HTML)",
+                "operationId": "previewMetrics",
+                "responses": {
+                    "200": {
+                        "description": "HTML-страница со списком метрик",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/ping": {
+            "get": {
+                "description": "Возвращает 200, если доступ к базе данных работает.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Проверка доступности БД",
+                "operationId": "pingDatabase",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка подключения к БД",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/update": {
+            "post": {
+                "description": "Обновляет значение метрики, переданной в теле запроса в формате JSON.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Обновление метрики (JSON)",
+                "operationId": "updateMetricV2",
+                "parameters": [
+                    {
+                        "description": "Метрика",
+                        "name": "metric",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Metric"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/update/{metricType}/{metricName}/{metricValue}": {
+            "post": {
+                "description": "Обновляет значение метрики, переданной в URL-параметрах.",
+                "consumes": [
+                    "text/plain"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Обновление метрики (URL-параметры)",
+                "operationId": "updateMetricV1",
+                "parameters": [
+                    {
+                        "enum": [
+                            "gauge",
+                            "counter"
+                        ],
+                        "type": "string",
+                        "description": "Тип метрики: gauge | counter",
+                        "name": "metricType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Имя метрики",
+                        "name": "metricName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Значение метрики",
+                        "name": "metricValue",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/updates": {
+            "post": {
+                "description": "Обновляет несколько метрик, переданных в теле запроса в формате JSON.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Пакетное обновление метрик (JSON)",
+                "operationId": "updateMetricsV3",
+                "parameters": [
+                    {
+                        "description": "Список метрик",
+                        "name": "metrics",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Metric"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/value": {
+            "post": {
+                "description": "Возвращает метрику в формате JSON.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Получение значения метрики (JSON)",
+                "operationId": "getMetricV2",
+                "parameters": [
+                    {
+                        "description": "Идентификатор метрики",
+                        "name": "metricInfo",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MetricInfo"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Metric"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/value/{metricType}/{metricName}": {
+            "get": {
+                "description": "Возвращает значение метрики в текстовом виде.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Получение значения метрики (URL-параметры)",
+                "operationId": "getMetricV1",
+                "parameters": [
+                    {
+                        "enum": [
+                            "gauge",
+                            "counter"
+                        ],
+                        "type": "string",
+                        "description": "Тип метрики: gauge | counter",
+                        "name": "metricType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Имя метрики",
+                        "name": "metricName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Значение метрики",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "domain.MetricType": {
+            "type": "string",
+            "enum": [
+                "counter",
+                "gauge"
+            ],
+            "x-enum-varnames": [
+                "Counter",
+                "Gauge"
+            ]
+        },
+        "model.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.Metric": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "delta": {
+                    "description": "Значение метрики в случае передачи counter.",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "id": {
+                    "description": "Имя метрики.",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Параметр, принимающий значение gauge или counter.",
+                    "enum": [
+                        "gauge",
+                        "counter"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.MetricType"
+                        }
+                    ]
+                },
+                "value": {
+                    "description": "Значение метрики в случае передачи gauge.",
+                    "type": "number",
+                    "minimum": 0
+                }
+            }
+        },
+        "model.MetricInfo": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "description": "Имя метрики.",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Параметр, принимающий значение gauge или counter.",
+                    "enum": [
+                        "gauge",
+                        "counter"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.MetricType"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

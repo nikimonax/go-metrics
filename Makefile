@@ -1,7 +1,8 @@
 include .env
 
-BIN_DIR := ./bin
-OUT_DIR := ./out
+BIN_DIR  := ./bin
+OUT_DIR  := ./out
+DOCS_DIR := ./docs
 
 PPROF_PORT := 8081
 
@@ -34,8 +35,9 @@ lint: _check_golangci_lint_cmd
 	golangci-lint run
 
 .PHONY: fmt format
-fmt format: _check_golangci_lint_cmd
+fmt format: _check_golangci_lint_cmd _check_swag_cmd
 	golangci-lint fmt
+	swag fmt
 
 .PHONY: test
 test: | $(OUT_DIR)
@@ -71,6 +73,9 @@ cover: $(COV_FILE)
 .PHONY: cover-html
 cover-html: $(COV_FILE_HTML)
 
+.PHONY: openapi
+swagger: $(DOCS_DIR)/swagger.yaml $(DOCS_DIR)/swagger.json
+
 .PHONY: autotest
 autotest: $(BIN_DIR)/metricstest_v2 $(BIN_DIR)/server $(BIN_DIR)/agent
 	./tools/autotest.sh $(EXTRA_ARGS)
@@ -100,6 +105,9 @@ $(COV_FILE): test | $(OUT_DIR)
 $(COV_FILE_HTML): $(COV_FILE) | $(OUT_DIR)
 	go tool cover -html=$< -o $@
 
+$(DOCS_DIR)/swagger.yaml $(DOCS_DIR)/swagger.json: | $(DOCS_DIR)
+	swag init -d cmd/server,internal/server/handler --pd -o $(DOCS_DIR) -ot json,yaml
+
 $(BIN_DIR)/metricstest_v2: .FORCE
 	cd tools/go-autotests && go test -c -o ../../$@ ./cmd/$(@F)
 
@@ -112,7 +120,7 @@ $(BIN_DIR)/server $(BIN_DIR)/agent: $(BIN_DIR)/%: cmd/% .FORCE
 $(BIN_DIR)/bench: tests .FORCE
 	go test -c -o $@ ./$<
 
-$(BIN_DIR) $(OUT_DIR):
+$(BIN_DIR) $(OUT_DIR) $(DOCS_DIR):
 	mkdir -p $@
 
 
@@ -132,5 +140,13 @@ _check_migrate_cmd:
 	@if ! command -v migrate $&> /dev/null; then \
 		echo "[ERROR]: command 'migrate' not found"; \
 		echo "install using \"go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest\""; \
+		exit 1; \
+	fi
+
+.PHONY: _check_swag_cmd
+_check_swag_cmd:
+	@if ! command -v swag $&> /dev/null; then \
+		echo "[ERROR]: command 'swag' not found"; \
+		echo "install using \"go install github.com/swaggo/swag/cmd/swag@latest"; \
 		exit 1; \
 	fi
