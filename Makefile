@@ -27,6 +27,10 @@ all: build
 run-server run-agent: run-%: $(BIN_DIR)/%
 	./$< $(EXTRA_ARGS)
 
+.PHONY: gen generate
+gen generate:
+	go generate ./...
+
 .PHONY: build
 build: $(BIN_DIR)/server $(BIN_DIR)/agent
 
