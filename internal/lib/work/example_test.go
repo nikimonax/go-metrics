@@ -19,7 +19,7 @@ func ExampleNewPool() {
 		return
 	}
 
-	task, err := work.NewTask("print", func(ctx context.Context) error {
+	task, err := work.NewTask("print", func(_ context.Context) error {
 		fmt.Println("task done")
 		return nil
 	})
@@ -68,7 +68,7 @@ func ExampleNewScheduler() {
 		return
 	}
 
-	task, err := work.NewTask("tick", func(ctx context.Context) error {
+	task, err := work.NewTask("tick", func(_ context.Context) error {
 		fmt.Println("tick done")
 		return nil
 	})
