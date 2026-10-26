@@ -68,7 +68,7 @@ func (gateway *HTTPMetricV2Gateway) makeRequest(
 			}
 		}
 
-		return NewErrHTTPStatus(resp.StatusCode, reason)
+		return httpextra.NewErrHTTPStatus(resp.StatusCode, reason)
 	}
 
 	return nil

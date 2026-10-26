@@ -12,6 +12,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
+	"github.com/nikimonax/go-metrics/internal/shared/retry"
 )
 
 func AuditModule(cfg *config.ServerConfig) fx.Option {
@@ -108,7 +109,17 @@ func provideFileAuditClientAsInterface(client *audit.FileClient) audit.Client {
 }
 
 func provideHTTPAuditClient(cfg *config.ServerConfig) audit.Client {
-	return audit.NewHTTPClient(cfg.Audit.URL)
+	var client audit.Client = audit.NewHTTPClient(cfg.Audit.URL)
+
+	if cfg.Audit.Backoff.Retry == 0 {
+		return client
+	}
+
+	return audit.NewRetryClient(
+		client,
+		cfg.Audit.Backoff.Build,
+		retry.HTTPErrorIsRetryable,
+	)
 }
 
 func provideAuditClient(clients []audit.Client) (audit.Client, error) {

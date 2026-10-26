@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sethvargo/go-retry"
+
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 )
 
@@ -117,7 +119,7 @@ func (client *HTTPClient) Send(ctx context.Context, record Record) (err error) {
 			reason = string(body)
 		}
 
-		return fmt.Errorf("failed send audit record: server error: %s", reason)
+		return httpextra.NewErrHTTPStatus(resp.StatusCode, reason)
 	}
 
 	return nil
@@ -130,6 +132,39 @@ func NewHTTPClient(endpoint string) *HTTPClient {
 		http:     &http.Client{},
 		endpoint: endpoint,
 		timeout:  defaultRequestTimeout,
+	}
+}
+
+type RetryClient struct {
+	wrapped     Client
+	backoff     func() retry.Backoff
+	isRetryable func(error) bool
+}
+
+// Send implements [Client].
+func (client *RetryClient) Send(ctx context.Context, record Record) error {
+	return retry.Do(ctx, client.backoff(), func(ctx context.Context) error {
+		err := client.wrapped.Send(ctx, record)
+
+		if err != nil && client.isRetryable(err) {
+			err = retry.RetryableError(err)
+		}
+
+		return err
+	})
+}
+
+var _ Client = (*RetryClient)(nil)
+
+func NewRetryClient(
+	client Client,
+	backoff func() retry.Backoff,
+	isRetryable func(error) bool,
+) *RetryClient {
+	return &RetryClient{
+		wrapped:     client,
+		backoff:     backoff,
+		isRetryable: isRetryable,
 	}
 }
 

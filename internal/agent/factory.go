@@ -15,6 +15,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/shared/retry"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -142,7 +143,7 @@ func provideMetricGateway(
 	return gateway.NewRetryGateway(
 		gw,
 		cfg.Backoff.Build,
-		gateway.HTTPErrorIsRetryable,
+		retry.HTTPErrorIsRetryable,
 	), nil
 }
 

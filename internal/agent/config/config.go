@@ -81,11 +81,7 @@ func NewDefaultConfig() AgentConfig {
 		APIVersion:     DefaultAPIVersion,
 		PollInterval:   DefaultPollInterval,
 		ReportInterval: DefaultReportInterval,
-		Backoff: config.BackoffConfig{
-			Retry: 3,
-			Seed:  1 * time.Second,
-			Add:   2 * time.Second,
-		},
+		Backoff:        config.NewDefaultBackoffConfig(),
 		Security: config.SecurityConfig{
 			Header:      config.DefaultHashHeaderKey,
 			HashingFunc: sha256.New,

@@ -82,8 +82,9 @@ func (cfg DumpConfig) Validate() error {
 }
 
 type AuditConfig struct {
-	File string
-	URL  string
+	File    string
+	URL     string
+	Backoff config.BackoffConfig
 }
 
 func (cfg AuditConfig) Validate() error {
@@ -136,11 +137,7 @@ func NewDefaultConfig() ServerConfig {
 		Listen: DefaultListen,
 		Database: DatabaseConfig{
 			Migrate: DefaultDatabaseMigrate,
-			Backoff: config.BackoffConfig{
-				Retry: 3,
-				Seed:  1 * time.Second,
-				Add:   2 * time.Second,
-			},
+			Backoff: config.NewDefaultBackoffConfig(),
 		},
 		Security: config.SecurityConfig{
 			Header:      config.DefaultHashHeaderKey,
@@ -154,6 +151,9 @@ func NewDefaultConfig() ServerConfig {
 			File:     DefaultDumpFile,
 			Interval: DefaultDumpInterval,
 			Restore:  DefaultDumpRestore,
+		},
+		Audit: AuditConfig{
+			Backoff: config.NewDefaultBackoffConfig(),
 		},
 	}
 }

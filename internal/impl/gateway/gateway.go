@@ -70,7 +70,7 @@ func (gateway *HTTPMetricGateway) Send(
 			}
 		}
 
-		return NewErrHTTPStatus(resp.StatusCode, reason)
+		return httpextra.NewErrHTTPStatus(resp.StatusCode, reason)
 	}
 
 	return nil
