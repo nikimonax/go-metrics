@@ -122,10 +122,8 @@ func BenchmarkAPI(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			gw := newTestGateway(b, version, baseURL)
 
-			b.ResetTimer()
-
-			for i := 0; i < b.N; i++ {
-				if err := gw.SendBatch(context.Background(), dataset); err != nil {
+			for b.Loop() {
+				if err := gw.SendBatch(b.Context(), dataset); err != nil {
 					b.Fatal(err)
 				}
 			}
