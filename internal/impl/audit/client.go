@@ -76,7 +76,7 @@ type HTTPClient struct {
 }
 
 // Send implements [Client].
-func (client *HTTPClient) Send(ctx context.Context, record Record) error {
+func (client *HTTPClient) Send(ctx context.Context, record Record) (err error) {
 	content := new(bytes.Buffer)
 
 	if err := json.NewEncoder(content).Encode(record); err != nil {
