@@ -49,10 +49,12 @@ func (gateway *HTTPMetricV3Gateway) SendBatch(
 	return nil
 }
 
+var _ interfaces.MetricGateway = (*HTTPMetricV3Gateway)(nil)
+
 func NewHTTPMetricV3Gateway(
 	client *http.Client,
 	baseURL *url.URL,
-) interfaces.MetricGateway {
+) *HTTPMetricV3Gateway {
 	return &HTTPMetricV3Gateway{
 		HTTPMetricV2Gateway: HTTPMetricV2Gateway{
 			endpoint: baseURL.JoinPath("updates").String() + "/",

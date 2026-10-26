@@ -54,10 +54,12 @@ func (dumper *FileMetricDumper) Save(metrics []domain.Metric) error {
 	return os.Rename(dumper.filePathTmp, dumper.filePath)
 }
 
+var _ interfaces.MetricDumper = (*FileMetricDumper)(nil)
+
 func NewFileMetricDumper(
 	filePath string,
 	serializer serializer.MetricSerializer,
-) interfaces.MetricDumper {
+) *FileMetricDumper {
 	return &FileMetricDumper{
 		filePath:    filePath,
 		filePathTmp: filePath + ".tmp",

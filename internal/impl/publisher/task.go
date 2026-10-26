@@ -20,10 +20,12 @@ func (handler *SubmitTaskOnEventHandler) Handle(
 	return handler.submitter.Submit(ctx, handler.task)
 }
 
+var _ EventHandler = (*SubmitTaskOnEventHandler)(nil)
+
 func NewSubmitTaskOnEventHandler(
 	task work.Task,
 	submitter work.Submitter,
-) EventHandler {
+) *SubmitTaskOnEventHandler {
 	return &SubmitTaskOnEventHandler{
 		task:      task,
 		submitter: submitter,

@@ -123,7 +123,9 @@ func (client *HTTPClient) Send(ctx context.Context, record Record) (err error) {
 	return nil
 }
 
-func NewHTTPClient(endpoint string) Client {
+var _ Client = (*HTTPClient)(nil)
+
+func NewHTTPClient(endpoint string) *HTTPClient {
 	return &HTTPClient{
 		http:     &http.Client{},
 		endpoint: endpoint,
@@ -153,6 +155,8 @@ func (group *ClientGroup) Send(ctx context.Context, record Record) error {
 	return errs
 }
 
-func NewClientGroup(clients []Client) Client {
+var _ Client = (*ClientGroup)(nil)
+
+func NewClientGroup(clients []Client) *ClientGroup {
 	return &ClientGroup{clients: clients}
 }

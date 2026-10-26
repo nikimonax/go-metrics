@@ -57,11 +57,13 @@ func (handler *AuditEventHandler) Handle(
 	return handler.submitter.Submit(ctx, task)
 }
 
+var _ EventHandler = (*AuditEventHandler)(nil)
+
 func NewAuditEventHandler(
 	client audit.Client,
 	submitter work.Submitter,
 	getClientIP clientIPProvider,
-) EventHandler {
+) *AuditEventHandler {
 	return &AuditEventHandler{
 		client:      client,
 		submitter:   submitter,

@@ -35,6 +35,8 @@ func (h *PingDatabaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
-func NewPingDatabaseHandler(db *sql.DB) http.Handler {
+var _ http.Handler = (*PingDatabaseHandler)(nil)
+
+func NewPingDatabaseHandler(db *sql.DB) *PingDatabaseHandler {
 	return &PingDatabaseHandler{db: db}
 }

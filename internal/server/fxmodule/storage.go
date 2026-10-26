@@ -22,7 +22,12 @@ func StorageModule(cfg *config.ServerConfig) fx.Option {
 	if cfg.Database.DSN == "" {
 		return fx.Module(
 			"storage",
-			fx.Provide(repository.NewInMemoryMetricRepository),
+			fx.Provide(
+				fx.Annotate(
+					repository.NewInMemoryMetricRepository,
+					fx.As(new(interfaces.MetricRepository)),
+				),
+			),
 		)
 	}
 
@@ -35,6 +40,7 @@ func StorageModule(cfg *config.ServerConfig) fx.Option {
 			fx.Annotate(
 				handler.NewPingDatabaseHandler,
 				fx.ResultTags(`name:"handler_database_ping"`),
+				fx.As(new(http.Handler)),
 			),
 		),
 		fx.Invoke(

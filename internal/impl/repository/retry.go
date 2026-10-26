@@ -123,11 +123,13 @@ func (repo *RetryRepository) Clear(ctx context.Context) error {
 	)
 }
 
+var _ interfaces.MetricRepository = (*RetryRepository)(nil)
+
 func NewRetryRepository(
 	repo interfaces.MetricRepository,
 	backoff func() retry.Backoff,
 	isRetryable func(error) bool,
-) interfaces.MetricRepository {
+) *RetryRepository {
 	return &RetryRepository{
 		wrapped:     repo,
 		backoff:     backoff,

@@ -36,7 +36,9 @@ func (presenter *PlainTextMetricPresenter) Render(
 	)
 }
 
-func NewPlainTextMetricPresenter(logger *zap.Logger) MetricPresenter {
+var _ MetricPresenter = (*PlainTextMetricPresenter)(nil)
+
+func NewPlainTextMetricPresenter(logger *zap.Logger) *PlainTextMetricPresenter {
 	var sugar *zap.SugaredLogger
 
 	if logger != nil {

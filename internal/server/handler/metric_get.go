@@ -68,11 +68,13 @@ func (h *GetMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.metricPresenter.Render(w, metric, http.StatusOK)
 }
 
+var _ http.Handler = (*GetMetricHandler)(nil)
+
 func NewGetMetricHandler(
 	useCase GetMetricUseCase,
 	errorPresenter presenter.ErrorPresenter,
 	metricPresenter presenter.MetricPresenter,
-) http.Handler {
+) *GetMetricHandler {
 	return &GetMetricHandler{
 		useCase:         useCase,
 		errorPresenter:  errorPresenter,

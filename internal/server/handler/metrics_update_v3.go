@@ -72,11 +72,13 @@ func (h *UpdateMetricsV3Handler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusOK)
 }
 
+var _ http.Handler = (*UpdateMetricsV3Handler)(nil)
+
 func NewUpdateMetricsV3Handler(
 	useCase UpdateMetricsUseCase,
 	errorPresenter presenter.ErrorPresenter,
 	validate *validator.Validate,
-) http.Handler {
+) *UpdateMetricsV3Handler {
 	return &UpdateMetricsV3Handler{
 		useCase:        useCase,
 		errorPresenter: errorPresenter,

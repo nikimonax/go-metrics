@@ -59,22 +59,27 @@ func CoreModule() fx.Option {
 			fx.Annotate(
 				presenter.NewPlainTextErrorPresenter,
 				fx.ResultTags(`name:"presenter_error_text"`),
+				fx.As(new(presenter.ErrorPresenter)),
 			),
 			fx.Annotate(
 				presenter.NewPlainTextMetricPresenter,
 				fx.ResultTags(`name:"presenter_metric_text"`),
+				fx.As(new(presenter.MetricPresenter)),
 			),
 			fx.Annotate(
 				presenter.NewHTMLTableMetricsPresenter,
 				fx.ResultTags(`name:"presenter_metrics_html"`),
+				fx.As(new(presenter.MetricsPresenter)),
 			),
 			fx.Annotate(
 				presenter.NewJSONErrorPresenter,
 				fx.ResultTags(`name:"presenter_error_json"`),
+				fx.As(new(presenter.ErrorPresenter)),
 			),
 			fx.Annotate(
 				presenter.NewJSONMetricPresenter,
 				fx.ResultTags(`name:"presenter_metric_json"`),
+				fx.As(new(presenter.MetricPresenter)),
 			),
 		),
 		// http routes, handlers, middleware

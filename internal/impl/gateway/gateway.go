@@ -89,10 +89,12 @@ func (gateway *HTTPMetricGateway) SendBatch(
 	return nil
 }
 
+var _ interfaces.MetricGateway = (*HTTPMetricGateway)(nil)
+
 func NewHTTPMetricGateway(
 	client *http.Client,
 	baseURL *url.URL,
-) interfaces.MetricGateway {
+) *HTTPMetricGateway {
 	return &HTTPMetricGateway{
 		baseURL: baseURL,
 		client:  client,

@@ -48,10 +48,12 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
+var _ http.Handler = (*UpdateMetricHandler)(nil)
+
 func NewUpdateMetricHandler(
 	useCase UpdateMetricUseCase,
 	errorPresenter presenter.ErrorPresenter,
-) http.Handler {
+) *UpdateMetricHandler {
 	return &UpdateMetricHandler{
 		useCase:        useCase,
 		errorPresenter: errorPresenter,

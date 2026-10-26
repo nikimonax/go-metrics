@@ -286,7 +286,9 @@ func (repo *PostgresMetricRepository) Clear(ctx context.Context) error {
 	return deleteAllMetrics(ctx, repo.db)
 }
 
-func NewPostgresMetricRepository(db *sql.DB) interfaces.MetricRepository {
+var _ interfaces.MetricRepository = (*PostgresMetricRepository)(nil)
+
+func NewPostgresMetricRepository(db *sql.DB) *PostgresMetricRepository {
 	return &PostgresMetricRepository{db: db}
 }
 

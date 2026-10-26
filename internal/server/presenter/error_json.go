@@ -50,7 +50,12 @@ func (presenter *JSONErrorPresenter) Render(
 	)
 }
 
-func NewJSONErrorPresenter(translator ut.Translator, logger *zap.Logger) ErrorPresenter {
+var _ ErrorPresenter = (*JSONErrorPresenter)(nil)
+
+func NewJSONErrorPresenter(
+	translator ut.Translator,
+	logger *zap.Logger,
+) *JSONErrorPresenter {
 	var sugar *zap.SugaredLogger
 
 	if logger != nil {

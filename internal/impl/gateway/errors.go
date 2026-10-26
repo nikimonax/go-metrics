@@ -16,7 +16,9 @@ type HTTPStatusError struct {
 	Reason     string
 }
 
-func NewErrHTTPStatus(statusCode int, reason string) error {
+var _ error = (*HTTPStatusError)(nil)
+
+func NewErrHTTPStatus(statusCode int, reason string) *HTTPStatusError {
 	return &HTTPStatusError{
 		StatusCode: statusCode,
 		Reason:     reason,

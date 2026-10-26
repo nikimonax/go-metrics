@@ -54,7 +54,10 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			provideHTTPClient,
 			provideMetricCollector,
 			provideMetricGateway,
-			repository.NewInMemoryMetricRepository,
+			fx.Annotate(
+				repository.NewInMemoryMetricRepository,
+				fx.As(new(interfaces.MetricRepository)),
+			),
 			usecase.NewCollectMetricsUseCase,
 			usecase.NewSendMetricsUseCase,
 		),

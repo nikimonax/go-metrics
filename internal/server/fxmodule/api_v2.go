@@ -17,6 +17,7 @@ func APIV2Module() fx.Option {
 				handler.NewUpdateMetricV2Handler,
 				fx.ParamTags("", `name:"presenter_error_json"`, ""),
 				fx.ResultTags(`name:"handler_metric_update_v2"`),
+				fx.As(new(http.Handler)),
 			),
 			fx.Annotate(
 				handler.NewGetMetricV2Handler,
@@ -27,6 +28,7 @@ func APIV2Module() fx.Option {
 					"",
 				),
 				fx.ResultTags(`name:"handler_metric_get_v2"`),
+				fx.As(new(http.Handler)),
 			),
 			fx.Annotate(
 				provideJSONRouter,

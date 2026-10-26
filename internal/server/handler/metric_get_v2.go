@@ -79,12 +79,14 @@ func (h *GetMetricV2Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.metricPresenter.Render(w, metric, http.StatusOK)
 }
 
+var _ http.Handler = (*GetMetricV2Handler)(nil)
+
 func NewGetMetricV2Handler(
 	useCase GetMetricUseCase,
 	errorPresenter presenter.ErrorPresenter,
 	metricPresenter presenter.MetricPresenter,
 	validate *validator.Validate,
-) http.Handler {
+) *GetMetricV2Handler {
 	return &GetMetricV2Handler{
 		useCase:         useCase,
 		errorPresenter:  errorPresenter,

@@ -36,11 +36,13 @@ func (h *PreviewMetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 }
 
+var _ http.Handler = (*PreviewMetricsHandler)(nil)
+
 func NewPreviewMetricsHandler(
 	useCase GetAllMetricsUseCase,
 	errorPresenter presenter.ErrorPresenter,
 	metricsPresenter presenter.MetricsPresenter,
-) http.Handler {
+) *PreviewMetricsHandler {
 	return &PreviewMetricsHandler{
 		useCase:          useCase,
 		errorPresenter:   errorPresenter,

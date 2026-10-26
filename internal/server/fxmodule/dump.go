@@ -21,7 +21,10 @@ func DumpModule() fx.Option {
 		"dump",
 		// usecases
 		fx.Provide(
-			serializer.NewJSONMetricSerializer,
+			fx.Annotate(
+				serializer.NewJSONMetricSerializer,
+				fx.As(new(serializer.MetricSerializer)),
+			),
 			provideMetricDumper,
 			usecase.NewRestoreMetricsUseCase,
 			usecase.NewSaveMetricsUseCase,
@@ -60,6 +63,7 @@ func DumpModule() fx.Option {
 				publisher.NewSubmitTaskOnEventHandler,
 				fx.ParamTags(`name:"task_metrics_save"`, `name:"submitter_dump"`),
 				fx.ResultTags(`name:"event_handler_submit_task_metrics_save"`),
+				fx.As(new(publisher.EventHandler)),
 			),
 		),
 		fx.Invoke(

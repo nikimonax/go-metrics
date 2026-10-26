@@ -52,11 +52,13 @@ func (gateway *RetryGateway) SendBatch(
 	})
 }
 
+var _ interfaces.MetricGateway = (*RetryGateway)(nil)
+
 func NewRetryGateway(
 	gateway interfaces.MetricGateway,
 	backoff func() retry.Backoff,
 	isRetryable func(error) bool,
-) interfaces.MetricGateway {
+) *RetryGateway {
 	return &RetryGateway{
 		wrapped:     gateway,
 		backoff:     backoff,

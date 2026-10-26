@@ -110,7 +110,9 @@ func (rt *CompressRoundTripper) putBuffer(buf *bytes.Buffer) {
 	rt.buffers.Put(buf)
 }
 
-func NewCompressRoundTripper(next http.RoundTripper, encoder string, level int) http.RoundTripper {
+var _ http.RoundTripper = (*CompressRoundTripper)(nil)
+
+func NewCompressRoundTripper(next http.RoundTripper, encoder string, level int) *CompressRoundTripper {
 	encoderFunc, ok := encoders[encoder]
 
 	if !ok {
@@ -170,10 +172,12 @@ func (rt *RateLimitRoundTripper) RoundTrip(req *http.Request) (*http.Response, e
 	return rt.next.RoundTrip(req)
 }
 
+var _ http.RoundTripper = (*RateLimitRoundTripper)(nil)
+
 func NewRateLimitRoundTripper(
 	next http.RoundTripper,
 	limit int64,
-) http.RoundTripper {
+) *RateLimitRoundTripper {
 	return &RateLimitRoundTripper{
 		next: next,
 		sem:  semaphore.NewWeighted(limit),

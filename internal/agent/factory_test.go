@@ -8,7 +8,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/agent/config"
 )
 
-func TestServer(t *testing.T) {
+func TestAgent(t *testing.T) {
 	cfg := config.NewDefaultConfig()
 
 	agent, err := New(&cfg)

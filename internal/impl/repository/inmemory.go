@@ -150,7 +150,9 @@ func (repo *InMemoryMetricRepository) Clear(context.Context) error {
 	return repo.index.Clear()
 }
 
-func NewInMemoryMetricRepository() interfaces.MetricRepository {
+var _ interfaces.MetricRepository = (*InMemoryMetricRepository)(nil)
+
+func NewInMemoryMetricRepository() *InMemoryMetricRepository {
 	return &InMemoryMetricRepository{
 		index: make(MetricIndex),
 	}

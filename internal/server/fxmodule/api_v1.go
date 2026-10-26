@@ -22,11 +22,13 @@ func APIV1Module() fx.Option {
 					`name:"presenter_metrics_html"`,
 				),
 				fx.ResultTags(`name:"handler_metrics_preview_v1"`),
+				fx.As(new(http.Handler)),
 			),
 			fx.Annotate(
 				handler.NewUpdateMetricHandler,
 				fx.ParamTags("", `name:"presenter_error_text"`),
 				fx.ResultTags(`name:"handler_metric_update_v1"`),
+				fx.As(new(http.Handler)),
 			),
 			fx.Annotate(
 				handler.NewGetMetricHandler,
@@ -36,6 +38,7 @@ func APIV1Module() fx.Option {
 					`name:"presenter_metric_text"`,
 				),
 				fx.ResultTags(`name:"handler_metric_get_v1"`),
+				fx.As(new(http.Handler)),
 			),
 			fx.Annotate(
 				provideRouterV1,
