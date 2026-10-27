@@ -110,7 +110,8 @@ func (client *ServerClient) Get(
 	}
 
 	defer func() {
-		err = errors.Join(err, resp.Body.Close())
+		_, readErr := io.Copy(io.Discard, resp.Body)
+		err = errors.Join(err, readErr, resp.Body.Close())
 	}()
 
 	if resp.StatusCode >= 400 {
