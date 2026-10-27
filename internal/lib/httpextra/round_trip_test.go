@@ -27,6 +27,8 @@ type errorReader struct{}
 
 func (errorReader) Read([]byte) (int, error) { return 0, errors.New("read error") }
 
+const compressLevel = gzip.BestSpeed
+
 func TestCompressRoundTripper(t *testing.T) {
 	t.Run("success request", func(t *testing.T) {
 		const payload = "request payload"
@@ -42,7 +44,7 @@ func TestCompressRoundTripper(t *testing.T) {
 		})
 
 		req := shared.NewRequest(t, http.MethodPost, strings.NewReader(payload))
-		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip).RoundTrip(req)
+		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel).RoundTrip(req)
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -73,7 +75,7 @@ func TestCompressRoundTripper(t *testing.T) {
 		})
 		req := shared.NewRequest(t, http.MethodGet, nil)
 
-		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip).RoundTrip(req)
+		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel).RoundTrip(req)
 
 		if err != nil && resp != nil {
 			defer func() { assert.NoError(t, resp.Body.Close()) }()
@@ -91,7 +93,7 @@ func TestCompressRoundTripper(t *testing.T) {
 		req := shared.NewRequest(t, http.MethodPost, errorReader{})
 		req.ContentLength = -1
 
-		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip).RoundTrip(req)
+		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel).RoundTrip(req)
 
 		if err != nil && resp != nil {
 			defer func() { assert.NoError(t, resp.Body.Close()) }()
@@ -102,7 +104,7 @@ func TestCompressRoundTripper(t *testing.T) {
 
 	t.Run("unknown encoder", func(t *testing.T) {
 		assert.PanicsWithValue(t, "unknown encoder 'br'", func() {
-			httpextra.NewCompressRoundTripper(http.DefaultTransport, "br")
+			httpextra.NewCompressRoundTripper(http.DefaultTransport, "br", compressLevel)
 		})
 	})
 }

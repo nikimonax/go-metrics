@@ -70,7 +70,7 @@ func (gateway *HTTPMetricGateway) Send(
 			}
 		}
 
-		return NewErrHTTPStatus(resp.StatusCode, reason)
+		return httpextra.NewErrHTTPStatus(resp.StatusCode, reason)
 	}
 
 	return nil
@@ -89,10 +89,12 @@ func (gateway *HTTPMetricGateway) SendBatch(
 	return nil
 }
 
+var _ interfaces.MetricGateway = (*HTTPMetricGateway)(nil)
+
 func NewHTTPMetricGateway(
 	client *http.Client,
 	baseURL *url.URL,
-) interfaces.MetricGateway {
+) *HTTPMetricGateway {
 	return &HTTPMetricGateway{
 		baseURL: baseURL,
 		client:  client,

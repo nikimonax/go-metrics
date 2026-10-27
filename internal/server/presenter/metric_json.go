@@ -40,7 +40,9 @@ func (presenter *JSONMetricPresenter) Render(
 	)
 }
 
-func NewJSONMetricPresenter(logger *zap.Logger) MetricPresenter {
+var _ MetricPresenter = (*JSONMetricPresenter)(nil)
+
+func NewJSONMetricPresenter(logger *zap.Logger) *JSONMetricPresenter {
 	var sugar *zap.SugaredLogger
 
 	if logger != nil {

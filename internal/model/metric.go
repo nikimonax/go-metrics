@@ -1,25 +1,33 @@
+// Пакет предоставляет общие структуры для передачи
+// и обновления метрик между агентом и сервером.
+
 package model
 
 import "github.com/nikimonax/go-metrics/internal/domain"
 
+// Информация о метрике.
+// Передаётся в запросах на получение метрики.
 type MetricInfo struct {
-	// Имя метрики
+	// Имя метрики.
 	Name domain.MetricName `json:"id" validate:"required"`
 
-	// Параметр, принимающий значение gauge или counter
+	// Параметр, принимающий значение gauge или counter.
 	Type domain.MetricType `json:"type" validate:"oneof=gauge counter"`
 }
 
+// Метрика.
+// Передаётся в запросах на обновление метрики.
 type Metric struct {
 	MetricInfo
 
-	// Значение метрики в случае передачи counter
+	// Значение метрики в случае передачи counter.
 	Delta *int64 `json:"delta,omitempty" validate:"required_if=Type counter,excluded_if=Type gauge,omitnil,gte=0"`
 
-	// Значение метрики в случае передачи gauge
+	// Значение метрики в случае передачи gauge.
 	Value *float64 `json:"value,omitempty" validate:"required_if=Type gauge,excluded_if=Type counter,omitnil,gte=0"`
 }
 
+// Перевод метрики в доменный вид.
 func (payload *Metric) ToDomain() domain.Metric {
 	switch payload.Type {
 	case domain.Counter:
@@ -32,6 +40,7 @@ func (payload *Metric) ToDomain() domain.Metric {
 	}
 }
 
+// Создание метрики из доменного вида.
 func NewMetricFromDomain(metric domain.Metric) *Metric {
 	payload := &Metric{
 		MetricInfo: MetricInfo{

@@ -1,0 +1,282 @@
+basePath: /
+definitions:
+  domain.MetricType:
+    enum:
+    - counter
+    - gauge
+    type: string
+    x-enum-varnames:
+    - Counter
+    - Gauge
+  model.ErrorResponse:
+    properties:
+      errors:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  model.Metric:
+    properties:
+      delta:
+        description: Значение метрики в случае передачи counter.
+        minimum: 0
+        type: integer
+      id:
+        description: Имя метрики.
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.MetricType'
+        description: Параметр, принимающий значение gauge или counter.
+        enum:
+        - gauge
+        - counter
+      value:
+        description: Значение метрики в случае передачи gauge.
+        minimum: 0
+        type: number
+    required:
+    - id
+    type: object
+  model.MetricInfo:
+    properties:
+      id:
+        description: Имя метрики.
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.MetricType'
+        description: Параметр, принимающий значение gauge или counter.
+        enum:
+        - gauge
+        - counter
+    required:
+    - id
+    type: object
+info:
+  contact: {}
+  description: API сервера метрик.
+  title: GO Metrics API
+  version: 1.0.0
+paths:
+  /:
+    get:
+      description: Возвращает HTML-страницу со списком всех метрик.
+      operationId: previewMetrics
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML-страница со списком метрик
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Список всех метрик (HTML)
+      tags:
+      - metrics
+  /ping:
+    get:
+      description: Возвращает 200, если доступ к базе данных работает.
+      operationId: pingDatabase
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Ошибка подключения к БД
+          schema:
+            type: string
+      summary: Проверка доступности БД
+      tags:
+      - health
+  /update:
+    post:
+      consumes:
+      - application/json
+      description: Обновляет значение метрики, переданной в теле запроса в формате
+        JSON.
+      operationId: updateMetricV2
+      parameters:
+      - description: Метрика
+        in: body
+        name: metric
+        required: true
+        schema:
+          $ref: '#/definitions/model.Metric'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Обновление метрики (JSON)
+      tags:
+      - metrics
+  /update/{metricType}/{metricName}/{metricValue}:
+    post:
+      consumes:
+      - text/plain
+      description: Обновляет значение метрики, переданной в URL-параметрах.
+      operationId: updateMetricV1
+      parameters:
+      - description: 'Тип метрики: gauge | counter'
+        enum:
+        - gauge
+        - counter
+        in: path
+        name: metricType
+        required: true
+        type: string
+      - description: Имя метрики
+        in: path
+        name: metricName
+        required: true
+        type: string
+      - description: Значение метрики
+        in: path
+        name: metricValue
+        required: true
+        type: number
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Обновление метрики (URL-параметры)
+      tags:
+      - metrics
+  /updates:
+    post:
+      consumes:
+      - application/json
+      description: Обновляет несколько метрик, переданных в теле запроса в формате
+        JSON.
+      operationId: updateMetricsV3
+      parameters:
+      - description: Список метрик
+        in: body
+        name: metrics
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/model.Metric'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Пакетное обновление метрик (JSON)
+      tags:
+      - metrics
+  /value:
+    post:
+      consumes:
+      - application/json
+      description: Возвращает метрику в формате JSON.
+      operationId: getMetricV2
+      parameters:
+      - description: Идентификатор метрики
+        in: body
+        name: metricInfo
+        required: true
+        schema:
+          $ref: '#/definitions/model.MetricInfo'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Metric'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Получение значения метрики (JSON)
+      tags:
+      - metrics
+  /value/{metricType}/{metricName}:
+    get:
+      description: Возвращает значение метрики в текстовом виде.
+      operationId: getMetricV1
+      parameters:
+      - description: 'Тип метрики: gauge | counter'
+        enum:
+        - gauge
+        - counter
+        in: path
+        name: metricType
+        required: true
+        type: string
+      - description: Имя метрики
+        in: path
+        name: metricName
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Значение метрики
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Получение значения метрики (URL-параметры)
+      tags:
+      - metrics
+swagger: "2.0"

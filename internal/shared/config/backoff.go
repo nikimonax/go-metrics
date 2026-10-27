@@ -46,3 +46,11 @@ func (cfg BackoffConfig) Build() retry.Backoff {
 	})
 
 }
+
+func NewDefaultBackoffConfig() BackoffConfig {
+	return BackoffConfig{
+		Retry: 3,
+		Seed:  1 * time.Second,
+		Add:   2 * time.Second,
+	}
+}

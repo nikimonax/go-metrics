@@ -7,7 +7,9 @@ type ReadCloser struct {
 	io.Closer
 }
 
-func NewReadCloser(r io.Reader, c io.Closer) io.ReadCloser {
+var _ io.ReadCloser = (*ReadCloser)(nil)
+
+func NewReadCloser(r io.Reader, c io.Closer) *ReadCloser {
 	return &ReadCloser{
 		Reader: r,
 		Closer: c,

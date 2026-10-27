@@ -68,7 +68,7 @@ func (gateway *HTTPMetricV2Gateway) makeRequest(
 			}
 		}
 
-		return NewErrHTTPStatus(resp.StatusCode, reason)
+		return httpextra.NewErrHTTPStatus(resp.StatusCode, reason)
 	}
 
 	return nil
@@ -107,10 +107,12 @@ func (gateway *HTTPMetricV2Gateway) SendBatch(
 	return nil
 }
 
+var _ interfaces.MetricGateway = (*HTTPMetricV2Gateway)(nil)
+
 func NewHTTPMetricV2Gateway(
 	client *http.Client,
 	baseURL *url.URL,
-) interfaces.MetricGateway {
+) *HTTPMetricV2Gateway {
 	return &HTTPMetricV2Gateway{
 		endpoint: baseURL.JoinPath("update").String() + "/",
 		client:   client,

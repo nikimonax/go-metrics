@@ -2,10 +2,14 @@ package work
 
 import "context"
 
+// Выполняет задачи из очереди, обрабатывая ошибки и паники
+// через колбэки конфигурации.
 type Worker struct {
 	config WorkerConfig
 }
 
+// Запускает цикл обработки задач из queue до отмены ctx или
+// закрытия канала очереди.
 func (w *Worker) Run(ctx context.Context, queue <-chan Task) {
 	for {
 		select {
@@ -21,6 +25,8 @@ func (w *Worker) Run(ctx context.Context, queue <-chan Task) {
 	}
 }
 
+// Выполняет одну задачу.
+// При ошибке вызывает OnError, при панике - OnPanic (если они заданы).
 func (w *Worker) Handle(ctx context.Context, task Task) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -37,6 +43,7 @@ func (w *Worker) Handle(ctx context.Context, task Task) {
 	}
 }
 
+// Создаёт воркера с указанной конфигурацией.
 func NewWorker(config WorkerConfig) *Worker {
 	return &Worker{config: config}
 }

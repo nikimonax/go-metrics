@@ -45,6 +45,8 @@ func (s *JSONMetricSerializer) Decode(data []byte) ([]domain.Metric, error) {
 	return metrics, nil
 }
 
-func NewJSONMetricSerializer() MetricSerializer {
+var _ MetricSerializer = (*JSONMetricSerializer)(nil)
+
+func NewJSONMetricSerializer() *JSONMetricSerializer {
 	return new(JSONMetricSerializer)
 }

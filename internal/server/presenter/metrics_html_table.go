@@ -43,7 +43,9 @@ func (presenter *HTMLTableMetricsPresenter) Render(
 	)
 }
 
-func NewHTMLTableMetricsPresenter(logger *zap.Logger) MetricsPresenter {
+var _ MetricsPresenter = (*HTMLTableMetricsPresenter)(nil)
+
+func NewHTMLTableMetricsPresenter(logger *zap.Logger) *HTMLTableMetricsPresenter {
 	tmpl, err := template.ParseFS(templateFolder, "templates/metrics_table.html")
 
 	if err != nil {

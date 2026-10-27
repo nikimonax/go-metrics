@@ -41,7 +41,9 @@ func (group *CollectorsGroup) Collect() ([]domain.Metric, error) {
 	return metrics, errs
 }
 
-func NewCollectorsGroup(collectors ...interfaces.MetricCollector) interfaces.MetricCollector {
+var _ interfaces.MetricCollector = (*CollectorsGroup)(nil)
+
+func NewCollectorsGroup(collectors ...interfaces.MetricCollector) *CollectorsGroup {
 	return &CollectorsGroup{collectors: collectors}
 }
 

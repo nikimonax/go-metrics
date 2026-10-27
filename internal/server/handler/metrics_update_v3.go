@@ -19,6 +19,20 @@ type UpdateMetricsV3Handler struct {
 	validate       *validator.Validate
 }
 
+// UpdateMetricsV3Handler godoc
+//
+//	@ID				updateMetricsV3
+//	@Summary		Пакетное обновление метрик (JSON)
+//	@Description	Обновляет несколько метрик, переданных в теле запроса в формате JSON.
+//	@Tags			metrics
+//	@Accept			json
+//	@Produce		json
+//	@Param			metrics	body		[]model.Metric	true	"Список метрик"
+//	@Success		200		{string}	string			"OK"
+//	@Failure		400		{object}	model.ErrorResponse
+//	@Failure		500		{object}	model.ErrorResponse
+//	@Router			/updates [post]
+//
 // ServeHTTP implements [http.Handler].
 func (h *UpdateMetricsV3Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	payload := make([]model.Metric, 0)
@@ -58,11 +72,13 @@ func (h *UpdateMetricsV3Handler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusOK)
 }
 
+var _ http.Handler = (*UpdateMetricsV3Handler)(nil)
+
 func NewUpdateMetricsV3Handler(
 	useCase UpdateMetricsUseCase,
 	errorPresenter presenter.ErrorPresenter,
 	validate *validator.Validate,
-) http.Handler {
+) *UpdateMetricsV3Handler {
 	return &UpdateMetricsV3Handler{
 		useCase:        useCase,
 		errorPresenter: errorPresenter,

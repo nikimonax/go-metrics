@@ -13,9 +13,15 @@ type GatewayFactory = func(
 ) interfaces.MetricGateway
 
 var gatewayFactoryByVersion = []GatewayFactory{
-	NewHTTPMetricGateway,
-	NewHTTPMetricV2Gateway,
-	NewHTTPMetricV3Gateway,
+	func(c *http.Client, u *url.URL) interfaces.MetricGateway {
+		return NewHTTPMetricGateway(c, u)
+	},
+	func(c *http.Client, u *url.URL) interfaces.MetricGateway {
+		return NewHTTPMetricV2Gateway(c, u)
+	},
+	func(c *http.Client, u *url.URL) interfaces.MetricGateway {
+		return NewHTTPMetricV3Gateway(c, u)
+	},
 }
 
 func GetMaxAPIVersion() uint {

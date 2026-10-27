@@ -1,13 +1,13 @@
 package middleware
 
 import (
-	"compress/gzip"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 
+	"github.com/nikimonax/go-metrics/internal/lib/compress"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/ioextra"
 )
@@ -27,7 +27,8 @@ func NewDecompressor() *Decompressor {
 		decoders: make(map[string]DecoderFunc),
 	}
 
-	d.SetDecoder("gzip", decoderGzip)
+	d.SetDecoder("gzip", compress.DecoderGzip)
+	d.SetDecoder("deflate", compress.DecoderDeflate)
 
 	return d
 }
@@ -44,10 +45,6 @@ func (d *Decompressor) SetDecoder(encoding string, fn DecoderFunc) {
 	}
 
 	d.decoders[encoding] = fn
-}
-
-func decoderGzip(r io.Reader) (io.ReadCloser, error) {
-	return gzip.NewReader(r)
 }
 
 func (d *Decompressor) Handler(next http.Handler) http.Handler {

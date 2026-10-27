@@ -19,7 +19,9 @@ func (c *IdempotentCloser) Close() error {
 	return err
 }
 
-func NewIdempotentCloser(closer io.Closer) io.Closer {
+var _ io.Closer = (*IdempotentCloser)(nil)
+
+func NewIdempotentCloser(closer io.Closer) *IdempotentCloser {
 	return &IdempotentCloser{
 		closer: closer,
 		closed: false,

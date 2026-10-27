@@ -6,6 +6,12 @@ import (
 	"github.com/nikimonax/go-metrics/internal/server"
 )
 
+// Server entrypoint
+//
+//	@title			GO Metrics API
+//	@version		1.0.0
+//	@description	API сервера метрик.
+//	@BasePath		/
 func main() {
 	opts, err := ReadOptions()
 

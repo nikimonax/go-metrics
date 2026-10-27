@@ -18,6 +18,7 @@ func APIV3Module() fx.Option {
 				handler.NewUpdateMetricsV3Handler,
 				fx.ParamTags("", `name:"presenter_error_json"`, ""),
 				fx.ResultTags(`name:"handler_metrics_update_v3"`),
+				fx.As(new(http.Handler)),
 			),
 			fx.Annotate(
 				provideJSONRouter,

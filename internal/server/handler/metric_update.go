@@ -12,6 +12,22 @@ type UpdateMetricHandler struct {
 	errorPresenter presenter.ErrorPresenter
 }
 
+// UpdateMetricHandler godoc
+//
+//	@ID				updateMetricV1
+//	@Summary		Обновление метрики (URL-параметры)
+//	@Description	Обновляет значение метрики, переданной в URL-параметрах.
+//	@Tags			metrics
+//	@Accept			plain
+//	@Produce		text/plain
+//	@Param			metricType	path		string	true	"Тип метрики: gauge | counter"	Enums(gauge, counter)
+//	@Param			metricName	path		string	true	"Имя метрики"
+//	@Param			metricValue	path		number	true	"Значение метрики"
+//	@Success		200			{string}	string	"OK"
+//	@Failure		400			{object}	model.ErrorResponse
+//	@Failure		500			{object}	model.ErrorResponse
+//	@Router			/update/{metricType}/{metricName}/{metricValue} [post]
+//
 // ServeHTTP implements [http.Handler].
 func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	metric, err := parseMetricFromRequest(r)
@@ -32,10 +48,12 @@ func (h *UpdateMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
+var _ http.Handler = (*UpdateMetricHandler)(nil)
+
 func NewUpdateMetricHandler(
 	useCase UpdateMetricUseCase,
 	errorPresenter presenter.ErrorPresenter,
-) http.Handler {
+) *UpdateMetricHandler {
 	return &UpdateMetricHandler{
 		useCase:        useCase,
 		errorPresenter: errorPresenter,

@@ -13,11 +13,14 @@ import (
 
 type Options struct {
 	Listen       string `env:"ADDRESS"`
+	Profile      *bool  `env:"PROFILE"`
 	DatabaseDSN  string `env:"DATABASE_DSN"`
 	HashingKey   string `env:"KEY"`
 	DumpFile     string `env:"FILE_STORAGE_PATH"`
 	DumpInterval int64  `env:"STORE_INTERVAL" envDefault:"-1"`
 	DumpRestore  *bool  `env:"RESTORE"`
+	AuditFile    string `env:"AUDIT_FILE"`
+	AuditURL     string `env:"AUDIT_URL"`
 }
 
 func (opts *Options) ToServerConfig() *config.ServerConfig {
@@ -25,6 +28,10 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 
 	if opts.Listen != "" {
 		cfg.Listen = opts.Listen
+	}
+
+	if opts.Profile != nil && *opts.Profile {
+		cfg.Profile = true
 	}
 
 	if opts.DatabaseDSN != "" {
@@ -47,12 +54,24 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 		cfg.Dump.Restore = true
 	}
 
+	if opts.AuditFile != "" {
+		cfg.Audit.File = opts.AuditFile
+	}
+
+	if opts.AuditURL != "" {
+		cfg.Audit.URL = opts.AuditURL
+	}
+
 	return &cfg
 }
 
 func (opts *Options) Merge(other *Options) {
 	if other.Listen != "" {
 		opts.Listen = other.Listen
+	}
+
+	if other.Profile != nil {
+		opts.Profile = other.Profile
 	}
 
 	if other.DatabaseDSN != "" {
@@ -74,6 +93,14 @@ func (opts *Options) Merge(other *Options) {
 	if other.DumpRestore != nil {
 		opts.DumpRestore = other.DumpRestore
 	}
+
+	if other.AuditFile != "" {
+		opts.AuditFile = other.AuditFile
+	}
+
+	if other.AuditURL != "" {
+		opts.AuditURL = other.AuditURL
+	}
 }
 
 func ReadEnvOptions() (*Options, error) {
@@ -91,6 +118,7 @@ func ReadCliOptions() (*Options, error) {
 		opts Options
 
 		dumpRestore bool
+		profile     bool
 	)
 
 	cmd := flagextra.NewFlagSet()
@@ -130,14 +158,35 @@ func ReadCliOptions() (*Options, error) {
 		false,
 		"restore metrics from the dump file at startup",
 	)
+	cmd.StringVar(
+		&opts.AuditFile,
+		"audit-file",
+		"",
+		"file path to write audit events",
+	)
+	cmd.StringVar(
+		&opts.AuditURL,
+		"audit-url",
+		"",
+		"http endpoint to send metrics there",
+	)
+	cmd.BoolVar(
+		&profile,
+		"pprof",
+		false,
+		"enable profiling",
+	)
 
 	if err := cmd.Parse(os.Args[1:]); err != nil {
 		return nil, err
 	}
 
 	cmd.Visit(func(f *flag.Flag) {
-		if f.Name == "r" {
+		switch f.Name {
+		case "r":
 			opts.DumpRestore = &dumpRestore
+		case "pprof":
+			opts.Profile = &profile
 		}
 	})
 
@@ -157,7 +206,7 @@ func ReadOptions() (*Options, error) {
 		return nil, err
 	}
 
-	// приоритет: env -> cli -> default
+	// priority: env -> cli -> default
 	optionsFromCli.Merge(optionsFromEnv)
 
 	return optionsFromCli, nil

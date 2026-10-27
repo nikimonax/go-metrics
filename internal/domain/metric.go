@@ -100,7 +100,9 @@ func (m *CounterMetric) Accept(u MetricUpdater) error {
 	return u.UpdateCounter(m)
 }
 
-func NewCounterMetric(name MetricName, value int64) Metric {
+var _ Metric = (*CounterMetric)(nil)
+
+func NewCounterMetric(name MetricName, value int64) *CounterMetric {
 	return &CounterMetric{
 		name:  name,
 		value: CounterMetricValue(value),
@@ -164,7 +166,9 @@ func (m *GaugeMetric) Accept(u MetricUpdater) error {
 	return u.UpdateGauge(m)
 }
 
-func NewGaugeMetric(name MetricName, value float64) Metric {
+var _ Metric = (*GaugeMetric)(nil)
+
+func NewGaugeMetric(name MetricName, value float64) *GaugeMetric {
 	return &GaugeMetric{
 		name:  name,
 		value: GaugeMetricValue(value),

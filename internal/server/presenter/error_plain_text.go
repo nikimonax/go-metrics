@@ -11,6 +11,8 @@ func (presenter *PlainTextErrorPresenter) Render(
 	http.Error(w, err.Error(), code)
 }
 
-func NewPlainTextErrorPresenter() ErrorPresenter {
+var _ ErrorPresenter = (*PlainTextErrorPresenter)(nil)
+
+func NewPlainTextErrorPresenter() *PlainTextErrorPresenter {
 	return new(PlainTextErrorPresenter)
 }

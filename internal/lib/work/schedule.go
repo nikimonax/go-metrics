@@ -5,9 +5,11 @@ import (
 	"time"
 )
 
+// Связывает задачу с интервалом её периодического запуска.
 type Schedule struct {
 	Task
 
+	// Период запуска задачи; должен быть положительным.
 	Interval time.Duration
 }
 

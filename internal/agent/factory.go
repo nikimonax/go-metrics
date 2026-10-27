@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/nikimonax/go-metrics/internal/agent/config"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
@@ -16,6 +15,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/shared/retry"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -36,21 +36,31 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 
 	app := fx.New(
 		fx.Supply(cfg),
+		// logging
 		fx.Provide(
 			provideLogger,
 			provideSugaredLogger,
-			providePoolConfig,
-			providePoolSubmitter,
-			provideSchedulerConfig,
+		),
+		// background processing
+		fx.Provide(
+			config.NewPoolConfig,
+			config.NewSchedulerConfig,
+			work.NewPool,
+			work.NewScheduler,
+			work.PoolAsSubmitter,
+		),
+		// usecases
+		fx.Provide(
 			provideRoundTripper,
 			provideHTTPClient,
 			provideMetricCollector,
 			provideMetricGateway,
-			repository.NewInMemoryMetricRepository,
+			fx.Annotate(
+				repository.NewInMemoryMetricRepository,
+				fx.As(new(interfaces.MetricRepository)),
+			),
 			usecase.NewCollectMetricsUseCase,
 			usecase.NewSendMetricsUseCase,
-			work.NewPool,
-			work.NewScheduler,
 		),
 		fx.Invoke(
 			registerCollectMetricsTask,
@@ -75,39 +85,6 @@ func provideSugaredLogger(logger *zap.Logger) *zap.SugaredLogger {
 	return logger.Sugar()
 }
 
-func providePoolConfig(sugar *zap.SugaredLogger) work.PoolConfig {
-	return work.PoolConfig{
-		WorkerConfig: work.WorkerConfig{
-			OnError: func(name string, err error) {
-				sugar.Errorw("task failed", "task", name, "err", err)
-			},
-			OnPanic: func(name string, v any) {
-				sugar.Errorw("task panic", "task", name, "value", v)
-			},
-		},
-		LifecycleConfig: work.LifecycleConfig{
-			StopTimeout: time.Second * 5,
-		},
-		WorkerCount: 2,
-		QueueSize:   2,
-	}
-}
-
-func providePoolSubmitter(pool *work.WorkerPool) work.Submitter {
-	return pool
-}
-
-func provideSchedulerConfig(sugar *zap.SugaredLogger) work.SchedulerConfig {
-	return work.SchedulerConfig{
-		LifecycleConfig: work.LifecycleConfig{
-			StopTimeout: time.Second * 5,
-		},
-		OnError: func(name string, err error) {
-			sugar.Errorw("failed submit task", "task", name, "err", err)
-		},
-	}
-}
-
 func provideMetricCollector() interfaces.MetricCollector {
 	return collector.NewCollectorsGroup(
 		collector.NewRuntimeStatsCollector(),
@@ -122,7 +99,7 @@ func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
 	transport := http.DefaultTransport
 
 	if cfg.APIVersion > 1 {
-		transport = httpextra.NewCompressRoundTripper(transport, "gzip")
+		transport = httpextra.NewCompressRoundTripper(transport, "gzip", config.CompressLevel)
 	}
 
 	if cfg.APIVersion > 1 && cfg.Security.HashingKey != "" {
@@ -166,9 +143,8 @@ func provideMetricGateway(
 	return gateway.NewRetryGateway(
 		gw,
 		cfg.Backoff.Build,
-		gateway.HTTPErrorIsRetryable,
+		retry.HTTPErrorIsRetryable,
 	), nil
-
 }
 
 func registerCollectMetricsTask(
