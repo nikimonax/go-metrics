@@ -34,7 +34,7 @@ func (client *ServerClient) Update(
 		payload = append(payload, model.NewMetricFromDomain(metric))
 	}
 
-	if err := json.NewEncoder(&content).Encode(payload); err != nil {
+	if err = json.NewEncoder(&content).Encode(payload); err != nil {
 		return err
 	}
 
@@ -86,7 +86,7 @@ func (client *ServerClient) Get(
 
 	payload := model.MetricInfo{Name: metricName, Type: metricType}
 
-	if err := json.NewEncoder(&content).Encode(payload); err != nil {
+	if err = json.NewEncoder(&content).Encode(payload); err != nil {
 		return nil, err
 	}
 

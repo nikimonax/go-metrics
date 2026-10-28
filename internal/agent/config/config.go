@@ -69,7 +69,7 @@ func NewDefaultConfig() AgentConfig {
 	baseURL, err := url.Parse(DefaultBaseURL)
 
 	if err != nil {
-		err := fmt.Errorf(
+		err = fmt.Errorf(
 			"failed parse default base url '%s': %w",
 			DefaultBaseURL, err,
 		)

@@ -15,7 +15,7 @@ func TestSchedule(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("creates schedule", func(t *testing.T) {
-		schedule, err := NewSchedule(task, time.Second)
+		schedule, err := NewSchedule(task, time.Second) //nolint:govet
 
 		require.NoError(t, err)
 		assert.Equal(t, task.Name, schedule.Name)

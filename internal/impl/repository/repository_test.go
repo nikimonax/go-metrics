@@ -171,7 +171,7 @@ func TestMetricRepository(t *testing.T) {
 
 		envFile := filepath.Join(root, ".env")
 
-		if err := godotenv.Load(envFile); err != nil {
+		if err = godotenv.Load(envFile); err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
 				t.Skipf("failed read .env file: %s", err)
 			}
@@ -181,11 +181,11 @@ func TestMetricRepository(t *testing.T) {
 
 		var dbConfig DatabaseConfig
 
-		if err := env.Parse(&dbConfig); err != nil {
+		if err = env.Parse(&dbConfig); err != nil {
 			t.Skipf("failed parse database config: %s", err)
 		}
 
-		if err := dbConfig.Validate(); err != nil {
+		if err = dbConfig.Validate(); err != nil {
 			t.Skipf("failed validate database config: %s", err)
 		}
 
@@ -198,7 +198,7 @@ func TestMetricRepository(t *testing.T) {
 		db := stdlib.OpenDB(*pgxConfig)
 		t.Cleanup(func() { assert.NoError(t, db.Close()) })
 
-		if err := db.PingContext(t.Context()); err != nil {
+		if err = db.PingContext(t.Context()); err != nil {
 			t.Skipf("database not available: %s", err)
 		}
 
