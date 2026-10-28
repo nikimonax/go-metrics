@@ -31,6 +31,14 @@ run-server run-agent: run-%: $(BIN_DIR)/%
 gen generate:
 	go generate ./...
 
+.PHONY: statictest
+statictest: $(BIN_DIR)/statictest
+	go vet -vettool=$< ./...
+
+.PHONY: staticlint
+staticlint: $(BIN_DIR)/staticlint
+	$< ./...
+
 .PHONY: build
 build: $(BIN_DIR)/server $(BIN_DIR)/agent
 
@@ -84,10 +92,6 @@ swagger: $(DOCS_DIR)/swagger.yaml $(DOCS_DIR)/swagger.json
 autotest: $(BIN_DIR)/metricstest_v2 $(BIN_DIR)/server $(BIN_DIR)/agent
 	./tools/autotest.sh $(EXTRA_ARGS)
 
-.PHONY: statictest
-statictest: $(BIN_DIR)/statictest
-	go vet -vettool=$< ./...
-
 .PHONY: clean
 clean:
 	rm -rf $(BIN_DIR) $(OUT_DIR)
@@ -118,7 +122,7 @@ $(BIN_DIR)/metricstest_v2: .FORCE
 $(BIN_DIR)/statictest: .FORCE
 	cd tools/go-autotests && go build -o ../../$@ ./cmd/$(@F)
 
-$(BIN_DIR)/server $(BIN_DIR)/agent: $(BIN_DIR)/%: cmd/% .FORCE
+$(BIN_DIR)/server $(BIN_DIR)/agent $(BIN_DIR)/staticlint: $(BIN_DIR)/%: cmd/% .FORCE
 	go build -o $@ ./$<
 
 $(BIN_DIR)/bench: tests .FORCE
