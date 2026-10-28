@@ -85,7 +85,7 @@ func NewScheduler(pool Submitter, config SchedulerConfig) (*Scheduler, error) {
 	s := &Scheduler{pool: pool, config: config}
 	s.lifecycle.onStart = s.onStart
 	s.lifecycle.onStop = s.onStop
-	s.lifecycle.stopTimeout = s.config.StopTimeout //nolint:staticcheck
+	s.stopTimeout = s.config.StopTimeout
 
 	return s, nil
 }

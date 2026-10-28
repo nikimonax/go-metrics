@@ -84,7 +84,7 @@ func NewPool(config PoolConfig) (*WorkerPool, error) {
 	pool := WorkerPool{config: config}
 	pool.lifecycle.onStart = pool.onStart
 	pool.lifecycle.onStop = pool.onStop
-	pool.lifecycle.stopTimeout = config.StopTimeout //nolint:staticcheck
+	pool.stopTimeout = config.StopTimeout
 
 	return &pool, nil
 }
