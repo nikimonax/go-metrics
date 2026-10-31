@@ -25,6 +25,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
+	"github.com/nikimonax/go-metrics/internal/shared/metainfo"
 )
 
 func CoreModule() fx.Option {
@@ -206,6 +207,12 @@ func registerStartupLog(
 	}
 
 	lc.Append(fx.StartHook(func() {
+		sugar.Infow(
+			"metrics server",
+			"build_version", metainfo.BuildVersion,
+			"build_date", metainfo.BuildDate,
+			"build_commit", metainfo.BuildCommit,
+		)
 		sugar.Infow(
 			"starting server",
 			"listen", cfg.Listen,

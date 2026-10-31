@@ -1,5 +1,8 @@
 include .env
 
+MODULE := $(shell go list -m)
+APP_VERSION := v0.1.0
+
 BIN_DIR  := ./bin
 OUT_DIR  := ./out
 DOCS_DIR := ./docs
@@ -122,8 +125,17 @@ $(BIN_DIR)/metricstest_v2: .FORCE
 $(BIN_DIR)/statictest: .FORCE
 	cd tools/go-autotests && go build -o ../../$@ ./cmd/$(@F)
 
-$(BIN_DIR)/server $(BIN_DIR)/agent $(BIN_DIR)/staticlint $(BIN_DIR)/reset: $(BIN_DIR)/%: cmd/% .FORCE
-	go build -o $@ ./$<
+$(BIN_DIR)/server \
+$(BIN_DIR)/agent \
+$(BIN_DIR)/staticlint \
+$(BIN_DIR)/reset: $(BIN_DIR)/%: cmd/% .FORCE
+	go build \
+		-ldflags=" \
+			-X $(MODULE)/internal/shared/metainfo.BuildVersion=$(APP_VERSION) \
+			-X $(MODULE)/internal/shared/metainfo.BuildDate=$$(date -u "+%Y-%m-%dT%H:%M:%SZ") \
+			-X $(MODULE)/internal/shared/metainfo.BuildCommit=$$(git rev-parse HEAD) \
+		" \
+		-o $@ ./$<
 
 $(BIN_DIR)/bench: tests .FORCE
 	go test -c -o $@ ./$<

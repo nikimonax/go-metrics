@@ -15,6 +15,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/shared/metainfo"
 	"github.com/nikimonax/go-metrics/internal/shared/retry"
 
 	"go.uber.org/fx"
@@ -205,6 +206,12 @@ func registerLifecycleHooks(
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
+			sugar.Infow(
+				"agent",
+				"build_version", metainfo.BuildVersion,
+				"build_date", metainfo.BuildDate,
+				"build_commit", metainfo.BuildCommit,
+			)
 			sugar.Infow(
 				"starting agent",
 				"server", cfg.BaseURL,
