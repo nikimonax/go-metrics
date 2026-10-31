@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"math/rand/v2"
 	"net/http"
@@ -170,8 +169,7 @@ func TestRateLimitRoundTripper(t *testing.T) {
 			}()
 		}
 
-		for i := range batches {
-			fmt.Print(i)
+		for range batches {
 			for range limit {
 				<-ready
 			}
