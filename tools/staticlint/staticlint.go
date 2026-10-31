@@ -64,6 +64,7 @@ import (
 	"github.com/sonatard/noctx"
 
 	"github.com/nikimonax/go-metrics/tools/exitcheck"
+	"github.com/nikimonax/go-metrics/tools/structreset"
 )
 
 var standartAnalyzers = []*analysis.Analyzer{
@@ -138,7 +139,7 @@ var maxCap = len(standartAnalyzers) +
 	len(simple.Analyzers) +
 	len(stylecheck.Analyzers) +
 	len(quickfix.Analyzers) +
-	4 // unused, errcheck, noctx, exitcheck
+	5 // unused, errcheck, noctx, exitcheck, structreset
 
 func Build() []*analysis.Analyzer {
 	analyzers := make([]*analysis.Analyzer, 0, maxCap)
@@ -174,8 +175,8 @@ func Build() []*analysis.Analyzer {
 	// other - errcheck + noctx
 	analyzers = append(analyzers, errcheck.Analyzer, noctx.Analyzer)
 
-	// custom - exitcheck
-	analyzers = append(analyzers, exitcheck.Analyzer)
+	// custom - exitcheck + structreset
+	analyzers = append(analyzers, exitcheck.Analyzer, structreset.Analyzer)
 
 	return analyzers
 }
