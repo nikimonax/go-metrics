@@ -24,7 +24,7 @@ all: build
 .FORCE:
 
 .PHONY: run-server run-agent
-run-server run-agent: run-%: $(BIN_DIR)/%
+run-server run-agent run-reset: run-%: $(BIN_DIR)/%
 	./$< $(EXTRA_ARGS)
 
 .PHONY: gen generate
@@ -122,7 +122,7 @@ $(BIN_DIR)/metricstest_v2: .FORCE
 $(BIN_DIR)/statictest: .FORCE
 	cd tools/go-autotests && go build -o ../../$@ ./cmd/$(@F)
 
-$(BIN_DIR)/server $(BIN_DIR)/agent $(BIN_DIR)/staticlint: $(BIN_DIR)/%: cmd/% .FORCE
+$(BIN_DIR)/server $(BIN_DIR)/agent $(BIN_DIR)/staticlint $(BIN_DIR)/reset: $(BIN_DIR)/%: cmd/% .FORCE
 	go build -o $@ ./$<
 
 $(BIN_DIR)/bench: tests .FORCE
