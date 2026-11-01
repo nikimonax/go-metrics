@@ -14,12 +14,6 @@ import (
 
 const maxPooledBufCap = 1 << 20
 
-type RoundTripperFunc func(*http.Request) (*http.Response, error)
-
-func (f RoundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
-
-type encoderFunc func(w io.Writer, level int) io.Writer
-
 var encoders = map[string]encoderFunc{
 	"gzip":    compress.EncoderGzip,
 	"deflate": compress.EncoderDeflate,
@@ -146,11 +140,4 @@ func NewCompressRoundTripper(next http.RoundTripper, encoder string, level int) 
 	}
 }
 
-func NewRoundTripperFromHandler(handler http.Handler) http.RoundTripper {
-	fn := func(r *http.Request) (*http.Response, error) {
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
-		return w.Result(), nil
-	}
-	return RoundTripperFunc(fn)
-}
+
