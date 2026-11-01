@@ -36,8 +36,11 @@ func TestCompressRoundTripper(t *testing.T) {
 			}, nil
 		})
 
+		rt, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel)
+		require.NoError(t, err)
+
 		req := shared.NewRequest(t, http.MethodPost, strings.NewReader(payload))
-		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel).RoundTrip(req)
+		resp, err := rt.RoundTrip(req)
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -66,9 +69,12 @@ func TestCompressRoundTripper(t *testing.T) {
 			got = r
 			return nil, errors.New("transport error")
 		})
-		req := shared.NewRequest(t, http.MethodGet, nil)
 
-		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel).RoundTrip(req)
+		rt, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel)
+		require.NoError(t, err)
+
+		req := shared.NewRequest(t, http.MethodGet, nil)
+		resp, err := rt.RoundTrip(req)
 
 		if err != nil && resp != nil {
 			defer func() { assert.NoError(t, resp.Body.Close()) }()
@@ -83,10 +89,14 @@ func TestCompressRoundTripper(t *testing.T) {
 			t.Fatal("transport must not be called")
 			return nil, nil
 		})
+
+		rt, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel)
+		require.NoError(t, err)
+
 		req := shared.NewRequest(t, http.MethodPost, errorReader{})
 		req.ContentLength = -1
 
-		resp, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel).RoundTrip(req)
+		resp, err := rt.RoundTrip(req)
 
 		if err != nil && resp != nil {
 			defer func() { assert.NoError(t, resp.Body.Close()) }()
@@ -96,8 +106,9 @@ func TestCompressRoundTripper(t *testing.T) {
 	})
 
 	t.Run("unknown encoder", func(t *testing.T) {
-		assert.PanicsWithValue(t, "unknown encoder 'br'", func() {
-			httpextra.NewCompressRoundTripper(http.DefaultTransport, "br", compressLevel)
-		})
+		rt, err := httpextra.NewCompressRoundTripper(http.DefaultTransport, "br", compressLevel)
+
+		assert.Nil(t, rt)
+		assert.Error(t, err)
 	})
 }

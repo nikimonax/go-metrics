@@ -95,11 +95,17 @@ func provideMetricCollector() interfaces.MetricCollector {
 	)
 }
 
-func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
+func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 	transport := http.DefaultTransport
 
 	if cfg.APIVersion > 1 {
-		transport = httpextra.NewCompressRoundTripper(transport, "gzip", config.CompressLevel)
+		newTransport, err := httpextra.NewCompressRoundTripper(transport, "gzip", config.CompressLevel)
+
+		if err != nil {
+			return nil, err
+		}
+
+		transport = newTransport
 	}
 
 	if cfg.APIVersion > 1 && cfg.Security.HashingKey != "" {
@@ -116,7 +122,7 @@ func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
 		transport = httpextra.NewRateLimitRoundTripper(transport, cfg.RateLimit)
 	}
 
-	return transport
+	return transport, nil
 }
 
 func provideHTTPClient(transport http.RoundTripper) *http.Client {
