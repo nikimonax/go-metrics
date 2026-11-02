@@ -1,4 +1,4 @@
-package httpextra_test
+package httpextra
 
 import (
 	"bytes"
@@ -6,28 +6,32 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
-	"github.com/nikimonax/go-metrics/internal/testing/shared"
+	"github.com/nikimonax/go-metrics/internal/lib/syncpool"
 )
 
 type errorReader struct{}
 
 func (errorReader) Read([]byte) (int, error) { return 0, errors.New("read error") }
 
-const compressLevel = gzip.BestSpeed
+const (
+	compressLevel = gzip.BestSpeed
+
+	testURL = "http://example.com"
+)
 
 func TestCompressRoundTripper(t *testing.T) {
 	t.Run("success request", func(t *testing.T) {
 		const payload = "request payload"
 		var got *http.Request
 
-		next := httpextra.RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		next := RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
 			got = r
 			return &http.Response{
 				StatusCode: http.StatusNoContent,
@@ -36,10 +40,16 @@ func TestCompressRoundTripper(t *testing.T) {
 			}, nil
 		})
 
-		rt, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel)
+		rt, err := NewCompressRoundTripper(next, ENCGzip, compressLevel)
 		require.NoError(t, err)
 
-		req := shared.NewRequest(t, http.MethodPost, strings.NewReader(payload))
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodPost,
+			testURL,
+			strings.NewReader(payload),
+		)
+
 		resp, err := rt.RoundTrip(req)
 
 		require.NoError(t, err)
@@ -47,7 +57,7 @@ func TestCompressRoundTripper(t *testing.T) {
 
 		defer func() { assert.NoError(t, resp.Body.Close()) }()
 
-		assert.Equal(t, httpextra.ENCGzip, got.Header.Get(httpextra.HDRContentEncoding))
+		assert.Equal(t, ENCGzip, got.Header.Get(HDRContentEncoding))
 
 		compressed, err := io.ReadAll(got.Body)
 		require.NoError(t, err)
@@ -65,15 +75,21 @@ func TestCompressRoundTripper(t *testing.T) {
 	t.Run("transport error", func(t *testing.T) {
 		var got *http.Request
 
-		next := httpextra.RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		next := RoundTripperFunc(func(r *http.Request) (*http.Response, error) {
 			got = r
 			return nil, errors.New("transport error")
 		})
 
-		rt, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel)
+		rt, err := NewCompressRoundTripper(next, ENCGzip, compressLevel)
 		require.NoError(t, err)
 
-		req := shared.NewRequest(t, http.MethodGet, nil)
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodGet,
+			testURL,
+			nil,
+		)
+
 		resp, err := rt.RoundTrip(req)
 
 		if err != nil && resp != nil {
@@ -85,15 +101,20 @@ func TestCompressRoundTripper(t *testing.T) {
 	})
 
 	t.Run("reader error", func(t *testing.T) {
-		next := httpextra.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		next := RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
 			t.Fatal("transport must not be called")
 			return nil, nil
 		})
 
-		rt, err := httpextra.NewCompressRoundTripper(next, httpextra.ENCGzip, compressLevel)
+		rt, err := NewCompressRoundTripper(next, ENCGzip, compressLevel)
 		require.NoError(t, err)
 
-		req := shared.NewRequest(t, http.MethodPost, errorReader{})
+		req := httptest.NewRequestWithContext(
+			t.Context(),
+			http.MethodPost,
+			testURL,
+			errorReader{},
+		)
 		req.ContentLength = -1
 
 		resp, err := rt.RoundTrip(req)
@@ -106,9 +127,40 @@ func TestCompressRoundTripper(t *testing.T) {
 	})
 
 	t.Run("unknown encoder", func(t *testing.T) {
-		rt, err := httpextra.NewCompressRoundTripper(http.DefaultTransport, "br", compressLevel)
+		rt, err := NewCompressRoundTripper(http.DefaultTransport, "br", compressLevel)
 
 		assert.Nil(t, rt)
 		assert.Error(t, err)
+	})
+}
+
+type passthroughWriter struct {
+	w io.Writer
+}
+
+func (p *passthroughWriter) Write(b []byte) (int, error) {
+	return p.w.Write(b)
+}
+
+func (p *passthroughWriter) Reset(w io.Writer) {
+	p.w = w
+}
+
+func TestResetWriter(t *testing.T) {
+	t.Run("does not pool buffer still in use", func(t *testing.T) {
+		buffers := syncpool.New(func() *bytes.Buffer { return new(bytes.Buffer) })
+
+		wb := newResetWriter(&passthroughWriter{w: io.Discard}, &buffers)
+		wb.Reset()
+
+		_, err := wb.Write([]byte("payload"))
+		require.NoError(t, err)
+
+		detached := wb.DetachBuffer()
+		require.Equal(t, "payload", detached.String())
+
+		reused := buffers.Get()
+
+		assert.NotSame(t, detached, reused)
 	})
 }
