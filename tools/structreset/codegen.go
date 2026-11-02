@@ -62,8 +62,8 @@ func generateResetStmt(
 	x ast.Expr,
 	typ types.Type,
 ) ast.Stmt {
-	// 1. if any type resetable - reset it
-	if ctx.isResetable(typ) {
+	// 1. if any type resettable - reset it
+	if ctx.isResettable(typ) {
 		return generateResetCallStmt(ctx, x, typ)
 	}
 
@@ -83,7 +83,7 @@ func generateResetStmt(
 	// 6. pointer - nil check and reset
 	case *types.Pointer:
 		return generatePointerResetStmt(ctx, x, under)
-	// 7. resetable structs, interfaces handled
+	// 7. resettable structs, interfaces handled
 	//    via Reset() in p.1 otherwise - skip
 	case *types.Struct, *types.Interface:
 	// 8. channels and functions - skip

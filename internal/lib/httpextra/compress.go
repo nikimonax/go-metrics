@@ -33,13 +33,13 @@ func (b *pooledBody) Close() error {
 	return nil
 }
 
-type resetableWriter interface {
+type resettableWriter interface {
 	io.Writer
 	Reset(io.Writer)
 }
 
 type resetWriter struct {
-	resetableWriter
+	resettableWriter
 
 	buffers       *syncpool.Pool[*bytes.Buffer]
 	currentBuffer *bytes.Buffer
@@ -47,7 +47,7 @@ type resetWriter struct {
 
 func (rw *resetWriter) Reset() {
 	buf := rw.buffers.Get()
-	rw.resetableWriter.Reset(buf)
+	rw.resettableWriter.Reset(buf)
 
 	if rw.currentBuffer != nil {
 		rw.buffers.Put(rw.currentBuffer)
@@ -58,24 +58,24 @@ func (rw *resetWriter) Reset() {
 
 func (rw *resetWriter) DetachBuffer() *bytes.Buffer {
 	buf := rw.currentBuffer
-	rw.resetableWriter.Reset(io.Discard)
+	rw.resettableWriter.Reset(io.Discard)
 	rw.currentBuffer = nil
 
 	return buf
 }
 
 func (rw *resetWriter) Close() error {
-	if closer, ok := rw.resetableWriter.(io.Closer); ok {
+	if closer, ok := rw.resettableWriter.(io.Closer); ok {
 		return closer.Close()
 	}
 	return nil
 }
 
 func newResetWriter(
-	writer resetableWriter,
+	writer resettableWriter,
 	buffers *syncpool.Pool[*bytes.Buffer],
 ) *resetWriter {
-	rw := resetWriter{resetableWriter: writer, buffers: buffers}
+	rw := resetWriter{resettableWriter: writer, buffers: buffers}
 	rw.Reset()
 	return &rw
 }
@@ -151,7 +151,7 @@ func NewCompressRoundTripper(
 		return nil, fmt.Errorf("invalid compress level %d", level)
 	}
 
-	_, ok = tmpWriter.(resetableWriter)
+	_, ok = tmpWriter.(resettableWriter)
 
 	if !ok {
 		return nil, fmt.Errorf("encoder '%s' does not support resets", encoder)
@@ -162,7 +162,7 @@ func NewCompressRoundTripper(
 	})
 
 	writers := syncpool.New(func() *resetWriter {
-		rw := factory(io.Discard, level).(resetableWriter)
+		rw := factory(io.Discard, level).(resettableWriter)
 		return newResetWriter(rw, &buffers)
 	})
 

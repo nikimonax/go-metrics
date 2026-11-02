@@ -3,8 +3,8 @@ package pkg1
 import "github.com/nikimonax/go-metrics/tools/structreset/testdata/pkg2"
 
 // generate:reset
-type ResetableStruct struct {
-	pkg2.ResetableEmbed
+type ResettableStruct struct {
+	pkg2.ResettableEmbed
 
 	Chan    chan struct{}
 	Func    func()
@@ -14,7 +14,7 @@ type ResetableStruct struct {
 	Slice   []int
 	Array   [3]string
 	Map     map[string]int
-	Child   *ResetableStruct
+	Child   *ResettableStruct
 }
 
 /*
@@ -24,7 +24,7 @@ type EmptyStruct struct{}
 
 // want +1 `Using "generate:reset" is not applicable here`
 // generate:reset
-func NotResetable() {}
+func NotResettable() {}
 
 func main() {
 	// want +1 `Using "generate:reset" is not applicable here`

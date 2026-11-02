@@ -1,16 +1,16 @@
 package pkg2
 
-type Resetable interface {
+type Resettable interface {
 	Reset()
 }
 
 type (
-	NotResetableEmbed struct {
+	NotResettableEmbed struct {
 		EmbedStr string
 	}
 
 	// generate:reset
-	ResetableEmbed struct {
-		EmbedChild Resetable
+	ResettableEmbed struct {
+		EmbedChild Resettable
 	}
 )

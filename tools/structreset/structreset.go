@@ -55,7 +55,7 @@ func Generate(pkgs []*packages.Package) (map[*packages.Package]*ast.File, error)
 	}
 
 	result := make(map[*packages.Package]*ast.File)
-	resetables := make(map[types.Type]struct{})
+	resettables := make(map[types.Type]struct{})
 
 	tasks := make([]task, 0)
 
@@ -79,14 +79,14 @@ func Generate(pkgs []*packages.Package) (map[*packages.Package]*ast.File, error)
 		}
 
 		for _, typeSpec := range structs {
-			resetables[act.Package.TypesInfo.TypeOf(typeSpec.Name)] = struct{}{}
+			resettables[act.Package.TypesInfo.TypeOf(typeSpec.Name)] = struct{}{}
 		}
 
 		tasks = append(tasks, task{pkg: act.Package, structs: structs})
 	}
 
 	for _, task := range tasks {
-		ctx := newCodegenContext(task.pkg, resetables)
+		ctx := newCodegenContext(task.pkg, resettables)
 		result[task.pkg] = generateFile(ctx, task.structs)
 	}
 

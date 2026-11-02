@@ -8,16 +8,16 @@ import (
 )
 
 type codegenContext struct {
-	pkg        *packages.Package
-	resetables map[types.Type]struct{}
+	pkg         *packages.Package
+	resettables map[types.Type]struct{}
 
 	currentTypeSpec *ast.TypeSpec
 }
 
-func newCodegenContext(pkg *packages.Package, resetables map[types.Type]struct{}) codegenContext {
+func newCodegenContext(pkg *packages.Package, resettables map[types.Type]struct{}) codegenContext {
 	return codegenContext{
-		pkg:        pkg,
-		resetables: resetables,
+		pkg:         pkg,
+		resettables: resettables,
 	}
 }
 
@@ -46,12 +46,12 @@ func (ctx codegenContext) typeOf(expr ast.Expr) types.Type {
 	return obj.Type()
 }
 
-func (ctx codegenContext) isResetable(typ types.Type) bool {
+func (ctx codegenContext) isResettable(typ types.Type) bool {
 	if hasResetMethod(typ) {
 		return true
 	}
 
-	_, ok := ctx.resetables[typ]
+	_, ok := ctx.resettables[typ]
 
 	return ok
 }
