@@ -14,6 +14,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kisielk/errcheck v1.30.0
 	github.com/klauspost/compress v1.20.3
+	github.com/otiai10/copy v1.14.1
 	github.com/sethvargo/go-retry v0.4.0
 	github.com/shirou/gopsutil/v4 v4.26.8
 	github.com/sonatard/noctx v0.5.1
@@ -48,7 +49,6 @@ require (
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
-	github.com/otiai10/copy v1.14.1 // indirect
 	github.com/otiai10/mint v1.6.3 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
