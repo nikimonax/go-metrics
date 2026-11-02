@@ -94,6 +94,10 @@ func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (resp *http.Respons
 		return rt.next.RoundTrip(req)
 	}
 
+	if req.Header.Get(HDRContentEncoding) != "" {
+		return rt.next.RoundTrip(req)
+	}
+
 	buf, err := rt.compress(req.Body)
 	defer func() { err = errors.Join(err, req.Body.Close()) }()
 
