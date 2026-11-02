@@ -2,9 +2,11 @@ package exitcheck
 
 import (
 	"go/ast"
+	"go/types"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 const Doc = "Prohibits the use of `os.Exit` in the main func"
@@ -33,7 +35,7 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 
-	osExitUsages := findCallExpr(mainFunc, "os.Exit")
+	osExitUsages := findCallExpr(pass, mainFunc)
 
 	for _, osExitUsage := range osExitUsages {
 		pass.ReportRangef(osExitUsage, `"os.Exit" usage`)
@@ -67,18 +69,18 @@ func findFuncDecl(root ast.Node, funcName string) *ast.FuncDecl {
 	return foundFuncDecl
 }
 
-func findCallExpr(root ast.Node, funcName string) []*ast.CallExpr {
+func findCallExpr(pass *analysis.Pass, root ast.Node) []*ast.CallExpr {
 	foundCallExpr := make([]*ast.CallExpr, 0)
 
 	ast.Inspect(root, func(n ast.Node) bool {
-		callDecl, ok := n.(*ast.CallExpr)
+		callExpr, ok := n.(*ast.CallExpr)
 
 		if !ok {
 			return true
 		}
 
-		if getFuncName(callDecl.Fun) == funcName {
-			foundCallExpr = append(foundCallExpr, callDecl)
+		if isExitCall(pass, callExpr) {
+			foundCallExpr = append(foundCallExpr, callExpr)
 		}
 
 		return true
@@ -87,20 +89,14 @@ func findCallExpr(root ast.Node, funcName string) []*ast.CallExpr {
 	return foundCallExpr
 }
 
-func getFuncName(expr ast.Expr) string {
-	switch typedExpr := expr.(type) {
-	case *ast.Ident:
-		// Regular function call (e.g., calculate(5, 10))
-		return typedExpr.Name
+func isExitCall(pass *analysis.Pass, callExpr *ast.CallExpr) bool {
+	fn, ok := typeutil.Callee(pass.TypesInfo, callExpr).(*types.Func)
 
-	case *ast.SelectorExpr:
-		// Packaged function or method call (e.g., fmt.Println("..."))
-		if pkgIdent, ok := typedExpr.X.(*ast.Ident); ok {
-			return pkgIdent.Name + "." + typedExpr.Sel.Name
-		}
-		return typedExpr.Sel.Name
-
-	default:
-		return ""
+	if !ok {
+		return false
 	}
+
+	pkg := fn.Pkg()
+
+	return pkg != nil && pkg.Path() == "os" && fn.Name() == "Exit"
 }
