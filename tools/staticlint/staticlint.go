@@ -123,6 +123,16 @@ var standartAnalyzers = []*analysis.Analyzer{
 	waitgroup.Analyzer,
 }
 
+var thirdPartyAnalyzers = []*analysis.Analyzer{
+	errcheck.Analyzer,
+	noctx.Analyzer,
+}
+
+var customAnalyzers = []*analysis.Analyzer{
+	exitcheck.Analyzer,
+	structreset.Analyzer,
+}
+
 var excludedStyleChecks = map[string]struct{}{
 	// Incorrect or missing package comment
 	"ST1000": {},
@@ -139,7 +149,10 @@ var maxCap = len(standartAnalyzers) +
 	len(simple.Analyzers) +
 	len(stylecheck.Analyzers) +
 	len(quickfix.Analyzers) +
-	5 // unused, errcheck, noctx, exitcheck, structreset
+	1 + // unused
+	len(thirdPartyAnalyzers) +
+	len(customAnalyzers) -
+	len(excludedStyleChecks)
 
 func Build() []*analysis.Analyzer {
 	analyzers := make([]*analysis.Analyzer, 0, maxCap)
@@ -172,11 +185,11 @@ func Build() []*analysis.Analyzer {
 	// staticcheck - unused
 	analyzers = append(analyzers, unused.Analyzer.Analyzer)
 
-	// other - errcheck + noctx
-	analyzers = append(analyzers, errcheck.Analyzer, noctx.Analyzer)
+	// third-party
+	analyzers = append(analyzers, thirdPartyAnalyzers...)
 
-	// custom - exitcheck + structreset
-	analyzers = append(analyzers, exitcheck.Analyzer, structreset.Analyzer)
+	// custom
+	analyzers = append(analyzers, customAnalyzers...)
 
 	return analyzers
 }

@@ -10,6 +10,6 @@ import (
 func TestBuild(t *testing.T) {
 	analyzers := Build()
 
-	assert.LessOrEqual(t, len(analyzers), maxCap)
+	assert.Equal(t, len(analyzers), maxCap)
 	assert.NoError(t, analysis.Validate(analyzers))
 }
