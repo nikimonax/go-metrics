@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/nikimonax/go-metrics/internal/agent/config"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
@@ -15,6 +16,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/shared/metainfo"
 	"github.com/nikimonax/go-metrics/internal/shared/retry"
 
 	"go.uber.org/fx"
@@ -95,11 +97,17 @@ func provideMetricCollector() interfaces.MetricCollector {
 	)
 }
 
-func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
+func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 	transport := http.DefaultTransport
 
 	if cfg.APIVersion > 1 {
-		transport = httpextra.NewCompressRoundTripper(transport, "gzip", config.CompressLevel)
+		newTransport, err := httpextra.NewCompressRoundTripper(transport, "gzip", config.CompressLevel)
+
+		if err != nil {
+			return nil, err
+		}
+
+		transport = newTransport
 	}
 
 	if cfg.APIVersion > 1 && cfg.Security.HashingKey != "" {
@@ -116,7 +124,7 @@ func provideRoundTripper(cfg *config.AgentConfig) http.RoundTripper {
 		transport = httpextra.NewRateLimitRoundTripper(transport, cfg.RateLimit)
 	}
 
-	return transport
+	return transport, nil
 }
 
 func provideHTTPClient(transport http.RoundTripper) *http.Client {
@@ -199,6 +207,9 @@ func registerLifecycleHooks(
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
+			fmt.Fprintf(os.Stderr, "Build version: %s\n", metainfo.BuildVersion)
+			fmt.Fprintf(os.Stderr, "Build date: %s\n", metainfo.BuildDate)
+			fmt.Fprintf(os.Stderr, "Build commit: %s\n", metainfo.BuildCommit)
 			sugar.Infow(
 				"starting agent",
 				"server", cfg.BaseURL,

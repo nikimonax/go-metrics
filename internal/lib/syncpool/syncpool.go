@@ -4,17 +4,21 @@ import (
 	"sync"
 )
 
+type Resettable interface {
+	Reset()
+}
+
 // A Pool is a generic wrapper around a sync.Pool.
-type Pool[T any] struct {
+type Pool[T Resettable] struct {
 	pool sync.Pool
 }
 
 // New creates a new Pool with the provided new function.
 //
 // The equivalent sync.Pool construct is "sync.Pool{New: fn}"
-func New[T any](fn func() T) Pool[T] {
+func New[T Resettable](fn func() T) Pool[T] {
 	return Pool[T]{
-		pool: sync.Pool{New: func() interface{} { return fn() }},
+		pool: sync.Pool{New: func() any { return fn() }},
 	}
 }
 
@@ -25,5 +29,6 @@ func (p *Pool[T]) Get() T {
 
 // Get is a generic wrapper around sync.Pool's Put method.
 func (p *Pool[T]) Put(x T) {
+	x.Reset()
 	p.pool.Put(x)
 }

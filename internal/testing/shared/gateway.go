@@ -17,7 +17,13 @@ func NewTestGateway(tb testing.TB, version uint, baseURL *url.URL) interfaces.Me
 	transport := http.DefaultTransport
 
 	if version > 1 {
-		transport = httpextra.NewCompressRoundTripper(transport, "gzip", gzip.BestSpeed)
+		newTransport, err := httpextra.NewCompressRoundTripper(transport, "gzip", gzip.BestSpeed)
+
+		if err != nil {
+			tb.Fatal(err)
+		}
+
+		transport = newTransport
 	}
 
 	factory, err := gateway.GetGatewayFactory(version)

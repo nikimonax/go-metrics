@@ -4,8 +4,10 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	ut "github.com/go-playground/universal-translator"
@@ -25,6 +27,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
+	"github.com/nikimonax/go-metrics/internal/shared/metainfo"
 )
 
 func CoreModule() fx.Option {
@@ -206,6 +209,9 @@ func registerStartupLog(
 	}
 
 	lc.Append(fx.StartHook(func() {
+		fmt.Fprintf(os.Stderr, "Build version: %s\n", metainfo.BuildVersion)
+		fmt.Fprintf(os.Stderr, "Build date: %s\n", metainfo.BuildDate)
+		fmt.Fprintf(os.Stderr, "Build commit: %s\n", metainfo.BuildCommit)
 		sugar.Infow(
 			"starting server",
 			"listen", cfg.Listen,

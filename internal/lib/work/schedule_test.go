@@ -11,8 +11,8 @@ import (
 
 func TestSchedule(t *testing.T) {
 	callback := func(context.Context) error { return nil }
-	task, err := NewTask("task", callback)
-	require.NoError(t, err)
+	task, err0 := NewTask("task", callback)
+	require.NoError(t, err0)
 
 	t.Run("creates schedule", func(t *testing.T) {
 		schedule, err := NewSchedule(task, time.Second)
@@ -23,7 +23,7 @@ func TestSchedule(t *testing.T) {
 	})
 
 	t.Run("rejects negative timeout", func(t *testing.T) {
-		_, err = NewSchedule(task, -time.Second)
+		_, err := NewSchedule(task, -time.Second)
 		assert.Error(t, err)
 	})
 }

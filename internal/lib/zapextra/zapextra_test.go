@@ -11,8 +11,9 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
-	"github.com/nikimonax/go-metrics/internal/testing/shared"
 )
+
+const testURL = "http://example.com"
 
 func TestZapLoggerFactory(t *testing.T) {
 	type TestCase struct {
@@ -66,7 +67,13 @@ func TestZapLoggerMiddleware(t *testing.T) {
 
 	handler := middleware(http.HandlerFunc(handlerFunc))
 
-	req := shared.NewRequest(t, http.MethodPost, nil)
+	req := httptest.NewRequestWithContext(
+		t.Context(),
+		http.MethodPost,
+		testURL,
+		nil,
+	)
+
 	resp := httptest.NewRecorder()
 
 	handler.ServeHTTP(resp, req)
@@ -75,7 +82,7 @@ func TestZapLoggerMiddleware(t *testing.T) {
 	entry := logs.All()[0]
 	assert.Equal(t, "handle request", entry.Message)
 	assert.Equal(t, "POST", entry.ContextMap()["method"])
-	assert.Equal(t, shared.DefaultURL, entry.ContextMap()["uri"])
+	assert.Equal(t, testURL, entry.ContextMap()["uri"])
 	assert.Equal(t, int64(http.StatusCreated), entry.ContextMap()["status"])
 	assert.Equal(t, int64(len("body")), entry.ContextMap()["size"])
 }
