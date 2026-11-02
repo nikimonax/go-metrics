@@ -2,6 +2,7 @@ package httpextra
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -87,12 +88,14 @@ type CompressRoundTripper struct {
 	buffers *syncpool.Pool[*bytes.Buffer]
 }
 
-func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+// RoundTrip implements [http.RoundTripper].
+func (rt *CompressRoundTripper) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	if req.Body == nil || req.ContentLength == 0 {
 		return rt.next.RoundTrip(req)
 	}
 
 	buf, err := rt.compress(req.Body)
+	defer func() { err = errors.Join(err, req.Body.Close()) }()
 
 	if err != nil {
 		return nil, err
