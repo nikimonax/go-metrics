@@ -4,8 +4,10 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	ut "github.com/go-playground/universal-translator"
@@ -207,12 +209,9 @@ func registerStartupLog(
 	}
 
 	lc.Append(fx.StartHook(func() {
-		sugar.Infow(
-			"metrics server",
-			"build_version", metainfo.BuildVersion,
-			"build_date", metainfo.BuildDate,
-			"build_commit", metainfo.BuildCommit,
-		)
+		fmt.Fprintf(os.Stderr, "Build version: %s\n", metainfo.BuildVersion)
+		fmt.Fprintf(os.Stderr, "Build date: %s\n", metainfo.BuildDate)
+		fmt.Fprintf(os.Stderr, "Build commit: %s\n", metainfo.BuildCommit)
 		sugar.Infow(
 			"starting server",
 			"listen", cfg.Listen,

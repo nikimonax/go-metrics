@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/nikimonax/go-metrics/internal/agent/config"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
@@ -206,12 +207,9 @@ func registerLifecycleHooks(
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			sugar.Infow(
-				"agent",
-				"build_version", metainfo.BuildVersion,
-				"build_date", metainfo.BuildDate,
-				"build_commit", metainfo.BuildCommit,
-			)
+			fmt.Fprintf(os.Stderr, "Build version: %s\n", metainfo.BuildVersion)
+			fmt.Fprintf(os.Stderr, "Build date: %s\n", metainfo.BuildDate)
+			fmt.Fprintf(os.Stderr, "Build commit: %s\n", metainfo.BuildCommit)
 			sugar.Infow(
 				"starting agent",
 				"server", cfg.BaseURL,
