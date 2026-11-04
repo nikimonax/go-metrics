@@ -7,6 +7,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
+	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 )
 
@@ -46,15 +47,30 @@ func APIV3Module() fx.Option {
 func registerHandlersV3(
 	router chi.Router,
 	updateMetricsHandler http.Handler,
+	cfg *config.ServerConfig,
 	hasher *httpsec.Hasher,
-) {
+	encryptor *httpsec.Encryptor,
+) error {
 	if hasher != nil {
 		verify := hasher.VerifyMiddleware(httpsec.RequireHeader())
 		router = router.With(verify)
+	}
+
+	if cfg.Security.CryptoKeyFile != "" {
+		key, err := cfg.Security.ReadPrivateKey()
+
+		if err != nil {
+			return err
+		}
+
+		decrypt := encryptor.DecryptMiddleware(key)
+		router = router.With(decrypt)
 	}
 
 	router.Post(
 		"/updates",
 		updateMetricsHandler.ServeHTTP,
 	)
+
+	return nil
 }

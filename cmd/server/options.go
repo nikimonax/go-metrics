@@ -16,6 +16,7 @@ type Options struct {
 	Profile      *bool  `env:"PROFILE"`
 	DatabaseDSN  string `env:"DATABASE_DSN"`
 	HashingKey   string `env:"KEY"`
+	CryptoKey    string `env:"CRYPTO_KEY"`
 	DumpFile     string `env:"FILE_STORAGE_PATH"`
 	DumpInterval int64  `env:"STORE_INTERVAL" envDefault:"-1"`
 	DumpRestore  *bool  `env:"RESTORE"`
@@ -40,6 +41,10 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 
 	if opts.HashingKey != "" {
 		cfg.Security.HashingKey = opts.HashingKey
+	}
+
+	if opts.CryptoKey != "" {
+		cfg.Security.CryptoKeyFile = opts.CryptoKey
 	}
 
 	if opts.DumpFile != "" {
@@ -80,6 +85,10 @@ func (opts *Options) Merge(other *Options) {
 
 	if other.HashingKey != "" {
 		opts.HashingKey = other.HashingKey
+	}
+
+	if other.CryptoKey != "" {
+		opts.CryptoKey = other.CryptoKey
 	}
 
 	if other.DumpFile != "" {
@@ -139,6 +148,12 @@ func ReadCliOptions() (*Options, error) {
 		"k",
 		"",
 		"secret key to verify requests and calculate response hash",
+	)
+	cmd.StringVar(
+		&opts.CryptoKey,
+		"crypto-key",
+		"",
+		"private key file path to decrypt requests",
 	)
 	cmd.StringVar(
 		&opts.DumpFile,

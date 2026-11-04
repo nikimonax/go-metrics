@@ -10,3 +10,6 @@ out
 
 metrics.json
 .env
+
+private_key.pem
+public_key.pem

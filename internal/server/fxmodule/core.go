@@ -43,6 +43,7 @@ func CoreModule() fx.Option {
 			provideValidator,
 			provideTranslator,
 			provideHasher,
+			provideEncryptor,
 		),
 		// application level stuff
 		fx.Provide(
@@ -138,6 +139,10 @@ func provideHasher(cfg *config.ServerConfig) *httpsec.Hasher {
 	)
 }
 
+func provideEncryptor() *httpsec.Encryptor {
+	return httpsec.NewEncryptor()
+}
+
 func provideEventDispatcher(
 	sugar *zap.SugaredLogger,
 ) *publisher.EventDispatcher {
@@ -208,6 +213,11 @@ func registerStartupLog(
 		hasSecretKey = true
 	}
 
+	var hasCryptoKey bool
+	if cfg.Security.CryptoKeyFile != "" {
+		hasCryptoKey = true
+	}
+
 	lc.Append(fx.StartHook(func() {
 		fmt.Fprintf(os.Stderr, "Build version: %s\n", metainfo.BuildVersion)
 		fmt.Fprintf(os.Stderr, "Build date: %s\n", metainfo.BuildDate)
@@ -218,6 +228,7 @@ func registerStartupLog(
 			"profile", cfg.Profile,
 			"database", cfg.Database.DSN,
 			"has_secret", hasSecretKey,
+			"has_crypto", hasCryptoKey,
 			"dump_file", cfg.Dump.File,
 			"dump_interval", cfg.Dump.Interval,
 			"dump_restore", cfg.Dump.Restore,

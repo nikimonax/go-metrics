@@ -95,6 +95,9 @@ swagger: $(DOCS_DIR)/swagger.yaml $(DOCS_DIR)/swagger.json
 autotest: $(BIN_DIR)/metricstest_v2 $(BIN_DIR)/server $(BIN_DIR)/agent
 	./tools/autotest.sh $(EXTRA_ARGS)
 
+.PHONY: keys
+keys: public_key.pem private_key.pem
+
 .PHONY: clean
 clean:
 	rm -rf $(BIN_DIR) $(OUT_DIR)
@@ -143,6 +146,12 @@ $(BIN_DIR)/bench: tests .FORCE
 $(BIN_DIR) $(OUT_DIR) $(DOCS_DIR):
 	mkdir -p $@
 
+
+public_key.pem: private_key.pem
+	openssl rsa -in $< -pubout -out $@
+
+private_key.pem:
+	openssl genrsa -out $@ 4096
 
 .env: .env.example
 	cp $< $@
