@@ -120,6 +120,17 @@ func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 		transport = hasher.RoundTripper(transport)
 	}
 
+	if cfg.APIVersion == 3 && cfg.Security.CryptoKeyFile != "" {
+		publicKey, err := cfg.Security.ReadPublicKey()
+
+		if err != nil {
+			return nil, err
+		}
+
+		encryptor := httpsec.NewEncryptor()
+		transport = encryptor.EncryptRoundTripper(transport, publicKey)
+	}
+
 	if cfg.RateLimit > 0 {
 		transport = httpextra.NewRateLimitRoundTripper(transport, cfg.RateLimit)
 	}
@@ -205,6 +216,11 @@ func registerLifecycleHooks(
 		hasSecretKey = true
 	}
 
+	var hasCryptoKey bool
+	if cfg.Security.CryptoKeyFile != "" {
+		hasCryptoKey = true
+	}
+
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
 			fmt.Fprintf(os.Stderr, "Build version: %s\n", metainfo.BuildVersion)
@@ -218,6 +234,7 @@ func registerLifecycleHooks(
 				"poll interval", cfg.PollInterval,
 				"send interval", cfg.ReportInterval,
 				"has_secret", hasSecretKey,
+				"has_crypto", hasCryptoKey,
 			)
 			return nil
 		},

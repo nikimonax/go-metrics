@@ -20,6 +20,7 @@ type Options struct {
 	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"`
 	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL"`
 	HashingKey         string `env:"KEY"`
+	CryptoKey          string `env:"CRYPTO_KEY"`
 }
 
 func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
@@ -65,6 +66,10 @@ func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
 		cfg.Security.HashingKey = opts.HashingKey
 	}
 
+	if opts.CryptoKey != "" {
+		cfg.Security.CryptoKeyFile = opts.CryptoKey
+	}
+
 	return &cfg, nil
 }
 
@@ -91,6 +96,10 @@ func (opts *Options) Merge(other *Options) {
 
 	if other.HashingKey != "" {
 		opts.HashingKey = other.HashingKey
+	}
+
+	if other.CryptoKey != "" {
+		opts.CryptoKey = other.CryptoKey
 	}
 }
 
@@ -143,6 +152,12 @@ func ReadCliOptions() (*Options, error) {
 		"k",
 		"",
 		"secret key to sign content",
+	)
+	cmd.StringVar(
+		&opts.CryptoKey,
+		"crypto-key",
+		"",
+		"public key file path to encrypt requests",
 	)
 
 	if err := cmd.Parse(os.Args[1:]); err != nil {
