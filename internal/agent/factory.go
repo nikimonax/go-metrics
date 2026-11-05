@@ -121,14 +121,18 @@ func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 	}
 
 	if cfg.APIVersion == 3 && cfg.Security.CryptoKeyFile != "" {
-		publicKey, err := cfg.Security.ReadPublicKey()
+		key, err := cfg.Security.ReadPublicKey()
 
 		if err != nil {
 			return nil, err
 		}
 
 		encryptor := httpsec.NewEncryptor()
-		transport = encryptor.EncryptRoundTripper(transport, publicKey)
+		transport, err = encryptor.EncryptRoundTripper(transport, key)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if cfg.RateLimit > 0 {

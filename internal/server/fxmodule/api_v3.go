@@ -63,7 +63,12 @@ func registerHandlersV3(
 			return err
 		}
 
-		decrypt := encryptor.DecryptMiddleware(key)
+		decrypt, err := encryptor.DecryptMiddleware(key)
+
+		if err != nil {
+			return err
+		}
+
 		router = router.With(decrypt)
 	}
 

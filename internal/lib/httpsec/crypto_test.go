@@ -3,14 +3,13 @@ package httpsec
 import (
 	"bytes"
 	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha512"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
+	"github.com/ProtonMail/gopenpgp/v3/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,22 +19,49 @@ import (
 
 const endpoint = "/test"
 
-func TestEncryptor(t *testing.T) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+func generatePGPKey(t *testing.T) *crypto.Key {
+	t.Helper()
+
+	key, err := crypto.PGP().
+		KeyGeneration().
+		AddUserId("Test", "test@example.com").
+		New().
+		GenerateKey()
 	require.NoError(t, err)
+
+	return key
+}
+
+func encryptWithKey(t *testing.T, content []byte, key *crypto.Key) []byte {
+	t.Helper()
+
+	encHandle, err := crypto.PGP().Encryption().Recipient(key).New()
+	require.NoError(t, err)
+
+	message, err := encHandle.Encrypt(content)
+	require.NoError(t, err)
+
+	return message.Bytes()
+}
+
+func TestEncryptor(t *testing.T) {
+	privateKey := generatePGPKey(t)
 
 	encryptor := NewEncryptor()
 
 	t.Run("encrypt decrypt compatibility", func(t *testing.T) {
 		content := []byte(rand.Text())
 
+		middleware, err := encryptor.DecryptMiddleware(privateKey)
+		require.NoError(t, err)
+
 		var handlerCalled = false
-		handler := encryptor.DecryptMiddleware(privateKey)(
+		handler := middleware(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				handlerCalled = true
 
-				actualContent, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
+				actualContent, err1 := io.ReadAll(r.Body)
+				require.NoError(t, err1)
 
 				assert.NoError(t, r.Body.Close())
 				assert.Equal(t, content, actualContent)
@@ -44,10 +70,11 @@ func TestEncryptor(t *testing.T) {
 			}),
 		)
 
-		rt := encryptor.EncryptRoundTripper(
+		rt, err := encryptor.EncryptRoundTripper(
 			httpextra.NewRoundTripperFromHandler(handler),
-			&privateKey.PublicKey,
+			privateKey,
 		)
+		require.NoError(t, err)
 
 		body := mock.NewMockCloser(bytes.NewReader(content))
 		req := httptest.NewRequestWithContext(
@@ -67,19 +94,19 @@ func TestEncryptor(t *testing.T) {
 }
 
 func TestDecryptMiddleware(t *testing.T) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
+	privateKey := generatePGPKey(t)
+	otherKey := generatePGPKey(t)
 
 	encryptor := NewEncryptor()
 
 	t.Run("pass through without header", func(t *testing.T) {
 		content := []byte(rand.Text())
 
+		middleware, err := encryptor.DecryptMiddleware(privateKey)
+		require.NoError(t, err)
+
 		var handlerCalled = false
-		handler := encryptor.DecryptMiddleware(privateKey)(
+		handler := middleware(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				handlerCalled = true
 
@@ -112,8 +139,11 @@ func TestDecryptMiddleware(t *testing.T) {
 	t.Run("pass through with false header", func(t *testing.T) {
 		content := []byte(rand.Text())
 
+		middleware, err := encryptor.DecryptMiddleware(privateKey)
+		require.NoError(t, err)
+
 		var handlerCalled = false
-		handler := encryptor.DecryptMiddleware(privateKey)(
+		handler := middleware(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				handlerCalled = true
 
@@ -145,8 +175,11 @@ func TestDecryptMiddleware(t *testing.T) {
 	})
 
 	t.Run("bad header value", func(t *testing.T) {
+		middleware, err := encryptor.DecryptMiddleware(privateKey)
+		require.NoError(t, err)
+
 		var handlerCalled = false
-		handler := encryptor.DecryptMiddleware(privateKey)(
+		handler := middleware(
 			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				handlerCalled = true
 				w.WriteHeader(http.StatusOK)
@@ -174,11 +207,13 @@ func TestDecryptMiddleware(t *testing.T) {
 	t.Run("decrypt failure with wrong key", func(t *testing.T) {
 		content := []byte(rand.Text())
 
-		encrypted, err := rsa.EncryptOAEP(sha512.New(), rand.Reader, &otherKey.PublicKey, content, nil)
+		encrypted := encryptWithKey(t, content, otherKey)
+
+		middleware, err := encryptor.DecryptMiddleware(privateKey)
 		require.NoError(t, err)
 
 		var handlerCalled = false
-		handler := encryptor.DecryptMiddleware(privateKey)(
+		handler := middleware(
 			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				handlerCalled = true
 				w.WriteHeader(http.StatusOK)
@@ -205,11 +240,13 @@ func TestDecryptMiddleware(t *testing.T) {
 	t.Run("headers cleanup after decrypt", func(t *testing.T) {
 		content := []byte(rand.Text())
 
-		encrypted, err := rsa.EncryptOAEP(sha512.New(), rand.Reader, &privateKey.PublicKey, content, nil)
+		encrypted := encryptWithKey(t, content, privateKey)
+
+		middleware, err := encryptor.DecryptMiddleware(privateKey)
 		require.NoError(t, err)
 
 		var handlerCalled = false
-		handler := encryptor.DecryptMiddleware(privateKey)(
+		handler := middleware(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				handlerCalled = true
 
@@ -245,14 +282,13 @@ func TestDecryptMiddleware(t *testing.T) {
 }
 
 func TestEncryptRoundTripper(t *testing.T) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
+	privateKey := generatePGPKey(t)
 
 	encryptor := NewEncryptor()
 
 	t.Run("empty body is not encrypted", func(t *testing.T) {
 		var roundTripperCalled = false
-		rt := encryptor.EncryptRoundTripper(
+		rt, err := encryptor.EncryptRoundTripper(
 			httpextra.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 				roundTripperCalled = true
 
@@ -265,8 +301,9 @@ func TestEncryptRoundTripper(t *testing.T) {
 					Header:     make(http.Header),
 				}, nil
 			}),
-			&privateKey.PublicKey,
+			privateKey,
 		)
+		require.NoError(t, err)
 
 		req := httptest.NewRequestWithContext(
 			t.Context(),
@@ -286,21 +323,24 @@ func TestEncryptRoundTripper(t *testing.T) {
 		content := []byte(rand.Text())
 		expectedRespContent := []byte(rand.Text())
 
+		decHandle, err := crypto.PGP().Decryption().DecryptionKey(privateKey).New()
+		require.NoError(t, err)
+
 		var roundTripperCalls = 0
-		rt := encryptor.EncryptRoundTripper(
+		rt, err := encryptor.EncryptRoundTripper(
 			httpextra.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
 				roundTripperCalls++
 
-				encrypted, err := io.ReadAll(req.Body)
-				require.NoError(t, err)
+				encrypted, err1 := io.ReadAll(req.Body)
+				require.NoError(t, err1)
 
 				assert.NoError(t, req.Body.Close())
 				assert.Equal(t, "true", req.Header.Get("X-Encrypted"))
 				assert.Equal(t, int64(len(encrypted)), req.ContentLength)
 
-				decrypted, err := rsa.DecryptOAEP(sha512.New(), rand.Reader, privateKey, encrypted, nil)
-				require.NoError(t, err)
-				assert.Equal(t, content, decrypted)
+				decrypted, err1 := decHandle.Decrypt(encrypted, crypto.Bytes)
+				require.NoError(t, err1)
+				assert.Equal(t, content, decrypted.Bytes())
 
 				return &http.Response{
 					StatusCode: http.StatusOK,
@@ -308,8 +348,9 @@ func TestEncryptRoundTripper(t *testing.T) {
 					Header:     make(http.Header),
 				}, nil
 			}),
-			&privateKey.PublicKey,
+			privateKey,
 		)
+		require.NoError(t, err)
 
 		req := httptest.NewRequestWithContext(
 			t.Context(),
@@ -337,57 +378,25 @@ func TestEncryptRoundTripper(t *testing.T) {
 		}
 	})
 
-	t.Run("content too long for key", func(t *testing.T) {
-		content := bytes.Repeat([]byte("a"), 300)
+	t.Run("large body is encrypted", func(t *testing.T) {
+		content := bytes.Repeat([]byte("a"), 4096)
 
-		rt := encryptor.EncryptRoundTripper(
-			httpextra.RoundTripperFunc(func(_ *http.Request) (*http.Response, error) {
-				t.Fatal("round tripper should not be called")
-				return nil, nil
+		var roundTripperCalled = false
+		rt, err := encryptor.EncryptRoundTripper(
+			httpextra.RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				roundTripperCalled = true
+
+				assert.Equal(t, "true", req.Header.Get("X-Encrypted"))
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       http.NoBody,
+					Header:     make(http.Header),
+				}, nil
 			}),
-			&privateKey.PublicKey,
+			privateKey,
 		)
-
-		req := httptest.NewRequestWithContext(
-			t.Context(),
-			http.MethodPost,
-			endpoint,
-			bytes.NewReader(content),
-		)
-
-		_, err := rt.RoundTrip(req) // nolint:bodyclose
-		assert.Error(t, err)
-	})
-}
-
-func TestEncryptorOptions(t *testing.T) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	t.Run("custom hashing compatibility", func(t *testing.T) {
-		content := []byte(rand.Text())
-
-		encryptor := NewEncryptor(WithHashing(sha512.New))
-
-		var handlerCalled = false
-		handler := encryptor.DecryptMiddleware(privateKey)(
-			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				handlerCalled = true
-
-				actualContent, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
-
-				assert.NoError(t, r.Body.Close())
-				assert.Equal(t, content, actualContent)
-
-				w.WriteHeader(http.StatusOK)
-			}),
-		)
-
-		rt := encryptor.EncryptRoundTripper(
-			httpextra.NewRoundTripperFromHandler(handler),
-			&privateKey.PublicKey,
-		)
+		require.NoError(t, err)
 
 		req := httptest.NewRequestWithContext(
 			t.Context(),
@@ -399,12 +408,7 @@ func TestEncryptorOptions(t *testing.T) {
 		resp, err := rt.RoundTrip(req)
 		require.NoError(t, err)
 		assert.NoError(t, resp.Body.Close())
-		assert.True(t, handlerCalled)
+		assert.True(t, roundTripperCalled)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
-	})
-
-	t.Run("custom random", func(t *testing.T) {
-		encryptor := NewEncryptor(WithRandom(rand.Reader))
-		assert.NotNil(t, encryptor)
 	})
 }
