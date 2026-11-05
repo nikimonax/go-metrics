@@ -15,6 +15,9 @@ COV_FILE_HTML := $(OUT_DIR)/coverage.html
 POSTGRES_DSN := "postgres://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/$(DATABASE_NAME)?sslmode=disable"
 MIGRATIONS_DIR := internal/impl/repository/migrations
 
+GPG_UID  := go-metrics <go-metrics@example.com>
+GPG_HOME := $(OUT_DIR)/gpg
+
 EXTRA_ARGS += $(ARGS)
 
 
@@ -95,6 +98,9 @@ swagger: $(DOCS_DIR)/swagger.yaml $(DOCS_DIR)/swagger.json
 autotest: $(BIN_DIR)/metricstest_v2 $(BIN_DIR)/server $(BIN_DIR)/agent
 	./tools/autotest.sh $(EXTRA_ARGS)
 
+.PHONY: keys
+keys: _check_gpg_cmd private_key.pem public_key.pem
+
 .PHONY: clean
 clean:
 	rm -rf $(BIN_DIR) $(OUT_DIR)
@@ -140,9 +146,25 @@ $(BIN_DIR)/reset: $(BIN_DIR)/%: cmd/% .FORCE
 $(BIN_DIR)/bench: tests .FORCE
 	go test -c -o $@ ./$<
 
+$(GPG_HOME): | $(OUT_DIR)
+	mkdir -p $@ && chmod 700 $@
+
 $(BIN_DIR) $(OUT_DIR) $(DOCS_DIR):
 	mkdir -p $@
 
+
+$(GPG_HOME)/trustdb.gpg: | $(GPG_HOME)
+	GNUPGHOME=$(GPG_HOME) gpg \
+		--batch \
+		--pinentry-mode loopback \
+		--passphrase '' \
+		--quick-generate-key "$(GPG_UID)"
+
+private_key.pem: $(GPG_HOME)/trustdb.gpg
+	GNUPGHOME=$(GPG_HOME) gpg --armor --export-secret-keys "$(GPG_UID)" > $@
+
+public_key.pem: $(GPG_HOME)/trustdb.gpg
+	GNUPGHOME=$(GPG_HOME) gpg --armor --export "$(GPG_UID)" > $@
 
 .env: .env.example
 	cp $< $@
@@ -160,6 +182,14 @@ _check_migrate_cmd:
 	@if ! command -v migrate $&> /dev/null; then \
 		echo "[ERROR]: command 'migrate' not found"; \
 		echo "install using \"go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest\""; \
+		exit 1; \
+	fi
+
+.PHONY: _check_gpg_cmd
+_check_gpg_cmd:
+	@if ! command -v gpg $&> /dev/null; then \
+		echo "[ERROR]: command 'gpg' not found"; \
+		echo "install gpg (GnuPG) to generate test keys"; \
 		exit 1; \
 	fi
 

@@ -27,6 +27,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
+	"github.com/nikimonax/go-metrics/internal/shared/fxutil"
 	"github.com/nikimonax/go-metrics/internal/shared/metainfo"
 )
 
@@ -43,6 +44,7 @@ func CoreModule() fx.Option {
 			provideValidator,
 			provideTranslator,
 			provideHasher,
+			provideEncryptor,
 		),
 		// application level stuff
 		fx.Provide(
@@ -101,7 +103,8 @@ func CoreModule() fx.Option {
 			),
 		),
 		fx.Invoke(
-			registerStartupLog,
+			fxutil.RegisterQuitSignalHandler,
+			registerLifecycleLog,
 			fx.Annotate(
 				registerHTTPServerLifecycle,
 				fx.ParamTags("", "", `name:"router_base"`),
@@ -136,6 +139,10 @@ func provideHasher(cfg *config.ServerConfig) *httpsec.Hasher {
 		cfg.Security.HashingFunc,
 		[]byte(cfg.Security.HashingKey),
 	)
+}
+
+func provideEncryptor() *httpsec.Encryptor {
+	return httpsec.NewEncryptor()
 }
 
 func provideEventDispatcher(
@@ -198,7 +205,7 @@ func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {
 	return baseRouter
 }
 
-func registerStartupLog(
+func registerLifecycleLog(
 	lc fx.Lifecycle,
 	sugar *zap.SugaredLogger,
 	cfg *config.ServerConfig,
@@ -206,6 +213,11 @@ func registerStartupLog(
 	var hasSecretKey bool
 	if cfg.Security.HashingKey != "" {
 		hasSecretKey = true
+	}
+
+	var hasCryptoKey bool
+	if cfg.Security.CryptoKeyFile != "" {
+		hasCryptoKey = true
 	}
 
 	lc.Append(fx.StartHook(func() {
@@ -218,12 +230,17 @@ func registerStartupLog(
 			"profile", cfg.Profile,
 			"database", cfg.Database.DSN,
 			"has_secret", hasSecretKey,
+			"has_crypto", hasCryptoKey,
 			"dump_file", cfg.Dump.File,
 			"dump_interval", cfg.Dump.Interval,
 			"dump_restore", cfg.Dump.Restore,
 			"audit_file", cfg.Audit.File,
 			"audit_url", cfg.Audit.URL,
 		)
+	}))
+
+	lc.Append(fx.StopHook(func() {
+		sugar.Infow("stopping server")
 	}))
 }
 

@@ -1,0 +1,9 @@
+{
+    "address": "localhost:8080",
+	"api_version": 3,
+	"rate_limit": 5,
+	"poll_interval": 2,
+	"report_interval": 10,
+	"hashing_key": "qwerty123",
+	"crypto_key": "./public_key.pem"
+}

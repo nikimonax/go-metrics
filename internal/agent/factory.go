@@ -16,6 +16,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/shared/fxutil"
 	"github.com/nikimonax/go-metrics/internal/shared/metainfo"
 	"github.com/nikimonax/go-metrics/internal/shared/retry"
 
@@ -65,6 +66,7 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			usecase.NewSendMetricsUseCase,
 		),
 		fx.Invoke(
+			fxutil.RegisterQuitSignalHandler,
 			registerCollectMetricsTask,
 			registerSendMetricsTask,
 			registerLifecycleHooks,
@@ -101,7 +103,11 @@ func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 	transport := http.DefaultTransport
 
 	if cfg.APIVersion > 1 {
-		newTransport, err := httpextra.NewCompressRoundTripper(transport, "gzip", config.CompressLevel)
+		newTransport, err := httpextra.NewCompressRoundTripper(
+			transport,
+			"gzip",
+			config.CompressLevel,
+		)
 
 		if err != nil {
 			return nil, err
@@ -118,6 +124,21 @@ func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 		)
 
 		transport = hasher.RoundTripper(transport)
+	}
+
+	if cfg.APIVersion == 3 && cfg.Security.CryptoKeyFile != "" {
+		key, err := cfg.Security.ReadPublicKey()
+
+		if err != nil {
+			return nil, err
+		}
+
+		encryptor := httpsec.NewEncryptor()
+		transport, err = encryptor.EncryptRoundTripper(transport, key)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if cfg.RateLimit > 0 {
@@ -205,6 +226,11 @@ func registerLifecycleHooks(
 		hasSecretKey = true
 	}
 
+	var hasCryptoKey bool
+	if cfg.Security.CryptoKeyFile != "" {
+		hasCryptoKey = true
+	}
+
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
 			fmt.Fprintf(os.Stderr, "Build version: %s\n", metainfo.BuildVersion)
@@ -218,7 +244,12 @@ func registerLifecycleHooks(
 				"poll interval", cfg.PollInterval,
 				"send interval", cfg.ReportInterval,
 				"has_secret", hasSecretKey,
+				"has_crypto", hasCryptoKey,
 			)
+			return nil
+		},
+		OnStop: func(_ context.Context) error {
+			sugar.Infow("stopping agent")
 			return nil
 		},
 	})
