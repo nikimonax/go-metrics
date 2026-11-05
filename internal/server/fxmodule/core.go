@@ -27,6 +27,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
+	"github.com/nikimonax/go-metrics/internal/shared/fxutil"
 	"github.com/nikimonax/go-metrics/internal/shared/metainfo"
 )
 
@@ -102,6 +103,7 @@ func CoreModule() fx.Option {
 			),
 		),
 		fx.Invoke(
+			fxutil.RegisterQuitSignalHandler,
 			registerLifecycleLog,
 			fx.Annotate(
 				registerHTTPServerLifecycle,

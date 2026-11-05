@@ -16,6 +16,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
+	"github.com/nikimonax/go-metrics/internal/shared/fxutil"
 	"github.com/nikimonax/go-metrics/internal/shared/metainfo"
 	"github.com/nikimonax/go-metrics/internal/shared/retry"
 
@@ -65,6 +66,7 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			usecase.NewSendMetricsUseCase,
 		),
 		fx.Invoke(
+			fxutil.RegisterQuitSignalHandler,
 			registerCollectMetricsTask,
 			registerSendMetricsTask,
 			registerLifecycleHooks,
