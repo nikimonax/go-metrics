@@ -102,7 +102,7 @@ func CoreModule() fx.Option {
 			),
 		),
 		fx.Invoke(
-			registerStartupLog,
+			registerLifecycleLog,
 			fx.Annotate(
 				registerHTTPServerLifecycle,
 				fx.ParamTags("", "", `name:"router_base"`),
@@ -203,7 +203,7 @@ func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {
 	return baseRouter
 }
 
-func registerStartupLog(
+func registerLifecycleLog(
 	lc fx.Lifecycle,
 	sugar *zap.SugaredLogger,
 	cfg *config.ServerConfig,
@@ -235,6 +235,10 @@ func registerStartupLog(
 			"audit_file", cfg.Audit.File,
 			"audit_url", cfg.Audit.URL,
 		)
+	}))
+
+	lc.Append(fx.StopHook(func() {
+		sugar.Infow("stopping server")
 	}))
 }
 

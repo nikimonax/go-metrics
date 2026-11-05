@@ -246,6 +246,10 @@ func registerLifecycleHooks(
 			)
 			return nil
 		},
+		OnStop: func(_ context.Context) error {
+			sugar.Infow("stopping agent")
+			return nil
+		},
 	})
 	lc.Append(fx.Hook{
 		OnStart: pool.Start,
