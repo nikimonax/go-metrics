@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,20 +15,22 @@ import (
 )
 
 type Options struct {
-	BaseURL            string `env:"ADDRESS"`
-	APIVersion         uint   `env:"API"`
-	RateLimit          uint64 `env:"RATE_LIMIT"`
-	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"`
-	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL"`
-	HashingKey         string `env:"KEY"`
-	CryptoKey          string `env:"CRYPTO_KEY"`
+	Address            string `env:"ADDRESS" json:"address"`
+	APIVersion         uint   `env:"API" json:"api_version"`
+	RateLimit          uint64 `env:"RATE_LIMIT" json:"rate_limit"`
+	PollIntervalSecs   uint64 `env:"POLL_INTERVAL" json:"poll_interval"`
+	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL" json:"report_interval"`
+	HashingKey         string `env:"KEY" json:"hashing_key"`
+	CryptoKey          string `env:"CRYPTO_KEY" json:"crypto_key"`
+
+	ConfigPath string `env:"CONFIG" json:"-"`
 }
 
 func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
 	cfg := config.NewDefaultConfig()
 
-	if opts.BaseURL != "" {
-		rawURL := opts.BaseURL
+	if opts.Address != "" {
+		rawURL := opts.Address
 
 		hasScheme := false
 		hasScheme = hasScheme || strings.HasPrefix(rawURL, "http://")
@@ -74,8 +77,8 @@ func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
 }
 
 func (opts *Options) Merge(other *Options) {
-	if other.BaseURL != "" {
-		opts.BaseURL = other.BaseURL
+	if other.Address != "" {
+		opts.Address = other.Address
 	}
 
 	if other.APIVersion > 0 {
@@ -101,6 +104,10 @@ func (opts *Options) Merge(other *Options) {
 	if other.CryptoKey != "" {
 		opts.CryptoKey = other.CryptoKey
 	}
+
+	if other.ConfigPath != "" {
+		opts.ConfigPath = other.ConfigPath
+	}
 }
 
 func ReadEnvOptions() (*Options, error) {
@@ -118,10 +125,10 @@ func ReadCliOptions() (*Options, error) {
 
 	cmd := flagextra.NewFlagSet()
 	cmd.StringVar(
-		&opts.BaseURL,
+		&opts.Address,
 		"a",
 		"",
-		"metrics server base url",
+		"metrics server address",
 	)
 	cmd.UintVar(
 		&opts.APIVersion,
@@ -159,8 +166,36 @@ func ReadCliOptions() (*Options, error) {
 		"",
 		"public key file path to encrypt requests",
 	)
+	cmd.StringVar(
+		&opts.ConfigPath,
+		"config",
+		"",
+		"config file path",
+	)
+	cmd.StringVar(
+		&opts.ConfigPath,
+		"c",
+		"",
+		"config file path",
+	)
 
 	if err := cmd.Parse(os.Args[1:]); err != nil {
+		return nil, err
+	}
+
+	return &opts, nil
+}
+
+func ReadFileOptions(filePath string) (*Options, error) {
+	var opts Options
+
+	content, err := os.ReadFile(filePath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(content, &opts); err != nil {
 		return nil, err
 	}
 
@@ -180,8 +215,20 @@ func ReadOptions() (*Options, error) {
 		return nil, err
 	}
 
-	// приоритет: env -> cli -> default
-	optionsFromCli.Merge(optionsFromEnv)
+	// priority: env -> cli -> file
+	var opts = optionsFromCli
+	opts.Merge(optionsFromEnv)
 
-	return optionsFromCli, nil
+	if opts.ConfigPath != "" {
+		optionsFromFile, err := ReadFileOptions(opts.ConfigPath)
+
+		if err != nil {
+			return nil, err
+		}
+
+		optionsFromFile.Merge(opts)
+		opts = optionsFromFile
+	}
+
+	return opts, nil
 }
