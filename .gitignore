@@ -8,8 +8,10 @@ cmd/server/server
 bin
 out
 
-metrics.json
 .env
+
+metrics.json
+audit.json
 
 private_key.pem
 public_key.pem
