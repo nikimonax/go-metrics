@@ -15,13 +15,13 @@ import (
 )
 
 type Options struct {
-	Address            string `env:"ADDRESS" json:"address"`
-	APIVersion         uint   `env:"API" json:"api_version"`
-	RateLimit          uint64 `env:"RATE_LIMIT" json:"rate_limit"`
-	PollIntervalSecs   uint64 `env:"POLL_INTERVAL" json:"poll_interval"`
+	Address            string `env:"ADDRESS"         json:"address"`
+	APIVersion         uint   `env:"API"             json:"api_version"`
+	RateLimit          uint64 `env:"RATE_LIMIT"      json:"rate_limit"`
+	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"   json:"poll_interval"`
 	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL" json:"report_interval"`
-	HashingKey         string `env:"KEY" json:"hashing_key"`
-	CryptoKey          string `env:"CRYPTO_KEY" json:"crypto_key"`
+	HashingKey         string `env:"KEY"             json:"hashing_key"`
+	CryptoKey          string `env:"CRYPTO_KEY"      json:"crypto_key"`
 
 	ConfigPath string `env:"CONFIG" json:"-"`
 }

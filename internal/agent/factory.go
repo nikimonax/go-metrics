@@ -101,7 +101,11 @@ func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 	transport := http.DefaultTransport
 
 	if cfg.APIVersion > 1 {
-		newTransport, err := httpextra.NewCompressRoundTripper(transport, "gzip", config.CompressLevel)
+		newTransport, err := httpextra.NewCompressRoundTripper(
+			transport,
+			"gzip",
+			config.CompressLevel,
+		)
 
 		if err != nil {
 			return nil, err
