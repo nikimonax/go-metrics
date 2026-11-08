@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"os"
 	"time"
 
@@ -269,8 +268,6 @@ func ReadOptions() (*Options, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		fmt.Printf("%+v\n", optionsFromFile)
 
 		optionsFromFile.Merge(opts)
 		opts = optionsFromFile
