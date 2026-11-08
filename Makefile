@@ -91,7 +91,7 @@ cover: $(COV_FILE)
 .PHONY: cover-html
 cover-html: $(COV_FILE_HTML)
 
-.PHONY: openapi
+.PHONY: swagger
 swagger: $(DOCS_DIR)/swagger.yaml $(DOCS_DIR)/swagger.json
 
 .PHONY: autotest
