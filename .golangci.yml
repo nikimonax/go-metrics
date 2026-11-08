@@ -71,6 +71,9 @@ formatters:
     goimports:
       local-prefixes:
         - github.com/nikimonax/go-metrics
+  exclusions:
+    paths:
+      - tools/go-autotests/
 
 run:
   timeout: 1m
