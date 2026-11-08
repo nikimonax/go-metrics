@@ -13,5 +13,8 @@ out
 metrics.json
 audit.json
 
+agent.config.json
+server.config.json
+
 private_key.pem
 public_key.pem

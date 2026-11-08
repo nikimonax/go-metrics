@@ -2,11 +2,11 @@
     "address": "localhost:8080",
 	"profile": false,
 	"database_dsn": "",
-	"hashing_key": "qwerty123",
-	"crypto_key": "private_key.pem",
+	"hashing_key": "",
+	"crypto_key": "",
 	"store_file": "./metrics.json",
-	"store_interval": 5,
-	"restore": true,
-	"audit_file": "./audit.json",
+	"store_interval": 300,
+	"restore": false,
+	"audit_file": "",
 	"audit_url": ""
 }
