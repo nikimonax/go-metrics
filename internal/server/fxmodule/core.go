@@ -210,6 +210,11 @@ func registerLifecycleLog(
 	sugar *zap.SugaredLogger,
 	cfg *config.ServerConfig,
 ) {
+	var hasDatabaseDSN bool
+	if cfg.Database.DSN != "" {
+		hasDatabaseDSN = true
+	}
+
 	var hasSecretKey bool
 	if cfg.Security.HashingKey != "" {
 		hasSecretKey = true
@@ -228,7 +233,7 @@ func registerLifecycleLog(
 			"starting server",
 			"listen", cfg.Listen,
 			"profile", cfg.Profile,
-			"database", cfg.Database.DSN,
+			"has_database", hasDatabaseDSN,
 			"has_secret", hasSecretKey,
 			"has_crypto", hasCryptoKey,
 			"dump_file", cfg.Dump.File,
