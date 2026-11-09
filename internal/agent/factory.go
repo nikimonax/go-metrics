@@ -28,8 +28,8 @@ type Agent struct {
 	app *fx.App
 }
 
-func (agent *Agent) Run() {
-	agent.app.Run()
+func (agent *Agent) Run(ctx context.Context) error {
+	return fxutil.RunWithContext(ctx, agent.app)
 }
 
 func New(cfg *config.AgentConfig) (*Agent, error) {
@@ -66,7 +66,6 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			usecase.NewSendMetricsUseCase,
 		),
 		fx.Invoke(
-			fxutil.RegisterQuitSignalHandler,
 			registerCollectMetricsTask,
 			registerSendMetricsTask,
 			registerLifecycleHooks,
