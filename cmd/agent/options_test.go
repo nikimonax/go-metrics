@@ -198,8 +198,9 @@ func TestAgentOptionsMerge(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			opts := tc.base
-			opts.Merge(&tc.other)
+			err := opts.Merge(&tc.other)
 
+			require.NoError(t, err)
 			assert.Equal(t, tc.want, opts)
 		})
 	}

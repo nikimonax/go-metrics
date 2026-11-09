@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"dario.cat/mergo"
 	"github.com/caarlos0/env/v6"
 
 	"github.com/nikimonax/go-metrics/internal/lib/flagextra"
@@ -73,50 +74,8 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 	return &cfg
 }
 
-func (opts *Options) Merge(other *Options) {
-	if other.Address != "" {
-		opts.Address = other.Address
-	}
-
-	if other.Profile != nil {
-		opts.Profile = other.Profile
-	}
-
-	if other.DatabaseDSN != "" {
-		opts.DatabaseDSN = other.DatabaseDSN
-	}
-
-	if other.HashingKey != "" {
-		opts.HashingKey = other.HashingKey
-	}
-
-	if other.CryptoKey != "" {
-		opts.CryptoKey = other.CryptoKey
-	}
-
-	if other.DumpFile != "" {
-		opts.DumpFile = other.DumpFile
-	}
-
-	if other.DumpInterval != nil {
-		opts.DumpInterval = other.DumpInterval
-	}
-
-	if other.DumpRestore != nil {
-		opts.DumpRestore = other.DumpRestore
-	}
-
-	if other.AuditFile != "" {
-		opts.AuditFile = other.AuditFile
-	}
-
-	if other.AuditURL != "" {
-		opts.AuditURL = other.AuditURL
-	}
-
-	if other.ConfigPath != "" {
-		opts.ConfigPath = other.ConfigPath
-	}
+func (opts *Options) Merge(other *Options) error {
+	return mergo.Merge(opts, other, mergo.WithOverride)
 }
 
 func ReadEnvOptions() (*Options, error) {
@@ -260,7 +219,10 @@ func ReadOptions() (*Options, error) {
 
 	// priority: env -> cli -> file
 	var opts = optionsFromCli
-	opts.Merge(optionsFromEnv)
+
+	if err := opts.Merge(optionsFromEnv); err != nil {
+		return nil, err
+	}
 
 	if opts.ConfigPath != "" {
 		optionsFromFile, err := ReadFileOptions(opts.ConfigPath)
@@ -269,7 +231,10 @@ func ReadOptions() (*Options, error) {
 			return nil, err
 		}
 
-		optionsFromFile.Merge(opts)
+		if err := optionsFromFile.Merge(opts); err != nil {
+			return nil, err
+		}
+
 		opts = optionsFromFile
 	}
 
