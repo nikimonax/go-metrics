@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os/signal"
+	"syscall"
 
 	"github.com/nikimonax/go-metrics/internal/agent"
 )
@@ -25,5 +28,15 @@ func main() {
 		log.Fatalf("failed create agent: %s", err)
 	}
 
-	agent.Run()
+	runCtx, cancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+	defer cancel()
+
+	if err := agent.Run(runCtx); err != nil {
+		log.Fatalf("failed run agent: %s", err)
+	}
 }

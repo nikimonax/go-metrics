@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os/signal"
+	"syscall"
 
 	"github.com/nikimonax/go-metrics/internal/server"
 )
@@ -26,5 +29,15 @@ func main() {
 		log.Fatalf("failed create server: %s", err)
 	}
 
-	server.Run()
+	runCtx, cancel := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+	defer cancel()
+
+	if err := server.Run(runCtx); err != nil {
+		log.Fatalf("failed run server: %s", err)
+	}
 }

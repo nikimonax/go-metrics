@@ -42,7 +42,11 @@ type MetricsPresenter struct {
 }
 
 // Render implements [server.MetricsPresenter].
-func (presenter *MetricsPresenter) Render(w http.ResponseWriter, metrics []domain.Metric, code int) {
+func (presenter *MetricsPresenter) Render(
+	w http.ResponseWriter,
+	metrics []domain.Metric,
+	code int,
+) {
 	presenter.Called(w, metrics, code)
 }
 

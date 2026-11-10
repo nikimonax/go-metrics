@@ -47,7 +47,9 @@ func (cfg AgentConfig) Validate() error {
 
 	maxAPIVersion := gateway.GetMaxAPIVersion()
 	if cfg.APIVersion == 0 || cfg.APIVersion > maxAPIVersion {
-		return config.NewErrInvalidConfig("required 'APIVersion' equals 1-" + fmt.Sprint(maxAPIVersion))
+		return config.NewErrInvalidConfig(
+			"required 'APIVersion' equals 1-" + fmt.Sprint(maxAPIVersion),
+		)
 	}
 
 	if cfg.RateLimit < 0 {

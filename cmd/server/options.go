@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 	"time"
 
+	"dario.cat/mergo"
 	"github.com/caarlos0/env/v6"
 
 	"github.com/nikimonax/go-metrics/internal/lib/flagextra"
@@ -12,22 +14,25 @@ import (
 )
 
 type Options struct {
-	Listen       string `env:"ADDRESS"`
-	Profile      *bool  `env:"PROFILE"`
-	DatabaseDSN  string `env:"DATABASE_DSN"`
-	HashingKey   string `env:"KEY"`
-	DumpFile     string `env:"FILE_STORAGE_PATH"`
-	DumpInterval int64  `env:"STORE_INTERVAL" envDefault:"-1"`
-	DumpRestore  *bool  `env:"RESTORE"`
-	AuditFile    string `env:"AUDIT_FILE"`
-	AuditURL     string `env:"AUDIT_URL"`
+	Address      string  `env:"ADDRESS"           json:"address"`
+	Profile      *bool   `env:"PROFILE"           json:"profile"`
+	DatabaseDSN  string  `env:"DATABASE_DSN"      json:"database_dsn"`
+	HashingKey   string  `env:"KEY"               json:"hashing_key"`
+	CryptoKey    string  `env:"CRYPTO_KEY"        json:"crypto_key"`
+	DumpFile     string  `env:"FILE_STORAGE_PATH" json:"store_file"`
+	DumpInterval *uint64 `env:"STORE_INTERVAL"    json:"store_interval"`
+	DumpRestore  *bool   `env:"RESTORE"           json:"restore"`
+	AuditFile    string  `env:"AUDIT_FILE"        json:"audit_file"`
+	AuditURL     string  `env:"AUDIT_URL"         json:"audit_url"`
+
+	ConfigPath string `env:"CONFIG" json:"-"`
 }
 
 func (opts *Options) ToServerConfig() *config.ServerConfig {
 	cfg := config.NewDefaultConfig()
 
-	if opts.Listen != "" {
-		cfg.Listen = opts.Listen
+	if opts.Address != "" {
+		cfg.Listen = opts.Address
 	}
 
 	if opts.Profile != nil && *opts.Profile {
@@ -42,12 +47,16 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 		cfg.Security.HashingKey = opts.HashingKey
 	}
 
+	if opts.CryptoKey != "" {
+		cfg.Security.CryptoKeyFile = opts.CryptoKey
+	}
+
 	if opts.DumpFile != "" {
 		cfg.Dump.File = opts.DumpFile
 	}
 
-	if opts.DumpInterval >= 0 {
-		cfg.Dump.Interval = time.Duration(opts.DumpInterval) * time.Second
+	if opts.DumpInterval != nil {
+		cfg.Dump.Interval = time.Duration(*opts.DumpInterval) * time.Second
 	}
 
 	if opts.DumpRestore != nil && *opts.DumpRestore {
@@ -65,42 +74,8 @@ func (opts *Options) ToServerConfig() *config.ServerConfig {
 	return &cfg
 }
 
-func (opts *Options) Merge(other *Options) {
-	if other.Listen != "" {
-		opts.Listen = other.Listen
-	}
-
-	if other.Profile != nil {
-		opts.Profile = other.Profile
-	}
-
-	if other.DatabaseDSN != "" {
-		opts.DatabaseDSN = other.DatabaseDSN
-	}
-
-	if other.HashingKey != "" {
-		opts.HashingKey = other.HashingKey
-	}
-
-	if other.DumpFile != "" {
-		opts.DumpFile = other.DumpFile
-	}
-
-	if other.DumpInterval >= 0 {
-		opts.DumpInterval = other.DumpInterval
-	}
-
-	if other.DumpRestore != nil {
-		opts.DumpRestore = other.DumpRestore
-	}
-
-	if other.AuditFile != "" {
-		opts.AuditFile = other.AuditFile
-	}
-
-	if other.AuditURL != "" {
-		opts.AuditURL = other.AuditURL
-	}
+func (opts *Options) Merge(other *Options) error {
+	return mergo.Merge(opts, other, mergo.WithOverride)
 }
 
 func ReadEnvOptions() (*Options, error) {
@@ -117,13 +92,14 @@ func ReadCliOptions() (*Options, error) {
 	var (
 		opts Options
 
-		dumpRestore bool
-		profile     bool
+		dumpInterval uint64
+		dumpRestore  bool
+		profile      bool
 	)
 
 	cmd := flagextra.NewFlagSet()
 	cmd.StringVar(
-		&opts.Listen,
+		&opts.Address,
 		"a",
 		"",
 		"host and port to listen",
@@ -141,15 +117,21 @@ func ReadCliOptions() (*Options, error) {
 		"secret key to verify requests and calculate response hash",
 	)
 	cmd.StringVar(
+		&opts.CryptoKey,
+		"crypto-key",
+		"",
+		"private key file path to decrypt requests",
+	)
+	cmd.StringVar(
 		&opts.DumpFile,
 		"f",
 		"",
 		"file path to dump metrics",
 	)
-	cmd.Int64Var(
-		&opts.DumpInterval,
+	cmd.Uint64Var(
+		&dumpInterval,
 		"i",
-		-1,
+		0,
 		"time interval to dump metrics",
 	)
 	cmd.BoolVar(
@@ -176,6 +158,18 @@ func ReadCliOptions() (*Options, error) {
 		false,
 		"enable profiling",
 	)
+	cmd.StringVar(
+		&opts.ConfigPath,
+		"config",
+		"",
+		"config file path",
+	)
+	cmd.StringVar(
+		&opts.ConfigPath,
+		"c",
+		"",
+		"config file path",
+	)
 
 	if err := cmd.Parse(os.Args[1:]); err != nil {
 		return nil, err
@@ -183,12 +177,29 @@ func ReadCliOptions() (*Options, error) {
 
 	cmd.Visit(func(f *flag.Flag) {
 		switch f.Name {
+		case "i":
+			opts.DumpInterval = &dumpInterval
 		case "r":
 			opts.DumpRestore = &dumpRestore
 		case "pprof":
 			opts.Profile = &profile
 		}
 	})
+
+	return &opts, nil
+}
+func ReadFileOptions(filePath string) (*Options, error) {
+	var opts Options
+
+	content, err := os.ReadFile(filePath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(content, &opts); err != nil {
+		return nil, err
+	}
 
 	return &opts, nil
 }
@@ -206,8 +217,26 @@ func ReadOptions() (*Options, error) {
 		return nil, err
 	}
 
-	// priority: env -> cli -> default
-	optionsFromCli.Merge(optionsFromEnv)
+	// priority: env -> cli -> file
+	var opts = optionsFromCli
 
-	return optionsFromCli, nil
+	if err := opts.Merge(optionsFromEnv); err != nil {
+		return nil, err
+	}
+
+	if opts.ConfigPath != "" {
+		optionsFromFile, err := ReadFileOptions(opts.ConfigPath)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if err := optionsFromFile.Merge(opts); err != nil {
+			return nil, err
+		}
+
+		opts = optionsFromFile
+	}
+
+	return opts, nil
 }

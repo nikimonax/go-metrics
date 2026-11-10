@@ -3,6 +3,8 @@ module github.com/nikimonax/go-metrics
 go 1.26.4
 
 require (
+	dario.cat/mergo v1.0.2
+	github.com/ProtonMail/gopenpgp/v3 v3.5.2
 	github.com/caarlos0/env/v6 v6.10.1
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-playground/locales v0.14.1
@@ -31,6 +33,8 @@ require (
 require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
+	github.com/ProtonMail/go-crypto v1.5.2 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/ebitengine/purego v0.10.2 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
