@@ -30,6 +30,9 @@ const (
 
 // some shared config re-exports
 var (
+	ErrInvalidConfig    = config.ErrInvalidConfig
+	NewErrInvalidConfig = config.NewErrInvalidConfig
+
 	NewWorkerConfig    = config.NewDefaultWorkerConfig
 	NewLifecycleConfig = config.NewDefaultLifecycleConfig
 	NewSchedulerConfig = config.NewDefaultSchedulerConfig
@@ -74,35 +77,35 @@ func (cfg AgentConfig) Validate() error {
 	var errs error
 
 	if cfg.BaseURL == nil {
-		err := config.NewErrInvalidConfig("required non-nil 'BaseURL'")
+		err := NewErrInvalidConfig("required non-nil 'BaseURL'")
 		errs = errors.Join(errs, err)
 	}
 
 	if cfg.SourceIP != "" && net.ParseIP(cfg.SourceIP) == nil {
-		err := config.NewErrInvalidConfig("invalid 'SourceIP' address")
+		err := NewErrInvalidConfig("invalid 'SourceIP' address")
 		errs = errors.Join(errs, err)
 	}
 
 	maxAPIVersion := gateway.GetMaxAPIVersion()
 	if cfg.APIVersion == 0 || cfg.APIVersion > maxAPIVersion {
-		err := config.NewErrInvalidConfig(
+		err := NewErrInvalidConfig(
 			"required 'APIVersion' equals 1-" + fmt.Sprint(maxAPIVersion),
 		)
 		errs = errors.Join(errs, err)
 	}
 
 	if cfg.RateLimit < 0 {
-		err := config.NewErrInvalidConfig("required 'RateLimit' greater or equals 0")
+		err := NewErrInvalidConfig("required 'RateLimit' greater or equals 0")
 		errs = errors.Join(errs, err)
 	}
 
 	if cfg.PollInterval <= 0 {
-		err := config.NewErrInvalidConfig("required 'PollInterval' greater than 0")
+		err := NewErrInvalidConfig("required 'PollInterval' greater than 0")
 		errs = errors.Join(errs, err)
 	}
 
 	if cfg.ReportInterval <= 0 {
-		err := config.NewErrInvalidConfig("required 'ReportInterval' greater than 0")
+		err := NewErrInvalidConfig("required 'ReportInterval' greater than 0")
 		errs = errors.Join(errs, err)
 	}
 
