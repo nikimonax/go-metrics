@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"time"
 
@@ -110,13 +111,14 @@ func (cfg AuditConfig) Validate() error {
 }
 
 type ServerConfig struct {
-	Listen   string
-	Profile  bool
-	Database DatabaseConfig
-	Security config.SecurityConfig
-	Log      LogConfig
-	Dump     DumpConfig
-	Audit    AuditConfig
+	Listen        string
+	TrustedSubnet string
+	Profile       bool
+	Database      DatabaseConfig
+	Security      config.SecurityConfig
+	Log           LogConfig
+	Dump          DumpConfig
+	Audit         AuditConfig
 }
 
 func (cfg ServerConfig) Validate() error {
@@ -124,6 +126,11 @@ func (cfg ServerConfig) Validate() error {
 
 	if cfg.Listen == "" {
 		errs = config.NewErrInvalidConfig("required 'Listen'")
+	}
+
+	if cfg.TrustedSubnet != "" {
+		_, err := netip.ParsePrefix(cfg.TrustedSubnet)
+		errs = errors.Join(errs, err)
 	}
 
 	return errors.Join(
