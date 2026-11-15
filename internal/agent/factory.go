@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/nikimonax/go-metrics/internal/agent/config"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
@@ -142,6 +143,22 @@ func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 
 	if cfg.RateLimit > 0 {
 		transport = httpextra.NewRateLimitRoundTripper(transport, cfg.RateLimit)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	sourceIP, err := cfg.GetSourceIPWithFallback(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if sourceIP != "" {
+		transport = httpextra.NewExtraHeadersRoundTripper(
+			transport,
+			map[string]string{config.SourceIPHeader: sourceIP},
+		)
 	}
 
 	return transport, nil
