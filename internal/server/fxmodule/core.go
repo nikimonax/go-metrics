@@ -188,7 +188,10 @@ func providerMiddlewareCompress() httpextra.Middleware {
 	return compressor.Handler
 }
 
-func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {
+func providerBaseRouter(
+	cfg *config.ServerConfig,
+	hasher *httpsec.Hasher,
+) (chi.Router, error) {
 	baseRouter := chi.NewRouter()
 
 	baseRouter.Use(
@@ -196,11 +199,21 @@ func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {
 		middleware.ClientIPFromHeader(config.SourceIPHeader),
 	)
 
+	if cfg.TrustedSubnet != "" {
+		allowIPsMiddleware, err := middleware.AllowIPs(cfg.TrustedSubnet)
+
+		if err != nil {
+			return nil, err
+		}
+
+		baseRouter.Use(allowIPsMiddleware)
+	}
+
 	if hasher != nil {
 		baseRouter.Use(hasher.CalculateMiddleware())
 	}
 
-	return baseRouter
+	return baseRouter, nil
 }
 
 func registerLifecycleLog(
@@ -230,6 +243,7 @@ func registerLifecycleLog(
 		sugar.Infow(
 			"starting server",
 			"listen", cfg.Listen,
+			"trusted_subnet", cfg.TrustedSubnet,
 			"profile", cfg.Profile,
 			"has_database", hasDatabaseDSN,
 			"has_secret", hasSecretKey,
