@@ -17,6 +17,7 @@ import (
 
 type Options struct {
 	Address            string `env:"ADDRESS"         json:"address"`
+	SourceIP           string `env:"SOURCE_IP"       json:"source_ip"`
 	APIVersion         uint   `env:"API"             json:"api_version"`
 	RateLimit          uint64 `env:"RATE_LIMIT"      json:"rate_limit"`
 	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"   json:"poll_interval"`
@@ -52,6 +53,10 @@ func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
 
 	if opts.APIVersion > 0 {
 		cfg.APIVersion = opts.APIVersion
+	}
+
+	if opts.SourceIP != "" {
+		cfg.SourceIP = opts.SourceIP
 	}
 
 	if opts.RateLimit > 0 {
@@ -100,6 +105,12 @@ func ReadCliOptions() (*Options, error) {
 		"a",
 		"",
 		"metrics server address",
+	)
+	cmd.StringVar(
+		&opts.SourceIP,
+		"source-ip",
+		"",
+		"source ip of agent",
 	)
 	cmd.UintVar(
 		&opts.APIVersion,

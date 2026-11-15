@@ -2,14 +2,18 @@ package config
 
 import (
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/nikimonax/go-metrics/internal/impl/gateway"
+	"github.com/nikimonax/go-metrics/internal/lib/netutil"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/shared/config"
 )
@@ -20,7 +24,8 @@ const (
 	DefaultPollInterval   = 2 * time.Second
 	DefaultReportInterval = 10 * time.Second
 
-	CompressLevel = gzip.BestSpeed
+	SourceIPHeader = "X-Real-IP"
+	CompressLevel  = gzip.BestSpeed
 )
 
 // some shared config re-exports
@@ -32,12 +37,37 @@ var (
 
 type AgentConfig struct {
 	BaseURL        *url.URL
+	SourceIP       string
 	APIVersion     uint
 	RateLimit      int64
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	Backoff        config.BackoffConfig
 	Security       config.SecurityConfig
+}
+
+func (cfg *AgentConfig) GetSourceIPWithFallback(ctx context.Context) (string, error) {
+	if cfg.SourceIP != "" {
+		return cfg.SourceIP, nil
+	}
+
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, cfg.BaseURL.Hostname())
+
+	if err != nil {
+		return "", err
+	}
+
+	sourceIP, err := netutil.GetSourceIPFor(addrs[0].IP)
+
+	if err != nil {
+		if errors.Is(err, netutil.ErrExternalTarget) {
+			return "", nil
+		}
+
+		return "", err
+	}
+
+	return sourceIP.String(), nil
 }
 
 func (cfg AgentConfig) Validate() error {
