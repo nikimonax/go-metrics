@@ -71,30 +71,42 @@ func (cfg *AgentConfig) GetSourceIPWithFallback(ctx context.Context) (string, er
 }
 
 func (cfg AgentConfig) Validate() error {
+	var errs error
+
 	if cfg.BaseURL == nil {
-		return config.NewErrInvalidConfig("required non-nil 'BaseURL'")
+		err := config.NewErrInvalidConfig("required non-nil 'BaseURL'")
+		errs = errors.Join(errs, err)
+	}
+
+	if cfg.SourceIP != "" && net.ParseIP(cfg.SourceIP) == nil {
+		err := config.NewErrInvalidConfig("invalid 'SourceIP' address")
+		errs = errors.Join(errs, err)
 	}
 
 	maxAPIVersion := gateway.GetMaxAPIVersion()
 	if cfg.APIVersion == 0 || cfg.APIVersion > maxAPIVersion {
-		return config.NewErrInvalidConfig(
+		err := config.NewErrInvalidConfig(
 			"required 'APIVersion' equals 1-" + fmt.Sprint(maxAPIVersion),
 		)
+		errs = errors.Join(errs, err)
 	}
 
 	if cfg.RateLimit < 0 {
-		return config.NewErrInvalidConfig("required 'RateLimit' greater or equals 0")
+		err := config.NewErrInvalidConfig("required 'RateLimit' greater or equals 0")
+		errs = errors.Join(errs, err)
 	}
 
 	if cfg.PollInterval <= 0 {
-		return config.NewErrInvalidConfig("required 'PollInterval' greater than 0")
+		err := config.NewErrInvalidConfig("required 'PollInterval' greater than 0")
+		errs = errors.Join(errs, err)
 	}
 
 	if cfg.ReportInterval <= 0 {
-		return config.NewErrInvalidConfig("required 'ReportInterval' greater than 0")
+		err := config.NewErrInvalidConfig("required 'ReportInterval' greater than 0")
+		errs = errors.Join(errs, err)
 	}
 
-	return nil
+	return errs
 }
 
 func NewDefaultConfig() AgentConfig {
