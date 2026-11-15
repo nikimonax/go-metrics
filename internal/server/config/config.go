@@ -19,6 +19,8 @@ const (
 	DefaultDumpFile        = "metrics.json"
 	DefaultDumpInterval    = 300 * time.Second
 	DefaultDumpRestore     = false
+
+	SourceIPHeader = config.SourceIPHeader
 )
 
 // some shared config re-exports

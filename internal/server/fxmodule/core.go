@@ -193,7 +193,7 @@ func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {
 
 	baseRouter.Use(
 		middleware.CleanPath,
-		middleware.ClientIPFromRemoteAddr,
+		middleware.ClientIPFromHeader(config.SourceIPHeader),
 	)
 
 	if hasher != nil {
