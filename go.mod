@@ -27,6 +27,8 @@ require (
 	go.uber.org/zap v1.28.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/tools v0.52.0
+	google.golang.org/grpc v1.74.2
+	google.golang.org/protobuf v1.36.7
 	honnef.co/go/tools v0.8.2
 )
 
@@ -71,6 +73,7 @@ require (
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

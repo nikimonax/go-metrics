@@ -34,6 +34,13 @@ var (
 	NewSchedulerConfig = config.NewDefaultSchedulerConfig
 )
 
+type ServerType string
+
+const (
+	GRPCServer ServerType = "grpc"
+	HTTPServer ServerType = "http"
+)
+
 type DatabaseConfig struct {
 	DSN     string
 	Migrate bool
@@ -115,6 +122,7 @@ func (cfg AuditConfig) Validate() error {
 
 type ServerConfig struct {
 	Listen        string
+	ServerType    ServerType
 	TrustedSubnet string
 	Profile       bool
 	Database      DatabaseConfig
@@ -129,6 +137,15 @@ func (cfg ServerConfig) Validate() error {
 
 	if cfg.Listen == "" {
 		errs = NewErrInvalidConfig("required 'Listen'")
+	}
+
+	if cfg.ServerType != HTTPServer && cfg.ServerType != GRPCServer {
+		msg := fmt.Sprintf(
+			"invalid 'ServerType', expected 'http' or 'grpc', but got '%s'",
+			cfg.ServerType,
+		)
+		err := NewErrInvalidConfig(msg)
+		errs = errors.Join(errs, err)
 	}
 
 	if cfg.TrustedSubnet != "" {
@@ -153,7 +170,8 @@ func (cfg ServerConfig) Validate() error {
 
 func NewDefaultConfig() ServerConfig {
 	return ServerConfig{
-		Listen: DefaultListen,
+		Listen:     DefaultListen,
+		ServerType: HTTPServer,
 		Database: DatabaseConfig{
 			Migrate: DefaultDatabaseMigrate,
 			Backoff: config.NewDefaultBackoffConfig(),

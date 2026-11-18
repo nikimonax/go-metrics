@@ -5,16 +5,11 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
-	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
 )
 
-func ProfileModule(cfg *config.ServerConfig) fx.Option {
-	if !cfg.Profile {
-		return fx.Options()
-	}
-
+func ProfileModule() fx.Option {
 	return fx.Module(
 		"profile",
 		fx.Invoke(
