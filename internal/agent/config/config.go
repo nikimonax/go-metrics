@@ -40,6 +40,7 @@ var (
 
 type AgentConfig struct {
 	BaseURL        *url.URL
+	GrpcMode       bool
 	SourceIP       string
 	APIVersion     uint
 	RateLimit      int64
