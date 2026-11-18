@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package metric;
+
+// MetricType задаёт тип метрики.
+enum MetricType {
+  METRIC_TYPE_GAUGE_UNSPECIFIED = 0;
+  METRIC_TYPE_COUNTER = 1;
+}
+
+// Metric определяет единичную метрику.
+message Metric {
+  // имя метрики
+  string id = 1;
+
+  // тип метрики
+  MetricType type = 2;
+        
+  // Поле delta для метрик-счётчиков.
+  int64 delta = 3;
+        
+  // Поле value для метрик-измерителей.
+  double value = 4;
+}
