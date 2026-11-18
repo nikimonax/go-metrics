@@ -153,6 +153,7 @@ func registerLifecycleLog(
 		fmt.Fprintf(os.Stderr, "Build commit: %s\n", metainfo.BuildCommit)
 		sugar.Infow(
 			"starting server",
+			"type", cfg.ServerType,
 			"listen", cfg.Listen,
 			"trusted_subnet", cfg.TrustedSubnet,
 			"profile", cfg.Profile,

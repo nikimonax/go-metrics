@@ -15,6 +15,7 @@ import (
 
 type Options struct {
 	Address       string  `env:"ADDRESS"           json:"address"`
+	GrpcMode      *bool   `env:"GRPC"              json:"grpc"`
 	TrustedSubnet string  `env:"TRUSTED_SUBNET"    json:"trusted_subnet"`
 	Profile       *bool   `env:"PROFILE"           json:"profile"`
 	DatabaseDSN   string  `env:"DATABASE_DSN"      json:"database_dsn"`
@@ -29,11 +30,15 @@ type Options struct {
 	ConfigPath string `env:"CONFIG" json:"-"`
 }
 
-func (opts *Options) ToServerConfig() *config.ServerConfig {
+func (opts *Options) ToServerConfig() *config.ServerConfig { // nolint:gocyclo
 	cfg := config.NewDefaultConfig()
 
 	if opts.Address != "" {
 		cfg.Listen = opts.Address
+	}
+
+	if opts.GrpcMode != nil && *opts.GrpcMode {
+		cfg.ServerType = config.GRPCServer
 	}
 
 	if opts.TrustedSubnet != "" {
@@ -100,6 +105,7 @@ func ReadCliOptions() (*Options, error) {
 		dumpInterval uint64
 		dumpRestore  bool
 		profile      bool
+		grpc         bool
 	)
 
 	cmd := flagextra.NewFlagSet()
@@ -108,6 +114,12 @@ func ReadCliOptions() (*Options, error) {
 		"a",
 		"",
 		"host and port to listen",
+	)
+	cmd.BoolVar(
+		&grpc,
+		"grpc",
+		false,
+		"use grpc server type",
 	)
 	cmd.StringVar(
 		&opts.TrustedSubnet,
@@ -194,6 +206,8 @@ func ReadCliOptions() (*Options, error) {
 			opts.DumpRestore = &dumpRestore
 		case "pprof":
 			opts.Profile = &profile
+		case "grpc":
+			opts.GrpcMode = &grpc
 		}
 	})
 

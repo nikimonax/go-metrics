@@ -6,14 +6,10 @@ import (
 
 	"go.uber.org/fx"
 	"google.golang.org/grpc"
-)
 
-func GrpcModule() fx.Option {
-	return fx.Module(
-		"grpc",
-		fx.Provide(provideGrpcServer),
-	)
-}
+	"github.com/nikimonax/go-metrics/internal/gen/metric"
+	"github.com/nikimonax/go-metrics/internal/server/handler"
+)
 
 type grpcServerAdapter struct {
 	wrapped *grpc.Server
@@ -32,8 +28,18 @@ func (adapter *grpcServerAdapter) Shutdown(_ context.Context) error {
 
 var _ server = (*grpcServerAdapter)(nil)
 
-func provideGrpcServer() server {
-	return &grpcServerAdapter{
-		wrapped: grpc.NewServer(),
-	}
+func GrpcModule() fx.Option {
+	return fx.Module(
+		"grpc",
+		fx.Provide(
+			handler.NewUpdateMetricsGrpcHandler,
+			provideGrpcServer,
+		),
+	)
+}
+
+func provideGrpcServer(h *handler.UpdateMetricsGrpcHandler) server {
+	s := grpc.NewServer()
+	metric.RegisterMetricsServer(s, h)
+	return &grpcServerAdapter{wrapped: s}
 }
