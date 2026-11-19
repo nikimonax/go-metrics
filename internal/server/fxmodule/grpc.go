@@ -13,6 +13,8 @@ import (
 	"github.com/nikimonax/go-metrics/internal/gen/metric"
 	"github.com/nikimonax/go-metrics/internal/impl/publisher"
 	"github.com/nikimonax/go-metrics/internal/lib/grpcextra"
+	"github.com/nikimonax/go-metrics/internal/lib/netutil"
+	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/interceptor"
 )
@@ -54,16 +56,34 @@ func provideClientIPFromGrpcProvider() publisher.ClientIPProvider {
 }
 
 func provideGrpcServer(
+	cfg *config.ServerConfig,
 	sugar *zap.SugaredLogger,
 	h *handler.UpdateMetricsGrpcHandler,
-) server {
-	s := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			logging.UnaryServerInterceptor(
-				grpcextra.InterceptorSugarLogger(sugar),
-			),
+) (server, error) {
+	interceptors := make([]grpc.UnaryServerInterceptor, 0)
+
+	if cfg.TrustedSubnet != "" {
+		prefixes, err := netutil.ParsePrefixes([]string{cfg.TrustedSubnet})
+
+		if err != nil {
+			return nil, err
+		}
+
+		interceptors = append(
+			interceptors,
+			interceptor.AllowIPs(prefixes),
+		)
+	}
+
+	interceptors = append(
+		interceptors,
+		logging.UnaryServerInterceptor(
+			grpcextra.InterceptorSugarLogger(sugar),
 		),
 	)
+
+	s := grpc.NewServer(grpc.ChainUnaryInterceptor(interceptors...))
+
 	metric.RegisterMetricsServer(s, h)
-	return &grpcServerAdapter{wrapped: s}
+	return &grpcServerAdapter{wrapped: s}, nil
 }

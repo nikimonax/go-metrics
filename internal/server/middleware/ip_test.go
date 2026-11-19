@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/nikimonax/go-metrics/internal/lib/netutil"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
 )
@@ -16,15 +17,15 @@ func TestAllowIPs(t *testing.T) {
 	newHandler := func(t *testing.T, allowed ...string) http.Handler {
 		t.Helper()
 
-		allowIPs, err := middleware.AllowIPs(allowed...)
+		prefixes, err := netutil.ParsePrefixes(allowed)
 		require.NoError(t, err)
 
-		next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		})
-
-		return middleware.ClientIPFromHeader(config.SourceIPHeader)(
-			allowIPs(next),
+		return middleware.ClientIPFromHeader(config.SourceIPKey)(
+			middleware.AllowIPs(prefixes)(
+				http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				}),
+			),
 		)
 	}
 
@@ -39,7 +40,7 @@ func TestAllowIPs(t *testing.T) {
 		)
 
 		if headerValue != "" {
-			req.Header.Set(config.SourceIPHeader, headerValue)
+			req.Header.Set(config.SourceIPKey, headerValue)
 		}
 
 		rec := httptest.NewRecorder()
@@ -136,13 +137,4 @@ func TestAllowIPs(t *testing.T) {
 			assert.Equal(t, tc.wantStatus, rec.Code)
 		})
 	}
-
-	t.Run("invalid entries return error", func(t *testing.T) {
-		mw, err := middleware.AllowIPs("not-an-ip", "192.168.0.0/24", "bad..entry")
-
-		require.Error(t, err)
-		assert.Nil(t, mw)
-		assert.ErrorContains(t, err, "invalid IP or CIDR: not-an-ip")
-		assert.ErrorContains(t, err, "invalid IP or CIDR: bad..entry")
-	})
 }

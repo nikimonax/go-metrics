@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
 	"net/netip"
 
@@ -11,31 +9,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 )
 
-func AllowIPs(allowed ...string) (httpextra.Middleware, error) {
-	var (
-		prefixes []netip.Prefix
-		errs     error
-	)
-
-	for _, entry := range allowed {
-		if prefix, err := netip.ParsePrefix(entry); err == nil {
-			prefixes = append(prefixes, prefix)
-			continue
-		}
-
-		if addr, err := netip.ParseAddr(entry); err == nil {
-			prefixes = append(prefixes, netip.PrefixFrom(addr, addr.BitLen()))
-			continue
-		}
-
-		err := fmt.Errorf("invalid IP or CIDR: %s", entry)
-		errs = errors.Join(errs, err)
-	}
-
-	if errs != nil {
-		return nil, errs
-	}
-
+func AllowIPs(prefixes []netip.Prefix) httpextra.Middleware {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			addr := middleware.GetClientIPAddr(r.Context())
@@ -57,5 +31,5 @@ func AllowIPs(allowed ...string) (httpextra.Middleware, error) {
 		}
 
 		return http.HandlerFunc(fn)
-	}, nil
+	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/compress"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
+	"github.com/nikimonax/go-metrics/internal/lib/netutil"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
@@ -93,17 +94,17 @@ func provideBaseRouter(
 
 	baseRouter.Use(
 		middleware.CleanPath,
-		middleware.ClientIPFromHeader(config.SourceIPHeader),
+		middleware.ClientIPFromHeader(config.SourceIPKey),
 	)
 
 	if cfg.TrustedSubnet != "" {
-		allowIPsMiddleware, err := middleware.AllowIPs(cfg.TrustedSubnet)
+		prefixes, err := netutil.ParsePrefixes([]string{cfg.TrustedSubnet})
 
 		if err != nil {
 			return nil, err
 		}
 
-		baseRouter.Use(allowIPsMiddleware)
+		baseRouter.Use(middleware.AllowIPs(prefixes))
 	}
 
 	if hasher != nil {
