@@ -1,4 +1,4 @@
-package interceptor
+package grpcextra
 
 import (
 	"context"
@@ -24,7 +24,7 @@ func mapLevel(lvl logging.Level) zapcore.Level {
 	}
 }
 
-func InterceptorLogger(sugar *zap.SugaredLogger) logging.Logger {
+func InterceptorSugarLogger(sugar *zap.SugaredLogger) logging.Logger {
 	fn := func(_ context.Context, lvl logging.Level, msg string, fields ...any) {
 		sugar.Logw(mapLevel(lvl), msg, fields...)
 	}

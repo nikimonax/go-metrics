@@ -12,6 +12,7 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/gen/metric"
 	"github.com/nikimonax/go-metrics/internal/impl/publisher"
+	"github.com/nikimonax/go-metrics/internal/lib/grpcextra"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/interceptor"
 )
@@ -59,7 +60,7 @@ func provideGrpcServer(
 	s := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			logging.UnaryServerInterceptor(
-				interceptor.InterceptorLogger(sugar),
+				grpcextra.InterceptorSugarLogger(sugar),
 			),
 		),
 	)
