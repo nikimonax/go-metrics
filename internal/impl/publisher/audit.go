@@ -10,13 +10,13 @@ import (
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 )
 
-type clientIPProvider = func(ctx context.Context) string
+type ClientIPProvider func(ctx context.Context) string
 
 type AuditEventHandler struct {
 	client    audit.Client
 	submitter work.Submitter
 	// client ip passed implicitly using context
-	getClientIP clientIPProvider
+	getClientIP ClientIPProvider
 }
 
 // Handle implements [EventHandler].
@@ -62,7 +62,7 @@ var _ EventHandler = (*AuditEventHandler)(nil)
 func NewAuditEventHandler(
 	client audit.Client,
 	submitter work.Submitter,
-	getClientIP clientIPProvider,
+	getClientIP ClientIPProvider,
 ) *AuditEventHandler {
 	return &AuditEventHandler{
 		client:      client,

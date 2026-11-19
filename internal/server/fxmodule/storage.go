@@ -3,9 +3,7 @@ package fxmodule
 import (
 	"database/sql"
 	"errors"
-	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -13,9 +11,7 @@ import (
 
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
-	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
-	"github.com/nikimonax/go-metrics/internal/server/handler"
 )
 
 func StorageModule(cfg *config.ServerConfig) fx.Option {
@@ -37,23 +33,10 @@ func StorageModule(cfg *config.ServerConfig) fx.Option {
 			provideDatabaseConfig,
 			provideDatabase,
 			providePostgresMetricRepository,
-			fx.Annotate(
-				handler.NewPingDatabaseHandler,
-				fx.ResultTags(`name:"handler_database_ping"`),
-				fx.As(new(http.Handler)),
-			),
 		),
 		fx.Invoke(
 			registerDatabaseClose,
 			registerDatabaseMigrate,
-			fx.Annotate(
-				registerDatabasePingHandler,
-				fx.ParamTags(
-					`name:"router_base"`,
-					`name:"middleware_logger"`,
-					`name:"handler_database_ping"`,
-				),
-			),
 		),
 	)
 }
@@ -114,12 +97,4 @@ func registerDatabaseMigrate(
 	}))
 
 	return nil
-}
-
-func registerDatabasePingHandler(
-	router chi.Router,
-	logger httpextra.Middleware,
-	pingHandler http.Handler,
-) {
-	router.With(logger).Get("/ping", pingHandler.ServeHTTP)
 }

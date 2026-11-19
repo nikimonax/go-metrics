@@ -14,25 +14,35 @@ import (
 )
 
 type Options struct {
-	Address      string  `env:"ADDRESS"           json:"address"`
-	Profile      *bool   `env:"PROFILE"           json:"profile"`
-	DatabaseDSN  string  `env:"DATABASE_DSN"      json:"database_dsn"`
-	HashingKey   string  `env:"KEY"               json:"hashing_key"`
-	CryptoKey    string  `env:"CRYPTO_KEY"        json:"crypto_key"`
-	DumpFile     string  `env:"FILE_STORAGE_PATH" json:"store_file"`
-	DumpInterval *uint64 `env:"STORE_INTERVAL"    json:"store_interval"`
-	DumpRestore  *bool   `env:"RESTORE"           json:"restore"`
-	AuditFile    string  `env:"AUDIT_FILE"        json:"audit_file"`
-	AuditURL     string  `env:"AUDIT_URL"         json:"audit_url"`
+	Address       string  `env:"ADDRESS"           json:"address"`
+	GrpcMode      *bool   `env:"GRPC"              json:"grpc"`
+	TrustedSubnet string  `env:"TRUSTED_SUBNET"    json:"trusted_subnet"`
+	Profile       *bool   `env:"PROFILE"           json:"profile"`
+	DatabaseDSN   string  `env:"DATABASE_DSN"      json:"database_dsn"`
+	HashingKey    string  `env:"KEY"               json:"hashing_key"`
+	CryptoKey     string  `env:"CRYPTO_KEY"        json:"crypto_key"`
+	DumpFile      string  `env:"FILE_STORAGE_PATH" json:"store_file"`
+	DumpInterval  *uint64 `env:"STORE_INTERVAL"    json:"store_interval"`
+	DumpRestore   *bool   `env:"RESTORE"           json:"restore"`
+	AuditFile     string  `env:"AUDIT_FILE"        json:"audit_file"`
+	AuditURL      string  `env:"AUDIT_URL"         json:"audit_url"`
 
 	ConfigPath string `env:"CONFIG" json:"-"`
 }
 
-func (opts *Options) ToServerConfig() *config.ServerConfig {
+func (opts *Options) ToServerConfig() *config.ServerConfig { // nolint:gocyclo
 	cfg := config.NewDefaultConfig()
 
 	if opts.Address != "" {
 		cfg.Listen = opts.Address
+	}
+
+	if opts.GrpcMode != nil && *opts.GrpcMode {
+		cfg.ServerType = config.GRPCServer
+	}
+
+	if opts.TrustedSubnet != "" {
+		cfg.TrustedSubnet = opts.TrustedSubnet
 	}
 
 	if opts.Profile != nil && *opts.Profile {
@@ -95,6 +105,7 @@ func ReadCliOptions() (*Options, error) {
 		dumpInterval uint64
 		dumpRestore  bool
 		profile      bool
+		grpc         bool
 	)
 
 	cmd := flagextra.NewFlagSet()
@@ -103,6 +114,18 @@ func ReadCliOptions() (*Options, error) {
 		"a",
 		"",
 		"host and port to listen",
+	)
+	cmd.BoolVar(
+		&grpc,
+		"grpc",
+		false,
+		"use grpc server type",
+	)
+	cmd.StringVar(
+		&opts.TrustedSubnet,
+		"t",
+		"",
+		"trusted subnet",
 	)
 	cmd.StringVar(
 		&opts.DatabaseDSN,
@@ -183,6 +206,8 @@ func ReadCliOptions() (*Options, error) {
 			opts.DumpRestore = &dumpRestore
 		case "pprof":
 			opts.Profile = &profile
+		case "grpc":
+			opts.GrpcMode = &grpc
 		}
 	})
 

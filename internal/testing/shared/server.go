@@ -8,11 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/nikimonax/go-metrics/internal/server"
 	"github.com/nikimonax/go-metrics/internal/server/config"
-	"github.com/nikimonax/go-metrics/internal/server/fxmodule"
 )
 
 type TB interface {
@@ -44,15 +43,8 @@ func NewTestServer(tb TB) (*url.URL, func()) {
 
 	var router chi.Router
 
-	app := fx.New(
-		fx.WithLogger(func() fxevent.Logger { return fxevent.NopLogger }),
-		fx.Supply(&cfg),
-		fxmodule.StorageModule(&cfg),
-		fxmodule.CoreModule(),
-		fxmodule.ProfileModule(&cfg),
-		fxmodule.APIV1Module(),
-		fxmodule.APIV2Module(),
-		fxmodule.APIV3Module(),
+	opts := append(
+		server.BuildOpts(&cfg),
 		fx.Populate(
 			fx.Annotate(
 				&router,
@@ -60,6 +52,8 @@ func NewTestServer(tb TB) (*url.URL, func()) {
 			),
 		),
 	)
+
+	app := fx.New(opts...)
 
 	if err := app.Err(); err != nil {
 		tb.Fatal(err)

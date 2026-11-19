@@ -89,9 +89,17 @@ func TestToAgentConfig(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "source ip set",
+			opts: Options{SourceIP: "192.0.2.1"},
+			check: func(t *testing.T, cfg *config.AgentConfig) {
+				assert.Equal(t, "192.0.2.1", cfg.SourceIP)
+			},
+		},
+		{
 			name: "all fields set",
 			opts: Options{
 				Address:            "localhost:9090",
+				SourceIP:           "192.0.2.1",
 				APIVersion:         3,
 				RateLimit:          5,
 				PollIntervalSecs:   2,
@@ -101,6 +109,7 @@ func TestToAgentConfig(t *testing.T) {
 			},
 			check: func(t *testing.T, cfg *config.AgentConfig) {
 				assert.Equal(t, "http://localhost:9090", cfg.BaseURL.String())
+				assert.Equal(t, "192.0.2.1", cfg.SourceIP)
 				assert.Equal(t, uint(3), cfg.APIVersion)
 				assert.Equal(t, int64(5), cfg.RateLimit)
 				assert.Equal(t, 2*time.Second, cfg.PollInterval)
@@ -140,6 +149,7 @@ func TestAgentOptionsMerge(t *testing.T) {
 			name: "empty other keeps base",
 			base: Options{
 				Address:            "base:1111",
+				SourceIP:           "192.0.2.1",
 				APIVersion:         1,
 				RateLimit:          2,
 				PollIntervalSecs:   3,
@@ -151,6 +161,7 @@ func TestAgentOptionsMerge(t *testing.T) {
 			other: Options{},
 			want: Options{
 				Address:            "base:1111",
+				SourceIP:           "192.0.2.1",
 				APIVersion:         1,
 				RateLimit:          2,
 				PollIntervalSecs:   3,
@@ -164,10 +175,12 @@ func TestAgentOptionsMerge(t *testing.T) {
 			name: "non-empty other overrides",
 			base: Options{
 				Address:    "base:1111",
+				SourceIP:   "192.0.2.1",
 				APIVersion: 1,
 			},
 			other: Options{
 				Address:            "other:2222",
+				SourceIP:           "192.0.2.2",
 				APIVersion:         2,
 				RateLimit:          3,
 				PollIntervalSecs:   4,
@@ -178,6 +191,7 @@ func TestAgentOptionsMerge(t *testing.T) {
 			},
 			want: Options{
 				Address:            "other:2222",
+				SourceIP:           "192.0.2.2",
 				APIVersion:         2,
 				RateLimit:          3,
 				PollIntervalSecs:   4,
@@ -190,8 +204,13 @@ func TestAgentOptionsMerge(t *testing.T) {
 		{
 			name:  "zero values do not override",
 			base:  Options{Address: "base:1111", APIVersion: 1},
-			other: Options{RateLimit: 3},
-			want:  Options{Address: "base:1111", APIVersion: 1, RateLimit: 3},
+			other: Options{RateLimit: 3, SourceIP: "192.0.2.1"},
+			want: Options{
+				Address:    "base:1111",
+				APIVersion: 1,
+				RateLimit:  3,
+				SourceIP:   "192.0.2.1",
+			},
 		},
 	}
 
@@ -209,7 +228,7 @@ func TestAgentOptionsMerge(t *testing.T) {
 func TestAgentReadEnvOptions(t *testing.T) {
 	t.Run("empty environment", func(t *testing.T) {
 		clearEnv(t,
-			"ADDRESS", "API", "RATE_LIMIT",
+			"ADDRESS", "SOURCE_IP", "API", "RATE_LIMIT",
 			"POLL_INTERVAL", "REPORT_INTERVAL",
 			"KEY", "CRYPTO_KEY", "CONFIG",
 		)
@@ -222,6 +241,7 @@ func TestAgentReadEnvOptions(t *testing.T) {
 
 	t.Run("all variables set", func(t *testing.T) {
 		t.Setenv("ADDRESS", "localhost:9090")
+		t.Setenv("SOURCE_IP", "192.0.2.1")
 		t.Setenv("API", "3")
 		t.Setenv("RATE_LIMIT", "5")
 		t.Setenv("POLL_INTERVAL", "2")
@@ -234,6 +254,7 @@ func TestAgentReadEnvOptions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, &Options{
 			Address:            "localhost:9090",
+			SourceIP:           "192.0.2.1",
 			APIVersion:         3,
 			RateLimit:          5,
 			PollIntervalSecs:   2,
@@ -265,6 +286,7 @@ func TestAgentReadCliOptions(t *testing.T) {
 	t.Run("all flags", func(t *testing.T) {
 		withArgs(t,
 			"-a", "localhost:9090",
+			"-source-ip", "192.0.2.1",
 			"-v", "3",
 			"-l", "5",
 			"-p", "2",
@@ -279,6 +301,7 @@ func TestAgentReadCliOptions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, &Options{
 			Address:            "localhost:9090",
+			SourceIP:           "192.0.2.1",
 			APIVersion:         3,
 			RateLimit:          5,
 			PollIntervalSecs:   2,
@@ -303,6 +326,7 @@ func TestAgentReadFileOptions(t *testing.T) {
 	t.Run("valid file", func(t *testing.T) {
 		path := writeConfig(t, `{
 			"address": "localhost:9090",
+			"source_ip": "192.0.2.1",
 			"api_version": 3,
 			"rate_limit": 5,
 			"poll_interval": 2,
@@ -316,6 +340,7 @@ func TestAgentReadFileOptions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, &Options{
 			Address:            "localhost:9090",
+			SourceIP:           "192.0.2.1",
 			APIVersion:         3,
 			RateLimit:          5,
 			PollIntervalSecs:   2,
@@ -342,7 +367,7 @@ func TestAgentReadFileOptions(t *testing.T) {
 
 func TestAgentReadOptions(t *testing.T) {
 	envKeys := []string{
-		"ADDRESS", "API", "RATE_LIMIT",
+		"ADDRESS", "SOURCE_IP", "API", "RATE_LIMIT",
 		"POLL_INTERVAL", "REPORT_INTERVAL",
 		"KEY", "CRYPTO_KEY", "CONFIG",
 	}
