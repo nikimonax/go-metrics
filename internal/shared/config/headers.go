@@ -1,3 +1,3 @@
 package config
 
-const SourceIPHeader = "X-Real-IP"
+const SourceIPKey = "X-Real-IP"

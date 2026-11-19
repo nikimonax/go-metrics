@@ -11,6 +11,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 
 	"github.com/nikimonax/go-metrics/internal/gen/metric"
+	"github.com/nikimonax/go-metrics/internal/impl/publisher"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
 	"github.com/nikimonax/go-metrics/internal/server/interceptor"
 )
@@ -35,11 +36,20 @@ var _ server = (*grpcServerAdapter)(nil)
 func GrpcModule() fx.Option {
 	return fx.Module(
 		"grpc",
+		// utils
+		fx.Provide(
+			provideClientIPFromGrpcProvider,
+		),
+		//server
 		fx.Provide(
 			handler.NewUpdateMetricsGrpcHandler,
 			provideGrpcServer,
 		),
 	)
+}
+
+func provideClientIPFromGrpcProvider() publisher.ClientIPProvider {
+	return interceptor.GetClientIP
 }
 
 func provideGrpcServer(

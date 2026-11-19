@@ -21,7 +21,7 @@ const (
 	DefaultDumpInterval    = 300 * time.Second
 	DefaultDumpRestore     = false
 
-	SourceIPHeader = config.SourceIPHeader
+	SourceIPHeader = config.SourceIPKey
 )
 
 // some shared config re-exports

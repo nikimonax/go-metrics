@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
 
+	"github.com/nikimonax/go-metrics/internal/impl/publisher"
 	"github.com/nikimonax/go-metrics/internal/lib/compress"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
@@ -19,6 +20,10 @@ import (
 func HTTPModule() fx.Option {
 	return fx.Module(
 		"http",
+		// utils
+		fx.Provide(
+			provideClientIPFromHTTPProvider,
+		),
 		// presenters
 		fx.Provide(
 			fx.Annotate(
@@ -67,6 +72,10 @@ func HTTPModule() fx.Option {
 			),
 		),
 	)
+}
+
+func provideClientIPFromHTTPProvider() publisher.ClientIPProvider {
+	return middleware.GetClientIP
 }
 
 func provideMiddlewareCompress() httpextra.Middleware {

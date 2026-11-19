@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/nikimonax/go-metrics/internal/server/config"
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
-	"github.com/nikimonax/go-metrics/internal/shared/config"
 )
 
 func TestAllowIPs(t *testing.T) {

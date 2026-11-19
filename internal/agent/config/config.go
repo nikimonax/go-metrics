@@ -24,7 +24,7 @@ const (
 	DefaultPollInterval   = 2 * time.Second
 	DefaultReportInterval = 10 * time.Second
 
-	SourceIPHeader = config.SourceIPHeader
+	SourceIPHeader = config.SourceIPKey
 	CompressLevel  = gzip.BestSpeed
 )
 
