@@ -15,6 +15,7 @@ import (
 	"github.com/nikimonax/go-metrics/internal/impl/collector"
 	"github.com/nikimonax/go-metrics/internal/impl/gateway"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
+	"github.com/nikimonax/go-metrics/internal/lib/grpcextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
@@ -197,10 +198,22 @@ func provideHTTPClient(transport http.RoundTripper) *http.Client {
 }
 
 func provideGrpcConn(cfg *config.AgentConfig) (*grpc.ClientConn, error) {
-	return grpc.NewClient(
-		cfg.BaseURL.Host,
+	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	}
+
+	if cfg.SourceIP != "" {
+		opts = append(
+			opts,
+			grpc.WithUnaryInterceptor(
+				grpcextra.ExtraMetadataUnaryClientInterceptor(
+					config.SourceIPKey, cfg.SourceIP,
+				),
+			),
+		)
+	}
+
+	return grpc.NewClient(cfg.BaseURL.Host, opts...)
 }
 
 func provideMetricGateway(
