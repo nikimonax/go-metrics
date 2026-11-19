@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net"
-	"net/http"
 
 	"go.uber.org/fx"
 
@@ -40,12 +39,7 @@ func registerServerLifecycle(
 			}
 
 			go func() {
-				err := srv.Serve(ln)
-
-				if err != nil && err != http.ErrServerClosed {
-					errs <- err
-				}
-
+				errs <- srv.Serve(ln)
 				close(errs)
 			}()
 

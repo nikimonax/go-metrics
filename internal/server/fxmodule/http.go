@@ -2,6 +2,9 @@ package fxmodule
 
 import (
 	"compress/gzip"
+	"context"
+	"errors"
+	"net"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -17,6 +20,28 @@ import (
 	"github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 )
+
+type httpServerAdapter struct {
+	wrapped *http.Server
+}
+
+// Serve implements [server].
+func (adapter *httpServerAdapter) Serve(l net.Listener) error {
+	err := adapter.wrapped.Serve(l)
+
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+
+	return err
+}
+
+// Shutdown implements [server].
+func (adapter *httpServerAdapter) Shutdown(ctx context.Context) error {
+	return adapter.wrapped.Shutdown(ctx)
+}
+
+var _ server = (*httpServerAdapter)(nil)
 
 func HTTPModule() fx.Option {
 	return fx.Module(
@@ -118,8 +143,8 @@ func provideHTTPServer(
 	cfg *config.ServerConfig,
 	router chi.Router,
 ) server {
-	return &http.Server{
+	return &httpServerAdapter{wrapped: &http.Server{
 		Addr:    cfg.Listen,
 		Handler: router,
-	}
+	}}
 }

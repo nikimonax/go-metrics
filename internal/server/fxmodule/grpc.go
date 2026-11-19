@@ -2,6 +2,7 @@ package fxmodule
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"go.uber.org/fx"
@@ -25,7 +26,13 @@ type grpcServerAdapter struct {
 
 // Serve implements [server].
 func (adapter *grpcServerAdapter) Serve(l net.Listener) error {
-	return adapter.wrapped.Serve(l)
+	err := adapter.wrapped.Serve(l)
+
+	if errors.Is(err, grpc.ErrServerStopped) {
+		return nil
+	}
+
+	return err
 }
 
 // Shutdown implements [server].
