@@ -5,10 +5,14 @@ import (
 	"net"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 
 	"github.com/nikimonax/go-metrics/internal/gen/metric"
 	"github.com/nikimonax/go-metrics/internal/server/handler"
+	"github.com/nikimonax/go-metrics/internal/server/interceptor"
 )
 
 type grpcServerAdapter struct {
@@ -38,8 +42,17 @@ func GrpcModule() fx.Option {
 	)
 }
 
-func provideGrpcServer(h *handler.UpdateMetricsGrpcHandler) server {
-	s := grpc.NewServer()
+func provideGrpcServer(
+	sugar *zap.SugaredLogger,
+	h *handler.UpdateMetricsGrpcHandler,
+) server {
+	s := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			logging.UnaryServerInterceptor(
+				interceptor.InterceptorLogger(sugar),
+			),
+		),
+	)
 	metric.RegisterMetricsServer(s, h)
 	return &grpcServerAdapter{wrapped: s}
 }
