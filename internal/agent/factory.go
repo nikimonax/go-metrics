@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -183,19 +182,10 @@ func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 		transport = httpextra.NewRateLimitRoundTripper(transport, cfg.RateLimit)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	sourceIP, err := cfg.GetSourceIPWithFallback(ctx)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if sourceIP != "" {
+	if cfg.SourceIP != "" {
 		transport = httpextra.NewExtraHeadersRoundTripper(
 			transport,
-			map[string]string{config.SourceIPHeader: sourceIP},
+			map[string]string{config.SourceIPKey: cfg.SourceIP},
 		)
 	}
 

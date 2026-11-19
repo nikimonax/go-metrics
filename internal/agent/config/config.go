@@ -38,24 +38,11 @@ var (
 	NewSchedulerConfig = config.NewDefaultSchedulerConfig
 )
 
-type AgentConfig struct {
-	BaseURL        *url.URL
-	GrpcMode       bool
-	SourceIP       string
-	APIVersion     uint
-	RateLimit      int64
-	PollInterval   time.Duration
-	ReportInterval time.Duration
-	Backoff        config.BackoffConfig
-	Security       config.SecurityConfig
-}
+func TryGetDefaultSourceIP(host string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
-func (cfg *AgentConfig) GetSourceIPWithFallback(ctx context.Context) (string, error) {
-	if cfg.SourceIP != "" {
-		return cfg.SourceIP, nil
-	}
-
-	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, cfg.BaseURL.Hostname())
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
 
 	if err != nil {
 		return "", err
@@ -72,6 +59,18 @@ func (cfg *AgentConfig) GetSourceIPWithFallback(ctx context.Context) (string, er
 	}
 
 	return sourceIP.String(), nil
+}
+
+type AgentConfig struct {
+	BaseURL        *url.URL
+	GrpcMode       bool
+	SourceIP       string
+	APIVersion     uint
+	RateLimit      int64
+	PollInterval   time.Duration
+	ReportInterval time.Duration
+	Backoff        config.BackoffConfig
+	Security       config.SecurityConfig
 }
 
 func (cfg AgentConfig) Validate() error {

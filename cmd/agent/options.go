@@ -30,7 +30,7 @@ type Options struct {
 	ConfigPath string `env:"CONFIG" json:"-"`
 }
 
-func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
+func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) { //nolint:gocyclo
 	cfg := config.NewDefaultConfig()
 
 	if opts.Address != "" {
@@ -63,6 +63,16 @@ func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
 
 	if opts.SourceIP != "" {
 		cfg.SourceIP = opts.SourceIP
+	}
+
+	if cfg.SourceIP == "" {
+		sourceIP, err := config.TryGetDefaultSourceIP(cfg.BaseURL.Hostname())
+
+		if err != nil {
+			return nil, err
+		}
+
+		cfg.SourceIP = sourceIP
 	}
 
 	if opts.RateLimit > 0 {

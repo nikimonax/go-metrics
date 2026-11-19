@@ -1,9 +1,7 @@
 package config_test
 
 import (
-	"context"
 	"fmt"
-	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,75 +11,41 @@ import (
 	"github.com/nikimonax/go-metrics/internal/impl/gateway"
 )
 
-func parseBaseURL(t *testing.T, rawURL string) *url.URL {
-	t.Helper()
-
-	baseURL, err := url.Parse(rawURL)
-	require.NoError(t, err)
-
-	return baseURL
-}
-
-func TestAgentConfigGetSourceIPWithFallback(t *testing.T) {
-	t.Run("explicit source ip is returned as is", func(t *testing.T) {
-		cfg := config.NewDefaultConfig()
-		cfg.SourceIP = "192.0.2.1"
-
-		sourceIP, err := cfg.GetSourceIPWithFallback(t.Context())
-
-		require.NoError(t, err)
-		assert.Equal(t, "192.0.2.1", sourceIP)
-	})
-
+func TestTryGetDefaultSourceIP(t *testing.T) {
 	t.Run("loopback target", func(t *testing.T) {
 		tests := []struct {
-			name    string
-			baseURL string
-			want    string
+			name string
+			host string
 		}{
 			{
-				name:    "ipv4",
-				baseURL: "http://127.0.0.1:9090",
-				want:    "127.0.0.1",
+				name: "ipv4",
+				host: "127.0.0.1",
 			},
 			{
-				name:    "ipv6",
-				baseURL: "http://[::1]:9090",
-				want:    "::1",
+				name: "ipv6",
+				host: "::1",
 			},
 		}
 
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
-				cfg := config.NewDefaultConfig()
-				cfg.BaseURL = parseBaseURL(t, tc.baseURL)
-
-				sourceIP, err := cfg.GetSourceIPWithFallback(t.Context())
+				sourceIP, err := config.TryGetDefaultSourceIP(tc.host)
 
 				require.NoError(t, err)
-				assert.Equal(t, tc.want, sourceIP)
+				assert.Equal(t, tc.host, sourceIP)
 			})
 		}
 	})
 
 	t.Run("external target returns empty source ip", func(t *testing.T) {
-		cfg := config.NewDefaultConfig()
-		cfg.BaseURL = parseBaseURL(t, "http://203.0.113.1:9090")
-
-		sourceIP, err := cfg.GetSourceIPWithFallback(t.Context())
+		sourceIP, err := config.TryGetDefaultSourceIP("203.0.113.1")
 
 		require.NoError(t, err)
 		assert.Empty(t, sourceIP)
 	})
 
 	t.Run("lookup failure returns error", func(t *testing.T) {
-		cfg := config.NewDefaultConfig()
-		cfg.BaseURL = parseBaseURL(t, "http://unreachable.invalid:9090")
-
-		ctx, cancel := context.WithCancel(t.Context())
-		cancel()
-
-		_, err := cfg.GetSourceIPWithFallback(ctx)
+		_, err := config.TryGetDefaultSourceIP("unreachable.invalid")
 
 		require.Error(t, err)
 	})
