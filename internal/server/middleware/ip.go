@@ -16,6 +16,7 @@ func AllowIPs(prefixes []netip.Prefix) httpextra.Middleware {
 
 			if !addr.IsValid() {
 				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
 			}
 
 			addr = addr.Unmap()

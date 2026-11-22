@@ -54,6 +54,7 @@ func TestAllowIPs(t *testing.T) {
 		allowed     []string
 		headerValue string
 		wantStatus  int
+		wantContent string
 	}{
 		{
 			name:        "ipv4 inside allowed subnet",
@@ -66,6 +67,7 @@ func TestAllowIPs(t *testing.T) {
 			allowed:     []string{"192.168.0.0/24"},
 			headerValue: "10.0.0.15",
 			wantStatus:  http.StatusForbidden,
+			wantContent: "Forbidden\n",
 		},
 		{
 			name:        "bare ip matched",
@@ -78,6 +80,7 @@ func TestAllowIPs(t *testing.T) {
 			allowed:     []string{"10.1.2.3"},
 			headerValue: "10.1.2.4",
 			wantStatus:  http.StatusForbidden,
+			wantContent: "Forbidden\n",
 		},
 		{
 			name:        "ipv4 mapped ipv6 is unmapped",
@@ -96,6 +99,7 @@ func TestAllowIPs(t *testing.T) {
 			allowed:     []string{"fd00::/8"},
 			headerValue: "2001:db8::1",
 			wantStatus:  http.StatusForbidden,
+			wantContent: "Forbidden\n",
 		},
 		{
 			name:        "multiple entries: any match allows",
@@ -108,24 +112,28 @@ func TestAllowIPs(t *testing.T) {
 			allowed:     []string{"10.0.0.0/8", "192.168.0.0/24"},
 			headerValue: "203.0.113.1",
 			wantStatus:  http.StatusForbidden,
+			wantContent: "Forbidden\n",
 		},
 		{
 			name:        "no allowed entries forbids everyone",
 			allowed:     nil,
 			headerValue: "192.168.0.1",
 			wantStatus:  http.StatusForbidden,
+			wantContent: "Forbidden\n",
 		},
 		{
 			name:        "missing header forbids",
 			allowed:     []string{"192.168.0.0/24"},
 			headerValue: "",
 			wantStatus:  http.StatusForbidden,
+			wantContent: "Forbidden\n",
 		},
 		{
 			name:        "malformed header forbids",
 			allowed:     []string{"192.168.0.0/24"},
 			headerValue: "not-an-ip",
 			wantStatus:  http.StatusForbidden,
+			wantContent: "Forbidden\n",
 		},
 	}
 
@@ -135,6 +143,10 @@ func TestAllowIPs(t *testing.T) {
 			rec := doRequest(t, handler, tc.headerValue)
 
 			assert.Equal(t, tc.wantStatus, rec.Code)
+
+			if tc.wantContent != "" {
+				assert.Equal(t, tc.wantContent, rec.Body.String())
+			}
 		})
 	}
 }
