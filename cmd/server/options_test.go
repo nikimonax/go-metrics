@@ -61,6 +61,7 @@ func TestToServerConfig(t *testing.T) {
 				want := config.NewDefaultConfig()
 
 				assert.Equal(t, want.Listen, cfg.Listen)
+				assert.Empty(t, cfg.TrustedSubnet)
 				assert.False(t, cfg.Profile)
 				assert.Empty(t, cfg.Database.DSN)
 				assert.Empty(t, cfg.Security.HashingKey)
@@ -71,21 +72,30 @@ func TestToServerConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "trusted subnet set",
+			opts: Options{TrustedSubnet: "192.168.0.0/24"},
+			check: func(t *testing.T, cfg *config.ServerConfig) {
+				assert.Equal(t, "192.168.0.0/24", cfg.TrustedSubnet)
+			},
+		},
+		{
 			name: "all fields set",
 			opts: Options{
-				Address:      "localhost:9090",
-				Profile:      boolPtr(true),
-				DatabaseDSN:  "postgres://localhost:5432/metrics",
-				HashingKey:   "secret",
-				CryptoKey:    "private_key.pem",
-				DumpFile:     "dump.json",
-				DumpInterval: uint64Ptr(5),
-				DumpRestore:  boolPtr(true),
-				AuditFile:    "audit.json",
-				AuditURL:     "http://localhost:9091/audit",
+				Address:       "localhost:9090",
+				TrustedSubnet: "192.168.0.0/24",
+				Profile:       boolPtr(true),
+				DatabaseDSN:   "postgres://localhost:5432/metrics",
+				HashingKey:    "secret",
+				CryptoKey:     "private_key.pem",
+				DumpFile:      "dump.json",
+				DumpInterval:  uint64Ptr(5),
+				DumpRestore:   boolPtr(true),
+				AuditFile:     "audit.json",
+				AuditURL:      "http://localhost:9091/audit",
 			},
 			check: func(t *testing.T, cfg *config.ServerConfig) {
 				assert.Equal(t, "localhost:9090", cfg.Listen)
+				assert.Equal(t, "192.168.0.0/24", cfg.TrustedSubnet)
 				assert.True(t, cfg.Profile)
 				assert.Equal(t, "postgres://localhost:5432/metrics", cfg.Database.DSN)
 				assert.Equal(t, "secret", cfg.Security.HashingKey)
@@ -133,61 +143,65 @@ func TestServerOptionsMerge(t *testing.T) {
 		{
 			name: "empty other keeps base",
 			base: Options{
-				Address:      "base:1111",
-				Profile:      boolPtr(true),
-				DatabaseDSN:  "dsn",
-				HashingKey:   "key",
-				CryptoKey:    "crypto",
-				DumpFile:     "dump.json",
-				DumpInterval: uint64Ptr(5),
-				DumpRestore:  boolPtr(true),
-				AuditFile:    "audit.json",
-				AuditURL:     "http://audit",
-				ConfigPath:   "cfg.json",
+				Address:       "base:1111",
+				TrustedSubnet: "192.168.0.0/24",
+				Profile:       boolPtr(true),
+				DatabaseDSN:   "dsn",
+				HashingKey:    "key",
+				CryptoKey:     "crypto",
+				DumpFile:      "dump.json",
+				DumpInterval:  uint64Ptr(5),
+				DumpRestore:   boolPtr(true),
+				AuditFile:     "audit.json",
+				AuditURL:      "http://audit",
+				ConfigPath:    "cfg.json",
 			},
 			other: Options{},
 			want: Options{
-				Address:      "base:1111",
-				Profile:      boolPtr(true),
-				DatabaseDSN:  "dsn",
-				HashingKey:   "key",
-				CryptoKey:    "crypto",
-				DumpFile:     "dump.json",
-				DumpInterval: uint64Ptr(5),
-				DumpRestore:  boolPtr(true),
-				AuditFile:    "audit.json",
-				AuditURL:     "http://audit",
-				ConfigPath:   "cfg.json",
+				Address:       "base:1111",
+				TrustedSubnet: "192.168.0.0/24",
+				Profile:       boolPtr(true),
+				DatabaseDSN:   "dsn",
+				HashingKey:    "key",
+				CryptoKey:     "crypto",
+				DumpFile:      "dump.json",
+				DumpInterval:  uint64Ptr(5),
+				DumpRestore:   boolPtr(true),
+				AuditFile:     "audit.json",
+				AuditURL:      "http://audit",
+				ConfigPath:    "cfg.json",
 			},
 		},
 		{
 			name: "non-empty other overrides",
 			base: Options{Address: "base:1111", Profile: boolPtr(false)},
 			other: Options{
-				Address:      "other:2222",
-				Profile:      boolPtr(true),
-				DatabaseDSN:  "dsn",
-				HashingKey:   "key",
-				CryptoKey:    "crypto",
-				DumpFile:     "dump.json",
-				DumpInterval: uint64Ptr(5),
-				DumpRestore:  boolPtr(true),
-				AuditFile:    "audit.json",
-				AuditURL:     "http://audit",
-				ConfigPath:   "cfg.json",
+				Address:       "other:2222",
+				TrustedSubnet: "192.168.0.0/24",
+				Profile:       boolPtr(true),
+				DatabaseDSN:   "dsn",
+				HashingKey:    "key",
+				CryptoKey:     "crypto",
+				DumpFile:      "dump.json",
+				DumpInterval:  uint64Ptr(5),
+				DumpRestore:   boolPtr(true),
+				AuditFile:     "audit.json",
+				AuditURL:      "http://audit",
+				ConfigPath:    "cfg.json",
 			},
 			want: Options{
-				Address:      "other:2222",
-				Profile:      boolPtr(true),
-				DatabaseDSN:  "dsn",
-				HashingKey:   "key",
-				CryptoKey:    "crypto",
-				DumpFile:     "dump.json",
-				DumpInterval: uint64Ptr(5),
-				DumpRestore:  boolPtr(true),
-				AuditFile:    "audit.json",
-				AuditURL:     "http://audit",
-				ConfigPath:   "cfg.json",
+				Address:       "other:2222",
+				TrustedSubnet: "192.168.0.0/24",
+				Profile:       boolPtr(true),
+				DatabaseDSN:   "dsn",
+				HashingKey:    "key",
+				CryptoKey:     "crypto",
+				DumpFile:      "dump.json",
+				DumpInterval:  uint64Ptr(5),
+				DumpRestore:   boolPtr(true),
+				AuditFile:     "audit.json",
+				AuditURL:      "http://audit",
+				ConfigPath:    "cfg.json",
 			},
 		},
 		{
@@ -221,7 +235,7 @@ func TestServerOptionsMerge(t *testing.T) {
 func TestServerReadEnvOptions(t *testing.T) {
 	t.Run("empty environment", func(t *testing.T) {
 		clearEnv(t,
-			"ADDRESS", "PROFILE", "DATABASE_DSN",
+			"ADDRESS", "TRUSTED_SUBNET", "PROFILE", "DATABASE_DSN",
 			"KEY", "CRYPTO_KEY", "FILE_STORAGE_PATH",
 			"STORE_INTERVAL", "RESTORE", "AUDIT_FILE", "AUDIT_URL", "CONFIG",
 		)
@@ -234,6 +248,7 @@ func TestServerReadEnvOptions(t *testing.T) {
 
 	t.Run("all variables set", func(t *testing.T) {
 		t.Setenv("ADDRESS", "localhost:9090")
+		t.Setenv("TRUSTED_SUBNET", "192.168.0.0/24")
 		t.Setenv("PROFILE", "true")
 		t.Setenv("DATABASE_DSN", "postgres://localhost:5432/metrics")
 		t.Setenv("KEY", "secret")
@@ -248,16 +263,17 @@ func TestServerReadEnvOptions(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, &Options{
-			Address:      "localhost:9090",
-			Profile:      boolPtr(true),
-			DatabaseDSN:  "postgres://localhost:5432/metrics",
-			HashingKey:   "secret",
-			CryptoKey:    "private_key.pem",
-			DumpFile:     "dump.json",
-			DumpInterval: uint64Ptr(5),
-			DumpRestore:  boolPtr(true),
-			AuditFile:    "audit.json",
-			AuditURL:     "http://localhost:9091/audit",
+			Address:       "localhost:9090",
+			TrustedSubnet: "192.168.0.0/24",
+			Profile:       boolPtr(true),
+			DatabaseDSN:   "postgres://localhost:5432/metrics",
+			HashingKey:    "secret",
+			CryptoKey:     "private_key.pem",
+			DumpFile:      "dump.json",
+			DumpInterval:  uint64Ptr(5),
+			DumpRestore:   boolPtr(true),
+			AuditFile:     "audit.json",
+			AuditURL:      "http://localhost:9091/audit",
 		}, opts)
 	})
 
@@ -283,6 +299,7 @@ func TestServerReadCliOptions(t *testing.T) {
 	t.Run("all flags", func(t *testing.T) {
 		withArgs(t,
 			"-a", "localhost:9090",
+			"-t", "192.168.0.0/24",
 			"-d", "postgres://localhost:5432/metrics",
 			"-k", "secret",
 			"-crypto-key", "private_key.pem",
@@ -299,17 +316,18 @@ func TestServerReadCliOptions(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, &Options{
-			Address:      "localhost:9090",
-			DatabaseDSN:  "postgres://localhost:5432/metrics",
-			HashingKey:   "secret",
-			CryptoKey:    "private_key.pem",
-			DumpFile:     "dump.json",
-			DumpInterval: uint64Ptr(5),
-			DumpRestore:  boolPtr(true),
-			AuditFile:    "audit.json",
-			AuditURL:     "http://localhost:9091/audit",
-			Profile:      boolPtr(true),
-			ConfigPath:   "config.json",
+			Address:       "localhost:9090",
+			TrustedSubnet: "192.168.0.0/24",
+			DatabaseDSN:   "postgres://localhost:5432/metrics",
+			HashingKey:    "secret",
+			CryptoKey:     "private_key.pem",
+			DumpFile:      "dump.json",
+			DumpInterval:  uint64Ptr(5),
+			DumpRestore:   boolPtr(true),
+			AuditFile:     "audit.json",
+			AuditURL:      "http://localhost:9091/audit",
+			Profile:       boolPtr(true),
+			ConfigPath:    "config.json",
 		}, opts)
 	})
 
@@ -338,6 +356,7 @@ func TestServerReadFileOptions(t *testing.T) {
 	t.Run("valid file", func(t *testing.T) {
 		path := writeConfig(t, `{
 			"address": "localhost:9090",
+			"trusted_subnet": "192.168.0.0/24",
 			"profile": true,
 			"database_dsn": "postgres://localhost:5432/metrics",
 			"hashing_key": "secret",
@@ -353,16 +372,17 @@ func TestServerReadFileOptions(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, &Options{
-			Address:      "localhost:9090",
-			Profile:      boolPtr(true),
-			DatabaseDSN:  "postgres://localhost:5432/metrics",
-			HashingKey:   "secret",
-			CryptoKey:    "private_key.pem",
-			DumpFile:     "dump.json",
-			DumpInterval: uint64Ptr(5),
-			DumpRestore:  boolPtr(true),
-			AuditFile:    "audit.json",
-			AuditURL:     "http://localhost:9091/audit",
+			Address:       "localhost:9090",
+			TrustedSubnet: "192.168.0.0/24",
+			Profile:       boolPtr(true),
+			DatabaseDSN:   "postgres://localhost:5432/metrics",
+			HashingKey:    "secret",
+			CryptoKey:     "private_key.pem",
+			DumpFile:      "dump.json",
+			DumpInterval:  uint64Ptr(5),
+			DumpRestore:   boolPtr(true),
+			AuditFile:     "audit.json",
+			AuditURL:      "http://localhost:9091/audit",
 		}, opts)
 	})
 
@@ -383,7 +403,7 @@ func TestServerReadFileOptions(t *testing.T) {
 
 func TestServerReadOptions(t *testing.T) {
 	envKeys := []string{
-		"ADDRESS", "PROFILE", "DATABASE_DSN",
+		"ADDRESS", "TRUSTED_SUBNET", "PROFILE", "DATABASE_DSN",
 		"KEY", "CRYPTO_KEY", "FILE_STORAGE_PATH",
 		"STORE_INTERVAL", "RESTORE", "AUDIT_FILE", "AUDIT_URL", "CONFIG",
 	}

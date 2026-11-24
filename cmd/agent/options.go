@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/url"
 	"os"
@@ -17,7 +18,9 @@ import (
 
 type Options struct {
 	Address            string `env:"ADDRESS"         json:"address"`
+	GrpcMode           *bool  `env:"GRPC"            json:"grpc"`
 	APIVersion         uint   `env:"API"             json:"api_version"`
+	SourceIP           string `env:"SOURCE_IP"       json:"source_ip"`
 	RateLimit          uint64 `env:"RATE_LIMIT"      json:"rate_limit"`
 	PollIntervalSecs   uint64 `env:"POLL_INTERVAL"   json:"poll_interval"`
 	ReportIntervalSecs uint64 `env:"REPORT_INTERVAL" json:"report_interval"`
@@ -27,7 +30,7 @@ type Options struct {
 	ConfigPath string `env:"CONFIG" json:"-"`
 }
 
-func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
+func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) { //nolint:gocyclo
 	cfg := config.NewDefaultConfig()
 
 	if opts.Address != "" {
@@ -50,8 +53,26 @@ func (opts *Options) ToAgentConfig() (*config.AgentConfig, error) {
 		cfg.BaseURL = baseURL
 	}
 
+	if opts.GrpcMode != nil && *opts.GrpcMode {
+		cfg.GrpcMode = true
+	}
+
 	if opts.APIVersion > 0 {
 		cfg.APIVersion = opts.APIVersion
+	}
+
+	if opts.SourceIP != "" {
+		cfg.SourceIP = opts.SourceIP
+	}
+
+	if cfg.SourceIP == "" {
+		sourceIP, err := config.TryGetDefaultSourceIP(cfg.BaseURL.Hostname())
+
+		if err != nil {
+			return nil, err
+		}
+
+		cfg.SourceIP = sourceIP
 	}
 
 	if opts.RateLimit > 0 {
@@ -92,7 +113,11 @@ func ReadEnvOptions() (*Options, error) {
 }
 
 func ReadCliOptions() (*Options, error) {
-	var opts Options
+	var (
+		opts Options
+
+		grpc bool
+	)
 
 	cmd := flagextra.NewFlagSet()
 	cmd.StringVar(
@@ -100,6 +125,18 @@ func ReadCliOptions() (*Options, error) {
 		"a",
 		"",
 		"metrics server address",
+	)
+	cmd.BoolVar(
+		&grpc,
+		"grpc",
+		false,
+		"use grpc server api",
+	)
+	cmd.StringVar(
+		&opts.SourceIP,
+		"source-ip",
+		"",
+		"source ip of agent",
 	)
 	cmd.UintVar(
 		&opts.APIVersion,
@@ -153,6 +190,13 @@ func ReadCliOptions() (*Options, error) {
 	if err := cmd.Parse(os.Args[1:]); err != nil {
 		return nil, err
 	}
+
+	cmd.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "grpc":
+			opts.GrpcMode = &grpc
+		}
+	})
 
 	return &opts, nil
 }

@@ -6,12 +6,16 @@ import (
 	"net/http"
 	"os"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
 	"github.com/nikimonax/go-metrics/internal/agent/config"
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/collector"
 	"github.com/nikimonax/go-metrics/internal/impl/gateway"
 	"github.com/nikimonax/go-metrics/internal/impl/repository"
+	"github.com/nikimonax/go-metrics/internal/lib/grpcextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
@@ -32,12 +36,38 @@ func (agent *Agent) Run(ctx context.Context) error {
 	return fxutil.RunWithContext(ctx, agent.app)
 }
 
-func New(cfg *config.AgentConfig) (*Agent, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
+func BuildOpts(cfg *config.AgentConfig) []fx.Option {
+	invokeOpts := []any{
+		registerCollectMetricsTask,
+		registerSendMetricsTask,
+		registerLifecycleHooks,
 	}
 
-	app := fx.New(
+	clientOpts := make([]any, 0)
+
+	if cfg.GrpcMode {
+		clientOpts = append(
+			clientOpts,
+			provideGrpcConn,
+			fx.Annotate(
+				gateway.NewGrpcMetricGateway,
+				fx.As(new(interfaces.MetricGateway)),
+			),
+		)
+		invokeOpts = append(
+			invokeOpts,
+			registerGrpcConnClose,
+		)
+	} else {
+		clientOpts = append(
+			clientOpts,
+			provideRoundTripper,
+			provideHTTPClient,
+			provideMetricGateway,
+		)
+	}
+
+	return []fx.Option{
 		fx.Supply(cfg),
 		// logging
 		fx.Provide(
@@ -52,26 +82,35 @@ func New(cfg *config.AgentConfig) (*Agent, error) {
 			work.NewScheduler,
 			work.PoolAsSubmitter,
 		),
-		// usecases
+		// repository
 		fx.Provide(
-			provideRoundTripper,
-			provideHTTPClient,
-			provideMetricCollector,
-			provideMetricGateway,
 			fx.Annotate(
 				repository.NewInMemoryMetricRepository,
 				fx.As(new(interfaces.MetricRepository)),
 			),
+		),
+		// collector
+		fx.Provide(
+			provideMetricCollector,
+		),
+		// client
+		fx.Provide(clientOpts...),
+		// usecases
+		fx.Provide(
 			usecase.NewCollectMetricsUseCase,
 			usecase.NewSendMetricsUseCase,
 		),
-		fx.Invoke(
-			registerCollectMetricsTask,
-			registerSendMetricsTask,
-			registerLifecycleHooks,
-		),
+		fx.Invoke(invokeOpts...),
 		fx.WithLogger(zapextra.NewFxLogger),
-	)
+	}
+}
+
+func New(cfg *config.AgentConfig) (*Agent, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	app := fx.New(BuildOpts(cfg)...)
 
 	if err := app.Err(); err != nil {
 		return nil, err
@@ -144,11 +183,37 @@ func provideRoundTripper(cfg *config.AgentConfig) (http.RoundTripper, error) {
 		transport = httpextra.NewRateLimitRoundTripper(transport, cfg.RateLimit)
 	}
 
+	if cfg.SourceIP != "" {
+		transport = httpextra.NewExtraHeadersRoundTripper(
+			transport,
+			map[string]string{config.SourceIPKey: cfg.SourceIP},
+		)
+	}
+
 	return transport, nil
 }
 
 func provideHTTPClient(transport http.RoundTripper) *http.Client {
 	return &http.Client{Transport: transport}
+}
+
+func provideGrpcConn(cfg *config.AgentConfig) (*grpc.ClientConn, error) {
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	if cfg.SourceIP != "" {
+		opts = append(
+			opts,
+			grpc.WithUnaryInterceptor(
+				grpcextra.ExtraMetadataUnaryClientInterceptor(
+					config.SourceIPKey, cfg.SourceIP,
+				),
+			),
+		)
+	}
+
+	return grpc.NewClient(cfg.BaseURL.Host, opts...)
 }
 
 func provideMetricGateway(
@@ -213,6 +278,13 @@ func registerSendMetricsTask(
 	return scheduler.Schedule(task, cfg.ReportInterval)
 }
 
+func registerGrpcConnClose(
+	lc fx.Lifecycle,
+	conn *grpc.ClientConn,
+) {
+	lc.Append(fx.StopHook(conn.Close))
+}
+
 func registerLifecycleHooks(
 	lc fx.Lifecycle,
 	cfg *config.AgentConfig,
@@ -238,6 +310,7 @@ func registerLifecycleHooks(
 			sugar.Infow(
 				"starting agent",
 				"server", cfg.BaseURL,
+				"grpc", cfg.GrpcMode,
 				"api", "v"+fmt.Sprint(cfg.APIVersion),
 				"rate_limit", cfg.RateLimit,
 				"poll interval", cfg.PollInterval,

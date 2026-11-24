@@ -11,7 +11,6 @@ import (
 	"github.com/nikimonax/go-metrics/internal/impl/publisher"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/server/config"
-	"github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/shared/retry"
 )
 
@@ -136,11 +135,12 @@ func provideAuditClient(clients []audit.Client) (audit.Client, error) {
 func provideAuditEventHandler(
 	client audit.Client,
 	submitter work.Submitter,
+	getClientIP publisher.ClientIPProvider,
 ) publisher.EventHandler {
 	return publisher.NewAuditEventHandler(
 		client,
 		submitter,
-		middleware.GetClientIP,
+		getClientIP,
 	)
 }
 

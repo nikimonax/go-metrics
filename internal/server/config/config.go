@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"time"
 
@@ -19,13 +20,25 @@ const (
 	DefaultDumpFile        = "metrics.json"
 	DefaultDumpInterval    = 300 * time.Second
 	DefaultDumpRestore     = false
+
+	SourceIPKey = config.SourceIPKey
 )
 
 // some shared config re-exports
 var (
+	ErrInvalidConfig    = config.ErrInvalidConfig
+	NewErrInvalidConfig = config.NewErrInvalidConfig
+
 	NewWorkerConfig    = config.NewDefaultWorkerConfig
 	NewLifecycleConfig = config.NewDefaultLifecycleConfig
 	NewSchedulerConfig = config.NewDefaultSchedulerConfig
+)
+
+type ServerType string
+
+const (
+	GRPCServer ServerType = "grpc"
+	HTTPServer ServerType = "http"
 )
 
 type DatabaseConfig struct {
@@ -43,12 +56,12 @@ func (cfg DatabaseConfig) Validate() error {
 
 	if err != nil {
 		msg := fmt.Sprintf("invalid database dsn: %s", err)
-		return config.NewErrInvalidConfig(msg)
+		return NewErrInvalidConfig(msg)
 	}
 
 	if dsnURL.Scheme != "" && dsnURL.Scheme != "postgres" {
 		msg := fmt.Sprintf("unsupported database: %s", dsnURL.Scheme)
-		return config.NewErrInvalidConfig(msg)
+		return NewErrInvalidConfig(msg)
 	}
 
 	return nil
@@ -69,12 +82,12 @@ func (cfg DumpConfig) Validate() error {
 	var errs error
 
 	if cfg.File == "" {
-		err := config.NewErrInvalidConfig("required 'File'")
+		err := NewErrInvalidConfig("required 'File'")
 		errs = errors.Join(err, errs)
 	}
 
 	if cfg.Interval < 0 {
-		err := config.NewErrInvalidConfig("required non negative 'Interval'")
+		err := NewErrInvalidConfig("required non negative 'Interval'")
 		errs = errors.Join(err, errs)
 	}
 
@@ -96,32 +109,55 @@ func (cfg AuditConfig) Validate() error {
 
 	if err != nil {
 		msg := fmt.Sprintf("invalid audit url: %s", err)
-		return config.NewErrInvalidConfig(msg)
+		return NewErrInvalidConfig(msg)
 	}
 
 	if url.Scheme != "http" && url.Scheme != "https" {
 		msg := fmt.Sprintf("unsupported audit url scheme: %s", url.Scheme)
-		return config.NewErrInvalidConfig(msg)
+		return NewErrInvalidConfig(msg)
 	}
 
 	return nil
 }
 
 type ServerConfig struct {
-	Listen   string
-	Profile  bool
-	Database DatabaseConfig
-	Security config.SecurityConfig
-	Log      LogConfig
-	Dump     DumpConfig
-	Audit    AuditConfig
+	Listen        string
+	ServerType    ServerType
+	TrustedSubnet string
+	Profile       bool
+	Database      DatabaseConfig
+	Security      config.SecurityConfig
+	Log           LogConfig
+	Dump          DumpConfig
+	Audit         AuditConfig
 }
 
 func (cfg ServerConfig) Validate() error {
 	var errs error
 
 	if cfg.Listen == "" {
-		errs = config.NewErrInvalidConfig("required 'Listen'")
+		errs = NewErrInvalidConfig("required 'Listen'")
+	}
+
+	if cfg.ServerType != HTTPServer && cfg.ServerType != GRPCServer {
+		msg := fmt.Sprintf(
+			"invalid 'ServerType', expected 'http' or 'grpc', but got '%s'",
+			cfg.ServerType,
+		)
+		err := NewErrInvalidConfig(msg)
+		errs = errors.Join(errs, err)
+	}
+
+	if cfg.TrustedSubnet != "" {
+		_, err := netip.ParsePrefix(cfg.TrustedSubnet)
+
+		if err != nil {
+			err = NewErrInvalidConfig(
+				fmt.Sprintf("invalid 'TrustedSubnet': %s", err),
+			)
+		}
+
+		errs = errors.Join(errs, err)
 	}
 
 	return errors.Join(
@@ -134,7 +170,8 @@ func (cfg ServerConfig) Validate() error {
 
 func NewDefaultConfig() ServerConfig {
 	return ServerConfig{
-		Listen: DefaultListen,
+		Listen:     DefaultListen,
+		ServerType: HTTPServer,
 		Database: DatabaseConfig{
 			Migrate: DefaultDatabaseMigrate,
 			Backoff: config.NewDefaultBackoffConfig(),

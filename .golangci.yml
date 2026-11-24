@@ -74,6 +74,7 @@ formatters:
   exclusions:
     paths:
       - tools/go-autotests/
+      - internal/gen
 
 run:
   timeout: 1m

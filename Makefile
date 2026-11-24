@@ -36,6 +36,17 @@ run-server run-agent run-reset: run-%: $(BIN_DIR)/%
 .PHONY: gen generate
 gen generate:
 	go generate ./...
+	protoc \
+		--go_opt=default_api_level=API_OPAQUE \
+		--go_out=. \
+		--go-grpc_out=. \
+		--go_opt=module=github.com/nikimonax/go-metrics \
+		--go-grpc_opt=module=github.com/nikimonax/go-metrics \
+		--go_opt=Minternal/proto/metric.proto=github.com/nikimonax/go-metrics/internal/gen/metric \
+		--go_opt=Minternal/proto/service.proto=github.com/nikimonax/go-metrics/internal/gen/metric \
+		--go-grpc_opt=Minternal/proto/metric.proto=github.com/nikimonax/go-metrics/internal/gen/metric \
+		--go-grpc_opt=Minternal/proto/service.proto=github.com/nikimonax/go-metrics/internal/gen/metric \
+		internal/proto/metric.proto internal/proto/service.proto
 
 .PHONY: statictest
 statictest: $(BIN_DIR)/statictest
@@ -49,17 +60,18 @@ staticlint: $(BIN_DIR)/staticlint
 build: $(BIN_DIR)/server $(BIN_DIR)/agent
 
 .PHONY: lint
-lint: _check_golangci_lint_cmd
+lint: _check_golangci_lint_cmd _check_protolint_cmd
 	golangci-lint run
+	protolint .
 
 .PHONY: fmt format
 fmt format: _check_golangci_lint_cmd _check_swag_cmd
 	golangci-lint fmt
-	swag fmt
+	swag fmt --exclude internal/gen
 
 .PHONY: test
 test: | $(OUT_DIR)
-	go test $(EXTRA_ARGS) $$(go list ./... | grep -v internal/testing)
+	go test $(EXTRA_ARGS) $$(go list ./... | grep -v internal/testing | grep -v internal/gen)
 
 .PHONY: bench
 bench: bench-v1 bench-v2 bench-v3
@@ -86,6 +98,7 @@ pprof-mem-v3 pprof-cpu-v3: pprof-%: $(OUT_DIR)/%.profile
 .PHONY: cover
 cover: $(COV_FILE)
 	sed -i '/internal\/testing/d' $(COV_FILE) && \
+	sed -i '/internal\/gen/d' $(COV_FILE) && \
 	go tool cover -func=$(COV_FILE)
 
 .PHONY: cover-html
@@ -198,5 +211,13 @@ _check_swag_cmd:
 	@if ! command -v swag $&> /dev/null; then \
 		echo "[ERROR]: command 'swag' not found"; \
 		echo "install using \"go install github.com/swaggo/swag/cmd/swag@latest"; \
+		exit 1; \
+	fi
+
+.PHONY: _check_protolint_cmd
+_check_protolint_cmd:
+	@if ! command -v protolint $&> /dev/null; then \
+		echo "[ERROR]: command 'protolint' not found"; \
+		echo "install using \"go install github.com/yoheimuta/protolint/cmd/protolint@latest"; \
 		exit 1; \
 	fi

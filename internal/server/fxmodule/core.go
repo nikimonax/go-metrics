@@ -1,15 +1,9 @@
 package fxmodule
 
 import (
-	"compress/gzip"
-	"context"
-	"errors"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
 
-	"github.com/go-chi/chi/v5"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/fx"
@@ -18,14 +12,12 @@ import (
 	"github.com/nikimonax/go-metrics/internal/app/interfaces"
 	"github.com/nikimonax/go-metrics/internal/app/usecase"
 	"github.com/nikimonax/go-metrics/internal/impl/publisher"
-	"github.com/nikimonax/go-metrics/internal/lib/compress"
-	"github.com/nikimonax/go-metrics/internal/lib/httpextra"
 	"github.com/nikimonax/go-metrics/internal/lib/httpsec"
 	"github.com/nikimonax/go-metrics/internal/lib/work"
 	"github.com/nikimonax/go-metrics/internal/lib/zapextra"
 	"github.com/nikimonax/go-metrics/internal/server/config"
+
 	"github.com/nikimonax/go-metrics/internal/server/handler"
-	"github.com/nikimonax/go-metrics/internal/server/middleware"
 	"github.com/nikimonax/go-metrics/internal/server/presenter"
 	"github.com/nikimonax/go-metrics/internal/shared/metainfo"
 )
@@ -58,55 +50,9 @@ func CoreModule() fx.Option {
 			provideHandlerGetMetricUseCase,
 			provideHandlerGetAllMetricsUseCase,
 		),
-		// presenters
-		fx.Provide(
-			fx.Annotate(
-				presenter.NewPlainTextErrorPresenter,
-				fx.ResultTags(`name:"presenter_error_text"`),
-				fx.As(new(presenter.ErrorPresenter)),
-			),
-			fx.Annotate(
-				presenter.NewPlainTextMetricPresenter,
-				fx.ResultTags(`name:"presenter_metric_text"`),
-				fx.As(new(presenter.MetricPresenter)),
-			),
-			fx.Annotate(
-				presenter.NewHTMLTableMetricsPresenter,
-				fx.ResultTags(`name:"presenter_metrics_html"`),
-				fx.As(new(presenter.MetricsPresenter)),
-			),
-			fx.Annotate(
-				presenter.NewJSONErrorPresenter,
-				fx.ResultTags(`name:"presenter_error_json"`),
-				fx.As(new(presenter.ErrorPresenter)),
-			),
-			fx.Annotate(
-				presenter.NewJSONMetricPresenter,
-				fx.ResultTags(`name:"presenter_metric_json"`),
-				fx.As(new(presenter.MetricPresenter)),
-			),
-		),
-		// http routes, handlers, middleware
-		fx.Provide(
-			fx.Annotate(
-				zapextra.NewZapSugarLoggingMiddleware,
-				fx.ResultTags(`name:"middleware_logger"`),
-			),
-			fx.Annotate(
-				providerMiddlewareCompress,
-				fx.ResultTags(`name:"middleware_compress"`),
-			),
-			fx.Annotate(
-				providerBaseRouter,
-				fx.ResultTags(`name:"router_base"`),
-			),
-		),
+		// startup information
 		fx.Invoke(
 			registerLifecycleLog,
-			fx.Annotate(
-				registerHTTPServerLifecycle,
-				fx.ParamTags("", "", `name:"router_base"`),
-			),
 		),
 	)
 }
@@ -181,28 +127,6 @@ func provideHandlerGetAllMetricsUseCase(
 	return usecase
 }
 
-func providerMiddlewareCompress() httpextra.Middleware {
-	compressor := middleware.NewCompressor(gzip.BestSpeed)
-	compressor.SetEncoder("deflate", compress.EncoderDeflate)
-	compressor.SetEncoder("gzip", compress.EncoderGzip)
-	return compressor.Handler
-}
-
-func providerBaseRouter(hasher *httpsec.Hasher) chi.Router {
-	baseRouter := chi.NewRouter()
-
-	baseRouter.Use(
-		middleware.CleanPath,
-		middleware.ClientIPFromRemoteAddr,
-	)
-
-	if hasher != nil {
-		baseRouter.Use(hasher.CalculateMiddleware())
-	}
-
-	return baseRouter
-}
-
 func registerLifecycleLog(
 	lc fx.Lifecycle,
 	sugar *zap.SugaredLogger,
@@ -229,7 +153,9 @@ func registerLifecycleLog(
 		fmt.Fprintf(os.Stderr, "Build commit: %s\n", metainfo.BuildCommit)
 		sugar.Infow(
 			"starting server",
+			"type", cfg.ServerType,
 			"listen", cfg.Listen,
+			"trusted_subnet", cfg.TrustedSubnet,
 			"profile", cfg.Profile,
 			"has_database", hasDatabaseDSN,
 			"has_secret", hasSecretKey,
@@ -264,51 +190,5 @@ func registerSchedulerLifecycle(
 	lc.Append(fx.Hook{
 		OnStart: scheduler.Start,
 		OnStop:  scheduler.Stop,
-	})
-}
-
-func registerHTTPServerLifecycle(
-	lc fx.Lifecycle,
-	cfg *config.ServerConfig,
-	router chi.Router,
-) {
-	srv := &http.Server{
-		Addr:    cfg.Listen,
-		Handler: router,
-	}
-
-	errs := make(chan error, 1)
-
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			lc := net.ListenConfig{}
-
-			ln, err := lc.Listen(ctx, "tcp", srv.Addr)
-			if err != nil {
-				return err
-			}
-
-			go func() {
-				err := srv.Serve(ln)
-
-				if err != nil && err != http.ErrServerClosed {
-					errs <- err
-				}
-
-				close(errs)
-			}()
-
-			return nil
-		},
-		OnStop: func(ctx context.Context) error {
-			shutdownErr := srv.Shutdown(ctx)
-
-			select {
-			case <-ctx.Done():
-				return shutdownErr
-			case serveErr := <-errs:
-				return errors.Join(shutdownErr, serveErr)
-			}
-		},
 	})
 }
